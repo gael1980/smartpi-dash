@@ -507,8 +507,8 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- CHART.JS CDN                                                   -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="/static/chart.umd.min.js"></script>
+<script src="/static/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -765,7 +765,7 @@ function initCharts() {
 }
 
 function updateCharts(history) {
-  if (!history || !history.length) return;
+  if (!history || !history.length || !charts.temp) return;
 
   const rangeHours = parseInt(document.getElementById('chart-range').value) || 12;
   const cutoff = Date.now() - rangeHours * 3600 * 1000;
@@ -962,7 +962,11 @@ async function fetchHistory() {
 
 // ─── Init ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  initCharts();
+  if (typeof Chart !== 'undefined') {
+    initCharts();
+  } else {
+    console.warn('Chart.js not loaded — charts disabled, data still available');
+  }
   fetchState();
   fetchHistory();
 
