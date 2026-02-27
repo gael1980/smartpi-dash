@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1600">
+<title>SmartPI — Schéma de la boucle de régulation complète</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0a0e17;
+    --bg-block: #141b2d;
+    --bg-block-hover: #1a2340;
+    --border: #2a3654;
+    --border-highlight: #4a6fa5;
+    --text: #c8d6e5;
+    --text-dim: #6b7d99;
+    --text-bright: #e8f0fe;
+    --accent-blue: #4a9eff;
+    --accent-cyan: #00d4aa;
+    --accent-orange: #ff8c42;
+    --accent-red: #ff4757;
+    --accent-purple: #a55eea;
+    --accent-yellow: #ffd32a;
+    --accent-green: #26de81;
+    --signal-main: #4a9eff;
+    --signal-feedback: #ff8c42;
+    --signal-ff: #00d4aa;
+    --signal-learn: #a55eea;
+    --signal-diag: #6b7d99;
+    --grid: #0f1525;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    overflow-x: auto;
+    min-height: 100vh;
+  }
+
+  .header {
+    padding: 24px 40px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    background: linear-gradient(180deg, #0d1220 0%, var(--bg) 100%);
+  }
+
+  .header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 22px;
+    color: var(--text-bright);
+    letter-spacing: -0.5px;
+  }
+
+  .header .version {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-cyan);
+    background: rgba(0, 212, 170, 0.1);
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 212, 170, 0.2);
+  }
+
+  .header .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  .legend-bar {
+    display: flex;
+    gap: 24px;
+    padding: 12px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(20, 27, 45, 0.5);
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+  }
+
+  .legend-line {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .legend-line.main { background: var(--signal-main); }
+  .legend-line.feedback { background: var(--signal-feedback); stroke-dasharray: 8 4; }
+  .legend-line.ff { background: var(--signal-ff); }
+  .legend-line.learn { background: var(--signal-learn); }
+  .legend-line.diag { background: var(--signal-diag); border: 1px dashed var(--signal-diag); background: transparent; }
+
+  .canvas-wrap {
+    padding: 30px 20px;
+    overflow: auto;
+  }
+
+  svg {
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: #1a2340;
+    border: 1px solid var(--border-highlight);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text);
+    max-width: 340px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.5;
+  }
+
+  .tooltip.visible { opacity: 1; }
+
+  .tooltip .tt-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--accent-cyan);
+    margin-bottom: 6px;
+  }
+
+  .tooltip .tt-eq {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-yellow);
+    background: rgba(255, 211, 42, 0.08);
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: 6px 0;
+    display: inline-block;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 16px 40px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .nav-hint {
+    padding: 8px 40px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>SmartPI — Boucle de Régulation Complète</h1>
+  <span class="version">v2 — FOPDT + IMC</span>
+  <span class="subtitle">Versatile Thermostat · Home Assistant</span>
+</div>
+
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-line main"></div>Signal principal (commande)</div>
+  <div class="legend-item"><div class="legend-line feedback"></div>Retour mesure (feedback)</div>
+  <div class="legend-item"><div class="legend-line ff"></div>Feedforward / compensation</div>
+  <div class="legend-item"><div class="legend-line learn"></div>Apprentissage / adaptation</div>
+  <div class="legend-item"><div class="legend-line diag"></div>Diagnostics (twin)</div>
+</div>
+
+<div class="nav-hint">Survoler les blocs pour plus de détails · Scroll horizontal si nécessaire</div>
+
+<div class="canvas-wrap">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 920" width="1560" height="920">
+<defs>
+  <!-- Arrowheads -->
+  <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#4a9eff"/>
+  </marker>
+  <marker id="arr-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#ff8c42"/>
+  </marker>
+  <marker id="arr-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#00d4aa"/>
+  </marker>
+  <marker id="arr-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#a55eea"/>
+  </marker>
+  <marker id="arr-gray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#6b7d99"/>
+  </marker>
+  <marker id="arr-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#ff4757"/>
+  </marker>
+  <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+    <path d="M0,0 L8,3 L0,6 Z" fill="#26de81"/>
+  </marker>
+
+  <!-- Grid pattern -->
+  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+    <rect width="20" height="20" fill="none"/>
+    <circle cx="0" cy="0" r="0.5" fill="#1a2340"/>
+    <circle cx="20" cy="0" r="0.5" fill="#1a2340"/>
+    <circle cx="0" cy="20" r="0.5" fill="#1a2340"/>
+    <circle cx="20" cy="20" r="0.5" fill="#1a2340"/>
+  </pattern>
+
+  <!-- Block shadow -->
+  <filter id="bshadow">
+    <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.3"/>
+  </filter>
+
+  <!-- Glow for summing junctions -->
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="2" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<!-- Background grid -->
+<rect width="1560" height="920" fill="var(--bg)"/>
+<rect width="1560" height="920" fill="url(#grid)"/>
+
+<!-- ============================================================ -->
+<!-- ZONE LABELS -->
+<!-- ============================================================ -->
+<text x="60" y="32" font-family="JetBrains Mono" font-size="10" fill="#2a3654" font-weight="600">CONSIGNE</text>
+<text x="340" y="32" font-family="JetBrains Mono" font-size="10" fill="#2a3654" font-weight="600">ERREUR</text>
+<text x="570" y="32" font-family="JetBrains Mono" font-size="10" fill="#2a3654" font-weight="600">RÉGULATEUR PI + FF</text>
+<text x="900" y="32" font-family="JetBrains Mono" font-size="10" fill="#2a3654" font-weight="600">CONTRAINTES</text>
+<text x="1200" y="32" font-family="JetBrains Mono" font-size="10" fill="#2a3654" font-weight="600">PROCÉDÉ</text>
+
+<!-- Zone separators (subtle) -->
+<line x1="310" y1="40" x2="310" y2="880" stroke="#1a2340" stroke-width="1" stroke-dasharray="4 8"/>
+<line x1="520" y1="40" x2="520" y2="880" stroke="#1a2340" stroke-width="1" stroke-dasharray="4 8"/>
+<line x1="870" y1="40" x2="870" y2="880" stroke="#1a2340" stroke-width="1" stroke-dasharray="4 8"/>
+<line x1="1150" y1="40" x2="1150" y2="880" stroke="#1a2340" stroke-width="1" stroke-dasharray="4 8"/>
+
+
+<!-- ============================================================ -->
+<!-- ROW 1: MAIN CONTROL LOOP (y≈200) -->
+<!-- ============================================================ -->
+
+<!-- SP_brut input -->
+<g class="block" data-tip="sp_brut">
+  <rect x="30" y="172" width="80" height="46" rx="6" fill="none" stroke="var(--accent-blue)" stroke-width="1.5"/>
+  <text x="70" y="192" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="var(--accent-blue)" font-weight="600">SP_brut</text>
+  <text x="70" y="208" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="var(--text-dim)">consigne</text>
+</g>
+
+<!-- Arrow SP_brut → Setpoint Filter -->
+<line x1="110" y1="195" x2="140" y2="195" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+
+<!-- Setpoint Filter -->
+<g class="block" data-tip="sp_filter">
+  <rect x="140" y="166" width="120" height="58" rx="6" fill="var(--bg-block)" stroke="var(--border)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="200" y="185" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="var(--text-bright)" font-weight="500">Setpoint Filter</text>
+  <text x="200" y="199" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="var(--accent-cyan)">asymétrique</text>
+  <text x="200" y="213" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--text-dim)">+ Saturation Guard</text>
+</g>
+
+<!-- SP_brut goes ALSO directly down to the integrator path (bypasses filter) -->
+<!-- Branching point at x=125 -->
+<circle cx="125" cy="195" r="3" fill="var(--signal-main)"/>
+
+<!-- Arrow Setpoint Filter → branch point before summer -->
+<line x1="260" y1="195" x2="330" y2="195" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="295" y="188" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--text-dim)">SP_for_P</text>
+
+<!-- Direct SP_brut line to integrator (goes down then right) -->
+<line x1="125" y1="198" x2="125" y2="280" stroke="var(--signal-main)" stroke-width="1.5" stroke-dasharray="6 3"/>
+<line x1="125" y1="280" x2="330" y2="280" stroke="var(--signal-main)" stroke-width="1.5" stroke-dasharray="6 3" marker-end="url(#arr-blue)"/>
+<text x="228" y="273" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--text-dim)">SP_brut → Intégrateur (règle Åström)</text>
+
+<!-- SUMMER P (error_p = SP_for_P - y) -->
+<g class="block" data-tip="summer_p">
+  <circle cx="348" cy="195" r="16" fill="var(--bg-block)" stroke="var(--accent-blue)" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="348" y="199" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="var(--accent-blue)" font-weight="700">Σ</text>
+  <text x="336" y="185" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-green)">+</text>
+  <text x="348" y="220" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-red)">−</text>
+</g>
+
+<!-- SUMMER I (error_i = SP_brut - y) -->
+<g class="block" data-tip="summer_i">
+  <circle cx="348" cy="280" r="16" fill="var(--bg-block)" stroke="var(--accent-blue)" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="348" y="284" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="var(--accent-blue)" font-weight="700">Σ</text>
+  <text x="336" y="270" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-green)">+</text>
+  <text x="348" y="305" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-red)">−</text>
+</g>
+
+<!-- Feedback line going to both summers (from bottom) -->
+<!-- y measurement comes from far right, we'll connect later -->
+
+<!-- Arrow summer_p → e_p label → Kp block -->
+<line x1="364" y1="195" x2="400" y2="195" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="382" y="188" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-yellow)">e_p</text>
+
+<!-- Kp BLOCK (Proportional) -->
+<g class="block" data-tip="kp">
+  <rect x="400" y="174" width="80" height="42" rx="5" fill="var(--bg-block)" stroke="var(--accent-blue)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="440" y="193" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="var(--text-bright)" font-weight="600">Kp</text>
+  <text x="440" y="208" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">near-band sched.</text>
+</g>
+
+<!-- Arrow summer_i → e_i → Ki·∫ block -->
+<line x1="364" y1="280" x2="400" y2="280" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="382" y="273" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-yellow)">e_i</text>
+
+<!-- Ki INTEGRATOR BLOCK -->
+<g class="block" data-tip="ki">
+  <rect x="400" y="258" width="80" height="44" rx="5" fill="var(--bg-block)" stroke="var(--accent-blue)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="440" y="276" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="var(--text-bright)" font-weight="600">Ki·∫</text>
+  <text x="440" y="292" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">cond. integration</text>
+</g>
+
+<!-- Arrow Kp → PI summer -->
+<line x1="480" y1="195" x2="530" y2="230" stroke="var(--signal-main)" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+
+<!-- Arrow Ki → PI summer -->
+<line x1="480" y1="280" x2="530" y2="244" stroke="var(--signal-main)" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+
+<!-- PI output summer (Kp*e_p + Ki*∫e_i + u_ff) -->
+<g class="block" data-tip="summer_pi">
+  <circle cx="548" cy="237" r="16" fill="var(--bg-block)" stroke="var(--accent-blue)" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="548" y="241" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="var(--accent-blue)" font-weight="700">Σ</text>
+</g>
+
+<!-- u_ff enters the PI summer from below -->
+<text x="559" y="262" text-anchor="start" font-family="JetBrains Mono" font-size="8" fill="var(--accent-green)">+</text>
+
+<!-- Arrow PI summer → u_cmd label → Governance -->
+<line x1="564" y1="237" x2="620" y2="237" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="592" y="230" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-yellow)">u_pi</text>
+
+<!-- GOVERNANCE BLOCK -->
+<g class="block" data-tip="governance">
+  <rect x="620" y="210" width="100" height="54" rx="6" fill="var(--bg-block)" stroke="var(--accent-orange)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="670" y="232" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">Governance</text>
+  <text x="670" y="246" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-orange)">Safety-First</text>
+  <text x="670" y="258" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">regime · freeze · hold</text>
+</g>
+
+<!-- Arrow Governance → Rate Limiter -->
+<line x1="720" y1="237" x2="770" y2="237" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="745" y="230" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-yellow)">u_cmd</text>
+
+<!-- RATE LIMITER + CLAMP [0,1] -->
+<g class="block" data-tip="rate_limit">
+  <rect x="770" y="214" width="90" height="46" rx="5" fill="var(--bg-block)" stroke="var(--border)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="815" y="233" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">Rate Limit</text>
+  <text x="815" y="247" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--text-dim)">+ clamp [0, 1]</text>
+  <text x="815" y="257" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--accent-yellow)">max_on_pct</text>
+</g>
+
+<!-- Arrow Rate Limit → Timing Constraints -->
+<line x1="860" y1="237" x2="910" y2="237" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="885" y="230" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-yellow)">u_lim</text>
+
+<!-- TIMING CONSTRAINTS -->
+<g class="block" data-tip="timing">
+  <rect x="910" y="214" width="100" height="46" rx="5" fill="var(--bg-block)" stroke="var(--border)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="960" y="232" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">Timing</text>
+  <text x="960" y="246" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">min_on / min_off</text>
+  <text x="960" y="257" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">activation delays</text>
+</g>
+
+<!-- Arrow Timing → PWM/Duty block -->
+<line x1="1010" y1="237" x2="1060" y2="237" stroke="var(--signal-main)" stroke-width="2" marker-end="url(#arr-blue)"/>
+<text x="1035" y="230" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-yellow)">u_final</text>
+
+<!-- PWM / DUTY CYCLE -->
+<g class="block" data-tip="pwm">
+  <rect x="1060" y="210" width="90" height="54" rx="5" fill="var(--bg-block)" stroke="var(--accent-cyan)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="1105" y="232" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">PWM</text>
+  <text x="1105" y="246" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-cyan)">Duty Cycle</text>
+  <text x="1105" y="258" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">ON/OFF timing</text>
+</g>
+
+<!-- Arrow PWM → PROCESS -->
+<line x1="1150" y1="237" x2="1210" y2="237" stroke="var(--signal-main)" stroke-width="2.5" marker-end="url(#arr-blue)"/>
+
+<!-- PROCESS (Building 1R1C) -->
+<g class="block" data-tip="process">
+  <rect x="1210" y="192" width="150" height="90" rx="8" fill="var(--bg-block)" stroke="var(--accent-orange)" stroke-width="2" filter="url(#bshadow)"/>
+  <text x="1285" y="218" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="var(--text-bright)" font-weight="600">Bâtiment</text>
+  <text x="1285" y="236" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="var(--accent-orange)">FOPDT · 1R1C</text>
+  <text x="1285" y="252" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--text-dim)">dT/dt = a·u(t−L)</text>
+  <text x="1285" y="265" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--text-dim)">− b·(T − Text) + d(t)</text>
+</g>
+
+<!-- OUTPUT: T_in (measurement) -->
+<g class="block" data-tip="sensor">
+  <rect x="1400" y="218" width="70" height="38" rx="5" fill="none" stroke="var(--signal-feedback)" stroke-width="1.5"/>
+  <text x="1435" y="235" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="var(--signal-feedback)" font-weight="600">T_in</text>
+  <text x="1435" y="249" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">capteur</text>
+</g>
+
+<!-- Arrow Process → T_in -->
+<line x1="1360" y1="237" x2="1400" y2="237" stroke="var(--signal-feedback)" stroke-width="2" marker-end="url(#arr-orange)"/>
+
+<!-- T_ext perturbation input to process -->
+<g class="block" data-tip="text">
+  <rect x="1260" y="135" width="70" height="38" rx="5" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5"/>
+  <text x="1295" y="152" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="var(--accent-cyan)" font-weight="600">T_ext</text>
+  <text x="1295" y="166" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">extérieur</text>
+</g>
+<line x1="1295" y1="173" x2="1295" y2="192" stroke="var(--accent-cyan)" stroke-width="1.5" marker-end="url(#arr-cyan)"/>
+
+<!-- d(t) perturbation -->
+<g>
+  <text x="1390" y="156" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--accent-red)">d(t)</text>
+  <text x="1390" y="168" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">perturbations</text>
+  <text x="1390" y="179" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">solaire, occupants</text>
+</g>
+<line x1="1370" y1="182" x2="1350" y2="192" stroke="var(--accent-red)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+
+
+<!-- ============================================================ -->
+<!-- FEEDBACK PATH (y measurement back to summers) -->
+<!-- ============================================================ -->
+<polyline points="1435,256 1435,830 348,830 348,296" 
+  stroke="var(--signal-feedback)" stroke-width="2" fill="none" marker-end="url(#arr-orange)"/>
+<!-- Branch to summer_p -->
+<line x1="348" y1="830" x2="348" y2="211" stroke="var(--signal-feedback)" stroke-width="2" marker-end="url(#arr-orange)"/>
+<!-- Branch dot -->
+<circle cx="348" cy="830" r="3" fill="var(--signal-feedback)"/>
+<text x="358" y="826" font-family="JetBrains Mono" font-size="8" fill="var(--signal-feedback)">y (T_in)</text>
+
+
+<!-- ============================================================ -->
+<!-- ANTI-WINDUP TRACKING LOOP -->
+<!-- ============================================================ -->
+<g class="block" data-tip="antiwindup">
+  <rect x="750" y="316" width="120" height="42" rx="5" fill="var(--bg-block)" stroke="var(--accent-red)" stroke-width="1" filter="url(#bshadow)"/>
+  <text x="810" y="335" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="var(--text-bright)" font-weight="500">Anti-Windup</text>
+  <text x="810" y="349" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--accent-red)">tracking · back-calc</text>
+</g>
+<!-- AW feedback to integrator -->
+<path d="M750,337 L490,337 L490,290" stroke="var(--accent-red)" stroke-width="1.2" fill="none" stroke-dasharray="5 3" marker-end="url(#arr-red)"/>
+<text x="610" y="330" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--accent-red)">Δu_aw → correction intégrale</text>
+
+<!-- u_final → AW input (from timing block) -->
+<line x1="960" y1="260" x2="960" y2="337" stroke="var(--accent-red)" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="960" y1="337" x2="870" y2="337" stroke="var(--accent-red)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+<text x="920" y="330" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">u_applied</text>
+
+
+<!-- ============================================================ -->
+<!-- FEEDFORWARD PATH (T_ext → u_ff) -->
+<!-- ============================================================ -->
+<g class="block" data-tip="feedforward">
+  <rect x="530" y="380" width="120" height="56" rx="6" fill="var(--bg-block)" stroke="var(--accent-cyan)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="590" y="400" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">Feedforward</text>
+  <text x="590" y="414" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-cyan)">u_ff = K_ff·(SP−T_ext)</text>
+  <text x="590" y="427" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">K_ff = b/a · warmup · gate</text>
+</g>
+
+<!-- T_ext → FF block -->
+<line x1="1260" y1="154" x2="530" y2="154" stroke="var(--signal-ff)" stroke-width="1.2" stroke-dasharray="6 3"/>
+<line x1="530" y1="154" x2="530" y2="380" stroke="var(--signal-ff)" stroke-width="1.2" stroke-dasharray="6 3"/>
+<!-- Dot at branch -->
+<circle cx="1260" cy="154" r="3" fill="var(--signal-ff)"/>
+
+<!-- SP branch to FF -->
+<line x1="125" y1="195" x2="60" y2="195" stroke="var(--signal-ff)" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="60" y1="195" x2="60" y2="408" stroke="var(--signal-ff)" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="60" y1="408" x2="530" y2="408" stroke="var(--signal-ff)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-cyan)"/>
+<text x="300" y="401" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--signal-ff)">SP_filt</text>
+
+<!-- FF output → PI summer -->
+<line x1="590" y1="380" x2="548" y2="253" stroke="var(--signal-ff)" stroke-width="1.5" marker-end="url(#arr-cyan)"/>
+<text x="580" y="320" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-cyan)">u_ff</text>
+
+
+<!-- ============================================================ -->
+<!-- ROW 3: LEARNING / ADAPTATION (y≈520) -->
+<!-- ============================================================ -->
+
+<!-- ABEstimator -->
+<g class="block" data-tip="ab_estimator">
+  <rect x="200" y="510" width="140" height="64" rx="6" fill="var(--bg-block)" stroke="var(--accent-purple)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="270" y="530" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="var(--text-bright)" font-weight="500">ABEstimator</text>
+  <text x="270" y="545" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-purple)">Median + MAD</text>
+  <text x="270" y="558" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">a (°C/min/u) · b (min⁻¹)</text>
+  <text x="270" y="569" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">τ = 1/b</text>
+</g>
+
+<!-- Learning inputs: T_in, T_ext, u_applied -->
+<!-- T_in branch to ABEstimator -->
+<circle cx="1435" cy="530" r="3" fill="var(--signal-learn)"/>
+<line x1="1435" y1="530" x2="340" y2="530" stroke="var(--signal-learn)" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-purple)"/>
+<text x="900" y="524" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--signal-learn)">T_in, T_ext, u_applied → fenêtre d'apprentissage</text>
+<!-- Vertical from feedback to learning -->
+<line x1="1435" y1="256" x2="1435" y2="530" stroke="var(--signal-learn)" stroke-width="1" stroke-dasharray="4 3"/>
+
+<!-- DeadTimeEstimator -->
+<g class="block" data-tip="deadtime">
+  <rect x="200" y="600" width="140" height="56" rx="6" fill="var(--bg-block)" stroke="var(--accent-purple)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="270" y="620" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">DeadTime Est.</text>
+  <text x="270" y="634" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-purple)">Takeoff + SK backup</text>
+  <text x="270" y="648" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">L_heat (s) · L_cool (s)</text>
+</g>
+
+<!-- GainScheduler -->
+<g class="block" data-tip="gain_scheduler">
+  <rect x="420" y="510" width="120" height="56" rx="6" fill="var(--bg-block)" stroke="var(--accent-purple)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="480" y="530" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">GainScheduler</text>
+  <text x="480" y="545" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-purple)">IMC-like tuning</text>
+  <text x="480" y="558" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">Kp(τ,L) · Ki(τ,L)</text>
+</g>
+
+<!-- AB → GainScheduler -->
+<line x1="340" y1="535" x2="420" y2="535" stroke="var(--signal-learn)" stroke-width="1.5" marker-end="url(#arr-purple)"/>
+<text x="380" y="528" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--signal-learn)">a, b, τ</text>
+
+<!-- DeadTime → GainScheduler -->
+<line x1="340" y1="625" x2="390" y2="625" stroke="var(--signal-learn)" stroke-width="1"/>
+<line x1="390" y1="625" x2="390" y2="555" stroke="var(--signal-learn)" stroke-width="1"/>
+<line x1="390" y1="555" x2="420" y2="555" stroke="var(--signal-learn)" stroke-width="1" marker-end="url(#arr-purple)"/>
+<text x="395" y="590" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="var(--signal-learn)">L</text>
+
+<!-- GainScheduler → Kp block (adaptive gains) -->
+<line x1="480" y1="510" x2="440" y2="216" stroke="var(--signal-learn)" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-purple)"/>
+<!-- GainScheduler → Ki block -->
+<line x1="480" y1="510" x2="440" y2="302" stroke="var(--signal-learn)" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-purple)"/>
+<text x="465" y="445" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--signal-learn)">Kp, Ki adaptatifs</text>
+
+<!-- AB → Feedforward (a, b for K_ff) -->
+<line x1="270" y1="510" x2="270" y2="470" stroke="var(--signal-learn)" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="270" y1="470" x2="530" y2="408" stroke="var(--signal-learn)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-purple)"/>
+<text x="380" y="445" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--signal-learn)">a, b → K_ff = b/a</text>
+
+
+<!-- ============================================================ -->
+<!-- ROW 4: THERMAL TWIN (diagnostics-only) y≈720 -->
+<!-- ============================================================ -->
+
+<g class="block" data-tip="twin">
+  <rect x="740" y="460" width="160" height="68" rx="6" fill="var(--bg-block)" stroke="var(--signal-diag)" stroke-width="1.5" stroke-dasharray="6 3" filter="url(#bshadow)"/>
+  <text x="820" y="480" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="var(--text-bright)" font-weight="500">ThermalTwin 1R1C</text>
+  <text x="820" y="495" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--signal-diag)">Luenberger observer</text>
+  <text x="820" y="508" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">T_hat · innovation · d_hat</text>
+  <text x="820" y="520" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">CUSUM · RMSE · ETA · T_steady</text>
+</g>
+
+<!-- Inputs to twin -->
+<line x1="540" y1="540" x2="740" y2="490" stroke="var(--signal-diag)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-gray)"/>
+<text x="640" y="510" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--signal-diag)">a, b, L</text>
+
+<!-- T_in to twin -->
+<circle cx="1435" cy="490" r="2.5" fill="var(--signal-diag)"/>
+<line x1="1435" y1="490" x2="900" y2="490" stroke="var(--signal-diag)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-gray)"/>
+<line x1="1435" y1="490" x2="1435" y2="530" stroke="transparent" stroke-width="1"/>
+
+<!-- Twin output: diagnostics arrow going down -->
+<text x="820" y="546" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--signal-diag)">→ diagnostics only (pas de rebouclage)</text>
+
+<!-- ============================================================ -->
+<!-- AUTOCALIB TRIGGER -->
+<!-- ============================================================ -->
+<g class="block" data-tip="autocalib">
+  <rect x="200" y="690" width="140" height="48" rx="6" fill="var(--bg-block)" stroke="var(--accent-yellow)" stroke-width="1" filter="url(#bshadow)"/>
+  <text x="270" y="710" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">AutoCalibTrigger</text>
+  <text x="270" y="724" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--accent-yellow)">supervision horaire</text>
+  <text x="270" y="734" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">drift detect · snapshot</text>
+</g>
+
+<!-- AutoCalib ← AB/DT -->
+<line x1="270" y1="656" x2="270" y2="690" stroke="var(--accent-yellow)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+
+<!-- AutoCalib → Calibration FSM -->
+<g class="block" data-tip="calibration">
+  <rect x="420" y="690" width="120" height="48" rx="6" fill="var(--bg-block)" stroke="var(--accent-yellow)" stroke-width="1" filter="url(#bshadow)"/>
+  <text x="480" y="710" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">Calibration FSM</text>
+  <text x="480" y="724" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--accent-yellow)">forced recalibration</text>
+</g>
+<line x1="340" y1="714" x2="420" y2="714" stroke="var(--accent-yellow)" stroke-width="1.2" marker-end="url(#arr-green)"/>
+<text x="380" y="707" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--accent-yellow)">trigger</text>
+
+<!-- ============================================================ -->
+<!-- DEADBAND MANAGER (on the side) -->
+<!-- ============================================================ -->
+<g class="block" data-tip="deadband">
+  <rect x="620" y="120" width="110" height="50" rx="5" fill="var(--bg-block)" stroke="var(--border)" stroke-width="1" filter="url(#bshadow)"/>
+  <text x="675" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">Deadband Mgr</text>
+  <text x="675" y="153" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--text-dim)">near-band · deadband</text>
+  <text x="675" y="164" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">auto-sized (L, model)</text>
+</g>
+<line x1="675" y1="170" x2="675" y2="210" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr-gray)"/>
+
+<!-- ============================================================ -->
+<!-- GUARDS (Thermal Guard, Guard Cut) -->
+<!-- ============================================================ -->
+<g class="block" data-tip="guards">
+  <rect x="770" y="120" width="100" height="50" rx="5" fill="var(--bg-block)" stroke="var(--accent-red)" stroke-width="1" filter="url(#bshadow)"/>
+  <text x="820" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">Guards</text>
+  <text x="820" y="153" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--accent-red)">thermal guard</text>
+  <text x="820" y="164" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">guard cut · guard kick</text>
+</g>
+<line x1="820" y1="170" x2="820" y2="210" stroke="var(--accent-red)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr-red)"/>
+
+<!-- ============================================================ -->
+<!-- LEARNING WINDOW MANAGER -->
+<!-- ============================================================ -->
+<g class="block" data-tip="learn_win">
+  <rect x="30" y="510" width="140" height="56" rx="6" fill="var(--bg-block)" stroke="var(--accent-purple)" stroke-width="1" filter="url(#bshadow)"/>
+  <text x="100" y="530" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">LearningWindow</text>
+  <text x="100" y="544" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--accent-purple)">multi-cycle window</text>
+  <text x="100" y="557" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">accumulation · validation</text>
+</g>
+<line x1="170" y1="540" x2="200" y2="540" stroke="var(--signal-learn)" stroke-width="1.2" marker-end="url(#arr-purple)"/>
+
+<!-- ============================================================ -->
+<!-- PHASE INDICATOR -->
+<!-- ============================================================ -->
+<g class="block" data-tip="phase">
+  <rect x="30" y="690" width="140" height="48" rx="6" fill="var(--bg-block)" stroke="var(--border-highlight)" stroke-width="1.5" filter="url(#bshadow)"/>
+  <text x="100" y="710" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="var(--text-bright)" font-weight="500">Phase Machine</text>
+  <text x="100" y="726" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="var(--border-highlight)">HYSTERESIS → STABLE</text>
+  <text x="100" y="734" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">CALIBRATION</text>
+</g>
+
+
+<!-- ============================================================ -->
+<!-- SECTION: NUMBERED STEPS (matching code comments) -->
+<!-- ============================================================ -->
+<!-- Step numbers along the main flow -->
+<g font-family="JetBrains Mono" font-size="9" fill="var(--accent-cyan)" font-weight="600" opacity="0.5">
+  <text x="200" y="158">③</text>
+  <text x="348" y="170">⑥</text>
+  <text x="440" y="167">⑧</text>
+  <text x="548" y="218">⑪</text>
+  <text x="670" y="202">⑦</text>
+  <text x="815" y="207">⑫</text>
+  <text x="960" y="207">⑬</text>
+  <text x="1105" y="202">PWM</text>
+  <text x="270" y="505">④</text>
+  <text x="820" y="453">⑮</text>
+</g>
+
+</svg>
+</div>
+
+<div class="footer">
+  <span>Modèle thermique : dT/dt = a·u(t−L) − b·(T − T_ext) + d(t)  |  τ = 1/b  |  IMC tuning: Kp, Ki = f(τ, L)</span>
+  <span>SmartPI v2 · Versatile Thermostat · Home Assistant</span>
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+const tips = {
+  sp_brut: {
+    title: 'SP_brut — Consigne brute',
+    text: 'Consigne température fixée par l\'utilisateur ou le scheduler HA. Valeur non filtrée, envoyée directement à l\'intégrateur (règle Åström).',
+  },
+  sp_filter: {
+    title: 'Setpoint Filter — Filtre asymétrique',
+    text: 'Filtre passe-bas 1er ordre sur la voie P uniquement (Yokogawa SLPC simplifié). Constantes de temps asymétriques montée/descente. Inclut le Saturation Guard : BYPASS quand |SP−y| ≥ seuil (pour apprentissage ABEstimator), FILTRE en quasi-établi (confort).',
+    eq: 'F(s) = 1/(1 + Tf·s)  |  Tf_up ≠ Tf_down'
+  },
+  summer_p: {
+    title: 'Σ — Sommateur Proportionnel',
+    text: 'Calcule l\'erreur proportionnelle e_p = SP_for_P − y. Utilise la consigne filtrée (voie P du PI 2DOF).',
+  },
+  summer_i: {
+    title: 'Σ — Sommateur Intégral',
+    text: 'Calcule l\'erreur intégrale e_i = SP_brut − y. Utilise TOUJOURS la consigne brute (règle Åström) pour garantir le rejet de perturbation en statique.',
+  },
+  kp: {
+    title: 'Kp — Gain Proportionnel',
+    text: 'Gain proportionnel adaptatif, calculé par le GainScheduler via IMC. Réduit dans la near-band (kp_near_factor) pour limiter le dépassement.',
+    eq: 'u_p = Kp · e_p  |  Kp = f(τ, L)'
+  },
+  ki: {
+    title: 'Ki·∫ — Intégrateur Conditionnel',
+    text: 'Intégrateur avec logique conditionnelle : HOLD (deadtime window, governance), FREEZE (thermal guard), SKIP (deadband), NORMAL sinon. Règle Åström : intègre toujours SP_brut − y.',
+    eq: 'u_i = Ki · ∫e_i·dt  |  Ki = f(τ, L)'
+  },
+  summer_pi: {
+    title: 'Σ — Sommation PI + FF',
+    text: 'Somme des trois composantes : u = Kp·e_p + Ki·∫e_i + u_ff. Le feedforward compense les pertes thermiques statiques.',
+    eq: 'u_pi = Kp·e_p + Ki·∫e_i + u_ff'
+  },
+  governance: {
+    title: 'Governance — Safety-First',
+    text: 'Module de supervision des régimes de fonctionnement. Détermine le régime (NOMINAL, PERTURBED, TRANSITION, INIT) et décide les actions (NORMAL, SOFT_FREEZE, HARD_FREEZE). Contrôle l\'intégrateur et les gains.',
+  },
+  rate_limit: {
+    title: 'Rate Limiter + Clamp',
+    text: 'Limite la vitesse de variation de u (MAX_STEP_PER_MINUTE). Taux augmenté en mode Setpoint Boost. Clamp final à [0, max_on_percent].',
+    eq: '|Δu| ≤ rate · Δt  |  u ∈ [0, max_on_pct]'
+  },
+  timing: {
+    title: 'Timing Constraints',
+    text: 'Contraintes physiques de l\'actionneur : durée minimale d\'activation et de désactivation. Évite les micro-cycles qui usent les relais.',
+  },
+  pwm: {
+    title: 'PWM — Duty Cycle',
+    text: 'Conversion du ratio de commande u ∈ [0,1] en temps ON/OFF sur le cycle. Le CycleManager gère la temporisation exacte des switches.',
+    eq: 't_on = u · T_cycle  |  T_cycle = cycle_min × 60s'
+  },
+  process: {
+    title: 'Procédé — Bâtiment 1R1C + Dead Time',
+    text: 'Modèle FOPDT du bâtiment. Premier ordre (1R1C : une résistance thermique, une capacité) avec retard pur L. Perturbations d(t) : solaire, occupants, appareils.',
+    eq: 'dT/dt = a·u(t−L) − b·(T − T_ext) + d(t)\nτ = 1/b = R·C'
+  },
+  sensor: {
+    title: 'T_in — Capteur de température',
+    text: 'Mesure de température intérieure. Résolution typique 0.1°C (quantifié). Signal clé pour la boucle fermée et l\'apprentissage.',
+  },
+  text: {
+    title: 'T_ext — Température extérieure',
+    text: 'Température extérieure, utilisée par le feedforward et le modèle thermique. Optionnelle — politique hold_last si indisponible.',
+  },
+  feedforward: {
+    title: 'Feedforward — Compensation des pertes',
+    text: 'Compense les pertes thermiques statiques. K_ff = b/a (ratio pertes/puissance). Progressive enablement via warm-up (learn_scale × time_scale × reliable_cap). Gate : coupé au-dessus du setpoint.',
+    eq: 'u_ff = K_ff · (SP − T_ext)\nK_ff = b/a · warmup'
+  },
+  antiwindup: {
+    title: 'Anti-Windup — Tracking',
+    text: 'Mécanisme de tracking Åström : corrige l\'intégrale quand u_applied ≠ u_cmd (saturation, timing). Dynamique 1er ordre (tau = AW_TRACK_TAU_S). Borné par AW_TRACK_MAX_DELTA_I.',
+    eq: 'ΔI = β · (u_applied − u_ref) / Ki'
+  },
+  ab_estimator: {
+    title: 'ABEstimator — Identification en ligne',
+    text: 'Apprentissage en ligne des paramètres thermiques a (efficacité chauffage) et b (taux de perte). Estimation robuste par Median + MAD sur fenêtre glissante de 31 mesures.',
+    eq: 'a = Median(ΔT/Δt quand u>0)\nb = Median(−ΔT/Δt / (T−Text) quand u=0)\nτ = 1/b'
+  },
+  deadtime: {
+    title: 'DeadTimeEstimator — Retard pur',
+    text: 'Estimation du dead time (retard pur) séparément pour chauffage et refroidissement. Méthode primaire : Takeoff detection. Backup : méthode SK.',
+  },
+  gain_scheduler: {
+    title: 'GainScheduler — Tuning IMC',
+    text: 'Calcul adaptatif de Kp et Ki basé sur la théorie IMC (Internal Model Control) pour procédés FOPDT. Atténuation near-band pour réduire le dépassement.',
+    eq: 'Kp = τ / (a · (L + λ))\nKi = 1 / (a · (L + λ))\nλ = facteur de robustesse'
+  },
+  twin: {
+    title: 'ThermalTwin 1R1C — Jumeau thermique',
+    text: 'Observateur de Luenberger recalé sur les mesures. Diagnostics-only (pas de rebouclage dans la commande). Produit : T_hat, innovation, d_hat_ema (perturbation estimée), CUSUM (détection de changement), RMSE, T_steady, ETA.',
+    eq: 'T̂(k+1) = T̂(k) + dt·[a·u_eff − b·(T̂−Text)] + γ·(T_in − T̂)'
+  },
+  autocalib: {
+    title: 'AutoCalibTrigger — Supervision',
+    text: 'Module de surveillance horaire. Compare les paramètres courants au snapshot de référence. Déclenche une recalibration forcée si dérive significative (a, b, deadtime). Snapshot pris quand tau_reliable + deadtimes fiables.',
+  },
+  calibration: {
+    title: 'Calibration FSM — Recalibration forcée',
+    text: 'Machine à états de calibration forcée. Génère un signal d\'excitation (step 100% → 0%) pour rafraîchir l\'estimation du dead time et des paramètres a, b.',
+  },
+  deadband: {
+    title: 'Deadband Manager',
+    text: 'Gestion de la bande morte et de la near-band. Bande morte : intégrateur gelé, sortie maintenue. Near-band : gains réduits (kp_near_factor, ki_near_factor). Taille auto-calculée à partir de L et des pentes du modèle.',
+  },
+  guards: {
+    title: 'Guards — Protections',
+    text: 'Thermal Guard : force 0% si T > SP après une baisse de consigne (évite le chauffage inutile). Guard Cut : force 0% dans certaines conditions de sécurité. Guard Kick : correcteur d\'urgence.',
+  },
+  learn_win: {
+    title: 'LearningWindow Manager',
+    text: 'Gestion des fenêtres d\'apprentissage multi-cycles. Accumule T_int, T_ext, u pendant une durée contrôlée. Valide la cohérence (pas de changement de consigne, u constant). Fournit les données à l\'ABEstimator.',
+  },
+  phase: {
+    title: 'Phase Machine',
+    text: 'HYSTERESIS : phase initiale bang-bang (ON/OFF) pour exciter le système et collecter les premières mesures a, b (31 samples min). STABLE : PI adaptatif actif. CALIBRATION : recalibration forcée en cours.',
+  },
+};
+
+const tooltip = document.getElementById('tooltip');
+
+document.querySelectorAll('.block').forEach(el => {
+  const key = el.dataset.tip;
+  if (!key || !tips[key]) return;
+
+  el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', e => {
+    const t = tips[key];
+    let html = `<div class="tt-title">${t.title}</div><div>${t.text}</div>`;
+    if (t.eq) html += `<div class="tt-eq">${t.eq.replace(/\n/g, '<br>')}</div>`;
+    tooltip.innerHTML = html;
+    tooltip.classList.add('visible');
+  });
+
+  el.addEventListener('mousemove', e => {
+    const x = Math.min(e.clientX + 16, window.innerWidth - 360);
+    const y = Math.min(e.clientY + 16, window.innerHeight - 200);
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  });
+
+  el.addEventListener('mouseleave', () => {
+    tooltip.classList.remove('visible');
+  });
+
+  // Hover effect on blocks
+  const rect = el.querySelector('rect');
+  if (rect && rect.getAttribute('fill') === 'var(--bg-block)') {
+    el.addEventListener('mouseenter', () => rect.setAttribute('fill', 'var(--bg-block-hover)'));
+    el.addEventListener('mouseleave', () => rect.setAttribute('fill', 'var(--bg-block)'));
+  }
+});
+</script>
+
+</body>
+</html>
