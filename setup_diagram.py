@@ -3,7 +3,7 @@
 Setup script — Extracts the SVG from the block diagram HTML
 and places it in the static/ folder for the dashboard.
 
-Usage: python setup_diagram.py [path_to_smartpi_block_diagram.html]
+Usage: python setup_diagram.py [path_to_smartpi_block_diagram_v2.html]
 """
 
 import re
@@ -47,6 +47,7 @@ def extract_svg(html_path: str, output_path: str):
         'var(--signal-learn)': '#a55eea',
         'var(--signal-diag)': '#6b7d99',
         'var(--grid)': '#0f1525',
+        'var(--signal-bump)': '#e056a0',
     }
 
     for var, val in css_vars.items():
@@ -61,12 +62,12 @@ def extract_svg(html_path: str, output_path: str):
 
 
 if __name__ == '__main__':
-    html_path = sys.argv[1] if len(sys.argv) > 1 else 'smartpi_block_diagram.html'
+    html_path = sys.argv[1] if len(sys.argv) > 1 else 'static/smartpi_block_diagram_v2.html'
     output_path = os.path.join('static', 'block_diagram.svg')
 
     if not os.path.exists(html_path):
         print(f"File not found: {html_path}")
-        print("Usage: python setup_diagram.py path/to/smartpi_block_diagram.html")
+        print("Usage: python setup_diagram.py path/to/smartpi_block_diagram_v2.html")
         sys.exit(1)
 
     extract_svg(html_path, output_path)
