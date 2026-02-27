@@ -11,7 +11,7 @@ import asyncio
 import threading
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 import websockets
@@ -221,11 +221,6 @@ def ha_get_history(entity_id: str, hours: int = 24) -> list:
     """Fetch history for an entity via REST."""
     try:
         end = datetime.now(timezone.utc)
-        start = datetime(
-            end.year, end.month, end.day, end.hour, end.minute,
-            tzinfo=timezone.utc,
-        )
-        from datetime import timedelta
         start = end - timedelta(hours=hours)
         r = requests.get(
             f"{HA_URL}/api/history/period/{start.isoformat()}",
@@ -337,12 +332,12 @@ async def _ws_listener():
 
         except websockets.exceptions.ConnectionClosed:
             log.warning("WebSocket connection closed, reconnecting in 5s...")
+            state_store["connected"] = False
+            await asyncio.sleep(5)
         except Exception as e:
             log.error("WebSocket error: %s, reconnecting in 10s...", e)
-            await asyncio.sleep(5)
-
-        state_store["connected"] = False
-        await asyncio.sleep(5)
+            state_store["connected"] = False
+            await asyncio.sleep(10)
 
 
 def _start_ws_thread():

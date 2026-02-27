@@ -544,6 +544,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // ─── Format helpers ──────────────────────────────────────────
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function fmtVal(val) {
   if (val === null || val === undefined) return { text: '—', cls: 'val-null' };
   if (typeof val === 'boolean') return { text: val ? 'true' : 'false', cls: val ? 'val-bool-true' : 'val-bool-false' };
@@ -551,17 +557,17 @@ function fmtVal(val) {
     if (Number.isInteger(val)) return { text: val.toString(), cls: 'val-number' };
     return { text: val.toFixed(4).replace(/0+$/, '').replace(/\.$/, '.0'), cls: 'val-number' };
   }
-  if (typeof val === 'string') return { text: val, cls: 'val-string' };
-  return { text: JSON.stringify(val), cls: 'val-string' };
+  if (typeof val === 'string') return { text: escapeHtml(val), cls: 'val-string' };
+  return { text: escapeHtml(JSON.stringify(val)), cls: 'val-string' };
 }
 
 function prettyKey(key) {
-  return key
+  return escapeHtml(key
     .replace(/^smartpi_/, '')
     .replace(/^twin_/, '🔬 ')
     .replace(/^ff_/, '🎯 ')
     .replace(/^autocalib_/, '🔧 ')
-    .replace(/_/g, ' ');
+    .replace(/_/g, ' '));
 }
 
 function formatETA(seconds) {
