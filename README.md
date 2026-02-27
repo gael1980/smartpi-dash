@@ -9,7 +9,7 @@ smartpi-dashboard/
 ├── app.py                    # Backend Flask + WebSocket relay vers HA
 ├── setup_diagram.py          # Extraction SVG du schéma de bloc
 ├── .env.example              # Template de configuration
-├── requirements.txt          # Dépendances Python
+├── pyproject.toml            # Dépendances Python (uv)
 ├── templates/
 │   └── dashboard.html        # Frontend (HTML + Chart.js + JS)
 └── static/
@@ -34,22 +34,24 @@ smartpi-dashboard/
 
 ## Installation
 
+> **Prérequis** : [uv](https://docs.astral.sh/uv/) doit être installé.
+
 ```bash
 # 1. Cloner / copier le projet
 cd smartpi-dashboard
 
 # 2. Installer les dépendances
-pip install -r requirements.txt
+uv sync
 
 # 3. Configurer
 cp .env.example .env
 # Éditer .env avec votre URL HA, token, et entité climate
 
 # 4. (Optionnel) Extraire le SVG du schéma de bloc
-python setup_diagram.py static/smartpi_block_diagram_v2.html
+uv run setup_diagram.py static/smartpi_block_diagram_v2.html
 
 # 5. Lancer
-python app.py
+uv run app.py
 ```
 
 Le dashboard est accessible sur `http://localhost:5000`.

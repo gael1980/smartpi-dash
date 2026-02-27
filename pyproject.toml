@@ -1,0 +1,11 @@
+[project]
+name = "smartpi-dash"
+version = "0.1.0"
+description = "Tableau de bord temps réel pour le régulateur SmartPI (Versatile Thermostat / Home Assistant)"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0",
+    "python-dotenv>=1.0",
+    "websockets>=12.0",
+    "requests>=2.31",
+]
