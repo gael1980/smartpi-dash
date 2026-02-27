@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartPI Dashboard — Régulation Temps Réel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --bg-panel: #111827;
+    --bg-block: #141b2d;
+    --bg-block-hover: #1a2340;
+    --bg-card: #0f172a;
+    --border: #1e293b;
+    --border-highlight: #334155;
+    --text: #94a3b8;
+    --text-dim: #475569;
+    --text-bright: #e2e8f0;
+    --text-white: #f8fafc;
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --accent-orange: #f97316;
+    --accent-red: #ef4444;
+    --accent-purple: #8b5cf6;
+    --accent-yellow: #eab308;
+    --accent-green: #22c55e;
+    --accent-pink: #ec4899;
+    --signal-main: #3b82f6;
+    --signal-feedback: #f97316;
+    --signal-ff: #06b6d4;
+    --signal-learn: #8b5cf6;
+    --signal-diag: #64748b;
+    --glow-blue: rgba(59, 130, 246, 0.15);
+    --glow-cyan: rgba(6, 182, 212, 0.12);
+    --glow-green: rgba(34, 197, 94, 0.12);
+    --glow-red: rgba(239, 68, 68, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Top Bar ─────────────────────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 24px;
+    background: linear-gradient(180deg, #0d1220 0%, rgba(10,14,23,0.95) 100%);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+  .topbar h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; font-size: 18px;
+    color: var(--text-white);
+    letter-spacing: -0.5px;
+  }
+  .topbar .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; padding: 3px 10px;
+    border-radius: 4px; font-weight: 500;
+  }
+  .badge-version {
+    color: var(--accent-cyan);
+    background: rgba(6,182,212,0.1);
+    border: 1px solid rgba(6,182,212,0.2);
+  }
+  .badge-status {
+    color: var(--accent-green);
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.2);
+  }
+  .badge-status.disconnected {
+    color: var(--accent-red);
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .topbar .entity-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-dim);
+    margin-left: auto;
+  }
+  .topbar .last-update {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-dim);
+  }
+
+  /* ─── Layout ──────────────────────────────────────────── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* ─── Hero Metrics Bar ────────────────────────────────── */
+  .hero-bar {
+    display: flex; flex-wrap: wrap;
+    gap: 2px; padding: 2px;
+    background: var(--bg);
+  }
+  .hero-metric {
+    flex: 1 1 140px;
+    background: var(--bg-panel);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s;
+  }
+  .hero-metric:hover { background: var(--bg-block-hover); }
+  .hero-metric .hm-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .hero-metric .hm-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px; font-weight: 700;
+    color: var(--text-white);
+    line-height: 1;
+  }
+  .hero-metric .hm-unit {
+    font-size: 14px; font-weight: 400;
+    color: var(--text-dim);
+  }
+  .hero-metric .hm-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .hero-metric::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .hero-metric.temp::after { background: var(--accent-blue); }
+  .hero-metric.target::after { background: var(--accent-cyan); }
+  .hero-metric.power::after { background: var(--accent-orange); }
+  .hero-metric.ext::after { background: var(--accent-green); }
+  .hero-metric.regime::after { background: var(--accent-purple); }
+  .hero-metric.phase::after { background: var(--accent-yellow); }
+  .hero-metric.twin::after { background: var(--signal-diag); }
+  .hero-metric.eta::after { background: var(--accent-pink); }
+
+  /* ─── Tab Navigation ──────────────────────────────────── */
+  .tab-bar {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-dim);
+    background: transparent; border: none;
+    cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+  .tab-btn.active {
+    color: var(--accent-cyan);
+    border-bottom-color: var(--accent-cyan);
+    background: rgba(6,182,212,0.05);
+  }
+
+  /* ─── Tab Content ─────────────────────────────────────── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ─── Data Groups Panel ───────────────────────────────── */
+  .groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 2px; padding: 2px;
+  }
+  .data-group {
+    background: var(--bg-panel);
+    padding: 16px 20px;
+    transition: background 0.2s;
+  }
+  .data-group:hover { background: rgba(17,24,39,0.9); }
+  .data-group .dg-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-group .dg-icon { font-size: 16px; }
+  .data-group .dg-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: 0.5px;
+  }
+  .data-row {
+    display: flex; justify-content: space-between;
+    align-items: baseline;
+    padding: 3px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-row .dr-key {
+    color: var(--text-dim);
+    flex-shrink: 0;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .data-row .dr-val {
+    color: var(--text-bright);
+    text-align: right;
+    font-weight: 500;
+    word-break: break-all;
+  }
+  .dr-val.val-number { color: var(--accent-cyan); }
+  .dr-val.val-bool-true { color: var(--accent-green); }
+  .dr-val.val-bool-false { color: var(--text-dim); }
+  .dr-val.val-string { color: var(--accent-yellow); }
+  .dr-val.val-null { color: var(--text-dim); font-style: italic; }
+
+  /* ─── Chart Panel ─────────────────────────────────────── */
+  .chart-container {
+    padding: 16px;
+    background: var(--bg-panel);
+  }
+  .chart-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .chart-header h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-bright);
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    width: 100%; height: 300px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  canvas { width: 100% !important; height: 100% !important; }
+
+  /* ─── Block Diagram Panel ──────────────────────────────── */
+  .diagram-wrap {
+    overflow: auto;
+    padding: 16px;
+    background: var(--bg);
+  }
+  .diagram-wrap svg {
+    display: block; margin: 0 auto;
+    min-width: 1200px;
+  }
+
+  /* SVG block live values overlay */
+  .block-live-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    fill: var(--accent-cyan);
+    font-weight: 600;
+    pointer-events: none;
+  }
+
+  /* ─── Block Diagram Tooltip ────────────────────────────── */
+  .svg-tooltip {
+    position: fixed;
+    background: #1a2340;
+    border: 1px solid var(--border-highlight);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px; color: var(--text);
+    max-width: 360px;
+    pointer-events: none;
+    opacity: 0; transition: opacity 0.15s;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    line-height: 1.5;
+  }
+  .svg-tooltip.visible { opacity: 1; }
+  .svg-tooltip .stt-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; font-size: 13px;
+    color: var(--accent-cyan);
+    margin-bottom: 4px;
+  }
+  .svg-tooltip .stt-eq {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--accent-yellow);
+    background: rgba(255,211,42,0.08);
+    padding: 4px 8px; border-radius: 4px;
+    margin-top: 6px; display: inline-block;
+  }
+  .svg-tooltip .stt-live {
+    margin-top: 8px; padding-top: 6px;
+    border-top: 1px solid rgba(51,65,85,0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--accent-green);
+  }
+
+  /* ─── Raw Attributes Panel ─────────────────────────────── */
+  .raw-panel {
+    padding: 16px;
+    max-height: 600px; overflow: auto;
+  }
+  .raw-pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ─── Scrollbar styling ────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-highlight); }
+
+  /* ─── Responsive ───────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .hero-metric .hm-value { font-size: 22px; }
+    .groups-grid { grid-template-columns: 1fr; }
+    .topbar h1 { font-size: 14px; }
+  }
+
+  /* ─── Animations ───────────────────────────────────────── */
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    animation: pulse-glow 2s ease-in-out infinite;
+    margin-right: 6px;
+  }
+  .live-dot.disconnected {
+    background: var(--accent-red);
+  }
+
+  /* Value flash on update */
+  @keyframes flash-update {
+    0% { background: rgba(6,182,212,0.15); }
+    100% { background: transparent; }
+  }
+  .dr-val.updated {
+    animation: flash-update 0.8s ease-out;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TOP BAR                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <h1>SmartPI Dashboard</h1>
+  <span class="badge badge-version">v2 — FOPDT + IMC</span>
+  <span class="badge badge-status" id="conn-status">
+    <span class="live-dot" id="live-dot"></span>
+    <span id="conn-text">Connexion...</span>
+  </span>
+  <span class="entity-name" id="entity-name">{{ climate_entity }}</span>
+  <span class="last-update" id="last-update">—</span>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HERO METRICS BAR                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="hero-bar" id="hero-bar">
+  <div class="hero-metric temp">
+    <div class="hm-label">Température</div>
+    <div class="hm-value"><span id="hv-temp">—</span><span class="hm-unit"> °C</span></div>
+    <div class="hm-sub" id="hv-temp-sub">capteur intérieur</div>
+  </div>
+  <div class="hero-metric target">
+    <div class="hm-label">Consigne</div>
+    <div class="hm-value"><span id="hv-target">—</span><span class="hm-unit"> °C</span></div>
+    <div class="hm-sub" id="hv-target-sub">SP brut</div>
+  </div>
+  <div class="hero-metric power">
+    <div class="hm-label">Puissance</div>
+    <div class="hm-value"><span id="hv-power">—</span><span class="hm-unit"> %</span></div>
+    <div class="hm-sub" id="hv-power-sub">on_percent</div>
+  </div>
+  <div class="hero-metric ext">
+    <div class="hm-label">T extérieure</div>
+    <div class="hm-value"><span id="hv-ext">—</span><span class="hm-unit"> °C</span></div>
+    <div class="hm-sub">capteur externe</div>
+  </div>
+  <div class="hero-metric regime">
+    <div class="hm-label">Régime</div>
+    <div class="hm-value" id="hv-regime" style="font-size:18px">—</div>
+    <div class="hm-sub" id="hv-action-sub">—</div>
+  </div>
+  <div class="hero-metric phase">
+    <div class="hm-label">Phase</div>
+    <div class="hm-value" id="hv-phase" style="font-size:18px">—</div>
+    <div class="hm-sub" id="hv-integral-sub">—</div>
+  </div>
+  <div class="hero-metric twin">
+    <div class="hm-label">Twin RMSE</div>
+    <div class="hm-value"><span id="hv-rmse">—</span><span class="hm-unit"> °C</span></div>
+    <div class="hm-sub" id="hv-innov-sub">innovation: —</div>
+  </div>
+  <div class="hero-metric eta">
+    <div class="hm-label">ETA</div>
+    <div class="hm-value" id="hv-eta" style="font-size:18px">—</div>
+    <div class="hm-sub" id="hv-eta-sub">temps restant estimé</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB NAVIGATION                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="tab-data">📊 Données</button>
+  <button class="tab-btn" data-tab="tab-charts">📈 Historique</button>
+  <button class="tab-btn" data-tab="tab-diagram">🔄 Schéma Bloc</button>
+  <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Data Groups                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-data">
+  <div class="groups-grid" id="groups-grid">
+    <!-- Populated by JS -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Charts                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-charts">
+  <div class="chart-container">
+    <div class="chart-header">
+      <h3>🌡️ Température & Consigne</h3>
+      <select id="chart-range" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px">
+        <option value="1">1h</option>
+        <option value="3">3h</option>
+        <option value="6">6h</option>
+        <option value="12" selected>12h</option>
+        <option value="24">24h</option>
+        <option value="48">48h</option>
+      </select>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chart-temp"></canvas>
+    </div>
+  </div>
+  <div class="chart-container" style="margin-top:2px">
+    <div class="chart-header"><h3>⚡ Commande & Puissance</h3></div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chart-power"></canvas>
+    </div>
+  </div>
+  <div class="chart-container" style="margin-top:2px">
+    <div class="chart-header"><h3>🔬 Thermal Twin — Innovation & d̂</h3></div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chart-twin"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Block Diagram                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-diagram">
+  <div class="diagram-wrap" id="diagram-container">
+    <p style="padding:40px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;text-align:center">
+      Chargement du schéma de bloc...
+    </p>
+  </div>
+</div>
+<div id="svg-tooltip" class="svg-tooltip"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Raw Attributes                                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-raw">
+  <div class="raw-panel">
+    <pre class="raw-pre" id="raw-json">Chargement...</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- CHART.JS CDN                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SmartPI Dashboard — Client-side logic
+// ═══════════════════════════════════════════════════════════════
+
+const POLL_INTERVAL = 3000; // ms between API polls
+const ENTITY_ID = "{{ climate_entity }}";
+
+let currentState = null;
+let previousValues = {};
+let charts = {};
+let historyData = [];
+let blockDiagramData = null;
+
+// ─── Tab Navigation ──────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+
+    // Lazy-load diagram
+    if (btn.dataset.tab === 'tab-diagram' && !document.querySelector('#diagram-container svg')) {
+      loadBlockDiagram();
+    }
+    // Resize charts when tab becomes visible
+    if (btn.dataset.tab === 'tab-charts') {
+      Object.values(charts).forEach(c => c.resize());
+    }
+  });
+});
+
+// ─── Format helpers ──────────────────────────────────────────
+function fmtVal(val) {
+  if (val === null || val === undefined) return { text: '—', cls: 'val-null' };
+  if (typeof val === 'boolean') return { text: val ? 'true' : 'false', cls: val ? 'val-bool-true' : 'val-bool-false' };
+  if (typeof val === 'number') {
+    if (Number.isInteger(val)) return { text: val.toString(), cls: 'val-number' };
+    return { text: val.toFixed(4).replace(/0+$/, '').replace(/\.$/, '.0'), cls: 'val-number' };
+  }
+  if (typeof val === 'string') return { text: val, cls: 'val-string' };
+  return { text: JSON.stringify(val), cls: 'val-string' };
+}
+
+function prettyKey(key) {
+  return key
+    .replace(/^smartpi_/, '')
+    .replace(/^twin_/, '🔬 ')
+    .replace(/^ff_/, '🎯 ')
+    .replace(/^autocalib_/, '🔧 ')
+    .replace(/_/g, ' ');
+}
+
+function formatETA(seconds) {
+  if (!seconds || seconds <= 0) return '—';
+  if (seconds > 86400) return '> 24h';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h${m.toString().padStart(2,'0')}`;
+  return `${m} min`;
+}
+
+// ─── Update Hero Bar ─────────────────────────────────────────
+function updateHero(data) {
+  const a = data.raw_attributes || {};
+
+  const temp = a.current_temperature;
+  document.getElementById('hv-temp').textContent = temp != null ? temp.toFixed(1) : '—';
+
+  const target = a.temperature || a.target_temperature;
+  document.getElementById('hv-target').textContent = target != null ? target.toFixed(1) : '—';
+
+  const power = a.on_percent;
+  document.getElementById('hv-power').textContent = power != null ? Math.round(power) : '—';
+
+  const ext = a.smartpi_t_ext || a.current_external_temperature;
+  document.getElementById('hv-ext').textContent = ext != null ? ext.toFixed(1) : '—';
+
+  const regime = a.smartpi_regime;
+  document.getElementById('hv-regime').textContent = regime || '—';
+  document.getElementById('hv-action-sub').textContent = `HVAC: ${data.hvac_mode} / ${data.hvac_action}`;
+
+  const phase = a.smartpi_phase;
+  document.getElementById('hv-phase').textContent = phase || '—';
+  document.getElementById('hv-integral-sub').textContent = `intégral: ${a.smartpi_integral_state || '—'}`;
+
+  const rmse = a.smartpi_twin_rmse;
+  document.getElementById('hv-rmse').textContent = rmse != null ? rmse.toFixed(3) : '—';
+  const innov = a.smartpi_twin_innovation;
+  document.getElementById('hv-innov-sub').textContent = `innovation: ${innov != null ? innov.toFixed(3) : '—'} °C`;
+
+  const eta = a.smartpi_twin_eta_s;
+  document.getElementById('hv-eta').textContent = formatETA(eta);
+  document.getElementById('hv-eta-sub').textContent = a.smartpi_twin_eta_reason || '—';
+
+  // Temperature error indicator
+  if (temp != null && target != null) {
+    const err = temp - target;
+    const sub = err >= 0 ? `+${err.toFixed(2)}°C au dessus` : `${err.toFixed(2)}°C en dessous`;
+    document.getElementById('hv-temp-sub').textContent = sub;
+  }
+}
+
+// ─── Update Data Groups ──────────────────────────────────────
+function updateGroups(groups) {
+  const container = document.getElementById('groups-grid');
+  container.innerHTML = '';
+
+  for (const [gid, grp] of Object.entries(groups)) {
+    const div = document.createElement('div');
+    div.className = 'data-group';
+    div.id = `group-${gid}`;
+
+    let rowsHtml = '';
+    for (const [key, val] of Object.entries(grp.values)) {
+      const f = fmtVal(val);
+      const prevKey = `${gid}.${key}`;
+      const changed = previousValues[prevKey] !== undefined && previousValues[prevKey] !== val;
+      previousValues[prevKey] = val;
+
+      rowsHtml += `
+        <div class="data-row">
+          <span class="dr-key" title="${key}">${prettyKey(key)}</span>
+          <span class="dr-val ${f.cls}${changed ? ' updated' : ''}">${f.text}</span>
+        </div>`;
+    }
+
+    div.innerHTML = `
+      <div class="dg-header">
+        <span class="dg-icon">${grp.icon}</span>
+        <span class="dg-title">${grp.label}</span>
+      </div>
+      ${rowsHtml}`;
+    container.appendChild(div);
+  }
+}
+
+// ─── Update Raw JSON ─────────────────────────────────────────
+function updateRaw(attrs) {
+  document.getElementById('raw-json').textContent = JSON.stringify(attrs, null, 2);
+}
+
+// ─── Connection Status ───────────────────────────────────────
+function updateConnectionStatus(connected) {
+  const badge = document.getElementById('conn-status');
+  const dot = document.getElementById('live-dot');
+  const text = document.getElementById('conn-text');
+
+  if (connected) {
+    badge.classList.remove('disconnected');
+    dot.classList.remove('disconnected');
+    text.textContent = 'Connecté';
+  } else {
+    badge.classList.add('disconnected');
+    dot.classList.add('disconnected');
+    text.textContent = 'Déconnecté';
+  }
+}
+
+// ─── Charts ──────────────────────────────────────────────────
+function initCharts() {
+  const commonOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          font: { family: "'JetBrains Mono', monospace", size: 10 },
+          color: '#94a3b8',
+          boxWidth: 12,
+          padding: 12,
+        },
+      },
+      tooltip: {
+        backgroundColor: '#1a2340',
+        titleColor: '#e2e8f0',
+        bodyColor: '#94a3b8',
+        borderColor: '#334155',
+        borderWidth: 1,
+        titleFont: { family: "'JetBrains Mono', monospace", size: 11 },
+        bodyFont: { family: "'JetBrains Mono', monospace", size: 10 },
+        callbacks: {
+          title: items => {
+            if (items.length && items[0].parsed.x) {
+              return new Date(items[0].parsed.x).toLocaleTimeString('fr-FR');
+            }
+            return '';
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } },
+        ticks: { font: { family: "'JetBrains Mono', monospace", size: 9 }, color: '#475569', maxTicksLimit: 12 },
+        grid: { color: 'rgba(30,41,59,0.5)' },
+      },
+      y: {
+        ticks: { font: { family: "'JetBrains Mono', monospace", size: 9 }, color: '#475569' },
+        grid: { color: 'rgba(30,41,59,0.5)' },
+      },
+    },
+  };
+
+  // Temperature chart
+  charts.temp = new Chart(document.getElementById('chart-temp'), {
+    type: 'line',
+    data: {
+      datasets: [
+        { label: 'T_in', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, pointRadius: 0, fill: false, data: [] },
+        { label: 'Consigne', borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', borderWidth: 1.5, pointRadius: 0, borderDash: [6,3], fill: false, data: [] },
+        { label: 'T_ext', borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 1, pointRadius: 0, fill: false, data: [] },
+        { label: 'Twin T̂', borderColor: '#64748b', backgroundColor: 'rgba(100,116,139,0.1)', borderWidth: 1, pointRadius: 0, borderDash: [3,3], fill: false, data: [] },
+      ],
+    },
+    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, title: { display: true, text: '°C', color: '#475569', font: { family: "'JetBrains Mono', monospace", size: 10 } } } } },
+  });
+
+  // Power chart
+  charts.power = new Chart(document.getElementById('chart-power'), {
+    type: 'line',
+    data: {
+      datasets: [
+        { label: 'u_applied (%)', borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.15)', borderWidth: 2, pointRadius: 0, fill: true, data: [], stepped: 'before' },
+        { label: 'u_ff (%)', borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', borderWidth: 1, pointRadius: 0, fill: false, data: [] },
+      ],
+    },
+    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0, max: 105, title: { display: true, text: '%', color: '#475569', font: { family: "'JetBrains Mono', monospace", size: 10 } } } } },
+  });
+
+  // Twin diagnostics chart
+  charts.twin = new Chart(document.getElementById('chart-twin'), {
+    type: 'line',
+    data: {
+      datasets: [
+        { label: 'Innovation (°C)', borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, data: [] },
+        { label: 'd̂_ema', borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, data: [] },
+      ],
+    },
+    options: commonOpts,
+  });
+}
+
+function updateCharts(history) {
+  if (!history || !history.length) return;
+
+  const rangeHours = parseInt(document.getElementById('chart-range').value) || 12;
+  const cutoff = Date.now() - rangeHours * 3600 * 1000;
+  const filtered = history.filter(p => p.ts && new Date(p.ts).getTime() > cutoff);
+
+  // Temperature
+  charts.temp.data.datasets[0].data = filtered.map(p => ({ x: new Date(p.ts), y: p.t_in })).filter(p => p.y != null);
+  charts.temp.data.datasets[1].data = filtered.map(p => ({ x: new Date(p.ts), y: p.t_target })).filter(p => p.y != null);
+  charts.temp.data.datasets[2].data = filtered.map(p => ({ x: new Date(p.ts), y: p.t_ext })).filter(p => p.y != null);
+  charts.temp.data.datasets[3].data = filtered.map(p => ({ x: new Date(p.ts), y: p.twin_t_hat })).filter(p => p.y != null);
+  charts.temp.update('none');
+
+  // Power
+  const pctData = filtered.map(p => {
+    const v = p.u_applied != null ? p.u_applied : p.on_percent;
+    return { x: new Date(p.ts), y: v != null ? v * (v <= 1 ? 100 : 1) : null };
+  }).filter(p => p.y != null);
+  charts.power.data.datasets[0].data = pctData;
+  charts.power.data.datasets[1].data = filtered.map(p => {
+    const v = p.u_ff;
+    return { x: new Date(p.ts), y: v != null ? v * (v <= 1 ? 100 : 1) : null };
+  }).filter(p => p.y != null);
+  charts.power.update('none');
+
+  // Twin
+  charts.twin.data.datasets[0].data = filtered.map(p => ({ x: new Date(p.ts), y: p.twin_innovation })).filter(p => p.y != null);
+  charts.twin.data.datasets[1].data = filtered.map(p => ({ x: new Date(p.ts), y: p.twin_d_hat })).filter(p => p.y != null);
+  charts.twin.update('none');
+}
+
+document.getElementById('chart-range').addEventListener('change', () => updateCharts(historyData));
+
+// ─── Block Diagram (inline SVG from original) ───────────────
+const BLOCK_TIPS = {
+  sp_brut: { title: 'SP_brut — Consigne brute', text: "Consigne température fixée par l'utilisateur ou le scheduler HA.", eq: null },
+  sp_filter: { title: 'Setpoint Filter — Filtre asymétrique', text: "Filtre passe-bas 1er ordre sur voie P. Saturation Guard : BYPASS ou FILTRE.", eq: 'F(s) = 1/(1 + Tf·s)' },
+  summer_p: { title: 'Σ — Sommateur P', text: 'e_p = SP_for_P − y', eq: null },
+  summer_i: { title: 'Σ — Sommateur I', text: 'e_i = SP_brut − y (règle Åström)', eq: null },
+  kp: { title: 'Kp — Gain Proportionnel', text: 'Gain adaptatif IMC, réduit en near-band.', eq: 'Kp = τ/(a·(L+λ))' },
+  ki: { title: 'Ki·∫ — Intégrateur', text: 'Intégrateur conditionnel : HOLD, FREEZE, SKIP, NORMAL.', eq: 'Ki = 1/(a·(L+λ))' },
+  summer_pi: { title: 'Σ PI+FF', text: 'u = Kp·e_p + Ki·∫e_i + u_ff', eq: null },
+  governance: { title: 'Governance — Safety-First', text: 'Régimes NOMINAL/PERTURBED/TRANSITION/INIT. Actions NORMAL/SOFT_FREEZE/HARD_FREEZE.', eq: null },
+  rate_limit: { title: 'Rate Limiter + Clamp', text: '|Δu| ≤ rate·Δt, u ∈ [0, max_on_pct]', eq: null },
+  timing: { title: 'Timing Constraints', text: 'min_on / min_off pour protéger les relais.', eq: null },
+  pwm: { title: 'PWM — Duty Cycle', text: 't_on = u · T_cycle', eq: null },
+  process: { title: 'Bâtiment — FOPDT 1R1C', text: 'Modèle thermique premier ordre + retard pur.', eq: 'dT/dt = a·u(t−L) − b·(T−Text) + d(t)' },
+  sensor: { title: 'T_in — Capteur', text: 'Mesure intérieure, résolution 0.1°C.', eq: null },
+  text: { title: 'T_ext — Extérieur', text: 'Température extérieure, feedforward + modèle.', eq: null },
+  feedforward: { title: 'Feedforward', text: 'K_ff = b/a · warmup. Gate au-dessus du setpoint.', eq: 'u_ff = K_ff·(SP − T_ext)' },
+  antiwindup: { title: 'Anti-Windup Tracking', text: 'Méthode Åström : correction intégrale quand saturation.', eq: 'ΔI = β·(u_applied − u_ref)/Ki' },
+  ab_estimator: { title: 'ABEstimator', text: 'Apprentissage a, b par Median + MAD sur 31 mesures.', eq: 'τ = 1/b' },
+  deadtime: { title: 'DeadTime Estimator', text: 'Takeoff detection + méthode SK backup.', eq: null },
+  gain_scheduler: { title: 'GainScheduler — IMC', text: 'Calcul adaptatif Kp, Ki.', eq: 'Kp = τ/(a·(L+λ))' },
+  twin: { title: 'ThermalTwin 1R1C', text: 'Observateur Luenberger, diagnostics only.', eq: 'T̂(k+1) = T̂(k) + dt·[a·u_eff − b·(T̂−Text)] + γ·(T−T̂)' },
+  autocalib: { title: 'AutoCalibTrigger', text: 'Supervision horaire, détection de stagnation.', eq: null },
+  calibration: { title: 'Calibration FSM', text: 'Excitation step 100% → 0% pour rafraîchir a, b, deadtime.', eq: null },
+  deadband: { title: 'Deadband Manager', text: 'Bande morte + near-band, auto-sized.', eq: null },
+  guards: { title: 'Guards — Protection', text: 'Thermal Guard, Guard Cut, Guard Kick.', eq: null },
+  learn_win: { title: 'LearningWindow', text: 'Accumulation multi-cycles pour ABEstimator.', eq: null },
+  phase: { title: 'Phase Machine', text: 'HYSTERESIS → STABLE → CALIBRATION.', eq: null },
+};
+
+// Map block IDs to SmartPI attributes for live values
+const BLOCK_ATTRS = {
+  kp: 'smartpi_kp', ki: 'smartpi_ki',
+  sensor: 'current_temperature',
+  governance: 'smartpi_regime',
+  phase: 'smartpi_phase',
+  feedforward: 'smartpi_ff_u_ff',
+  ab_estimator: 'smartpi_a',
+  twin: 'smartpi_twin_rmse',
+  autocalib: 'smartpi_autocalib_state',
+  deadtime: 'smartpi_deadtime_heat_s',
+};
+
+async function loadBlockDiagram() {
+  // We'll build the SVG from the original file embedded in the Flask app
+  // For simplicity, fetch the original HTML and extract the SVG
+  try {
+    const resp = await fetch('/static/block_diagram.svg');
+    if (resp.ok) {
+      const svgText = await resp.text();
+      document.getElementById('diagram-container').innerHTML = svgText;
+      setupDiagramInteractions();
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback: build a simplified version with key blocks
+  document.getElementById('diagram-container').innerHTML = `
+    <p style="padding:20px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;text-align:center">
+      Placez le fichier SVG dans <code>static/block_diagram.svg</code> pour voir le schéma interactif.<br>
+      Sinon, les données temps réel sont visibles dans les onglets Données et Historique.
+    </p>`;
+}
+
+function setupDiagramInteractions() {
+  const tooltip = document.getElementById('svg-tooltip');
+  const blocks = document.querySelectorAll('#diagram-container .block');
+
+  blocks.forEach(el => {
+    const key = el.dataset.tip;
+    const tip = BLOCK_TIPS[key];
+    if (!key || !tip) return;
+
+    el.style.cursor = 'pointer';
+
+    el.addEventListener('mouseenter', e => {
+      let html = `<div class="stt-title">${tip.title}</div><div>${tip.text}</div>`;
+      if (tip.eq) html += `<div class="stt-eq">${tip.eq}</div>`;
+
+      // Add live value if available
+      const attrKey = BLOCK_ATTRS[key];
+      if (attrKey && currentState) {
+        const val = currentState.raw_attributes[attrKey];
+        if (val != null) {
+          html += `<div class="stt-live">⚡ LIVE: ${attrKey} = ${fmtVal(val).text}</div>`;
+        }
+      }
+
+      tooltip.innerHTML = html;
+      tooltip.classList.add('visible');
+    });
+
+    el.addEventListener('mousemove', e => {
+      const x = Math.min(e.clientX + 16, window.innerWidth - 380);
+      const y = Math.min(e.clientY + 16, window.innerHeight - 200);
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+    });
+
+    el.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('visible');
+    });
+
+    // Hover effect
+    const rect = el.querySelector('rect');
+    if (rect) {
+      const origFill = rect.getAttribute('fill');
+      if (origFill === 'var(--bg-block)' || origFill === '#141b2d') {
+        el.addEventListener('mouseenter', () => rect.setAttribute('fill', '#1a2340'));
+        el.addEventListener('mouseleave', () => rect.setAttribute('fill', origFill));
+      }
+    }
+  });
+}
+
+// ─── Main polling loop ───────────────────────────────────────
+async function fetchState() {
+  try {
+    const resp = await fetch('/api/state');
+    const data = await resp.json();
+    if (!data.ok) return;
+
+    currentState = data;
+    updateConnectionStatus(data.connected);
+    updateHero(data);
+    updateGroups(data.groups);
+    updateRaw(data.raw_attributes);
+
+    if (data.last_update) {
+      const d = new Date(data.last_update);
+      document.getElementById('last-update').textContent = d.toLocaleTimeString('fr-FR');
+    }
+  } catch (e) {
+    updateConnectionStatus(false);
+    console.error('Fetch state error:', e);
+  }
+}
+
+async function fetchHistory() {
+  try {
+    // First try in-memory history
+    let resp = await fetch('/api/history');
+    let data = await resp.json();
+    if (data.ok && data.count > 5) {
+      historyData = data.data;
+      updateCharts(historyData);
+      return;
+    }
+
+    // Fallback to HA history API
+    const hours = parseInt(document.getElementById('chart-range').value) || 12;
+    resp = await fetch(`/api/ha-history?hours=${hours}`);
+    data = await resp.json();
+    if (data.ok) {
+      historyData = data.data;
+      updateCharts(historyData);
+    }
+  } catch (e) {
+    console.error('Fetch history error:', e);
+  }
+}
+
+// ─── Init ────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  fetchState();
+  fetchHistory();
+
+  // Poll for state updates
+  setInterval(fetchState, POLL_INTERVAL);
+  // Refresh history less frequently
+  setInterval(fetchHistory, 15000);
+});
+</script>
+
+</body>
+</html>
