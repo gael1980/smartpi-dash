@@ -46,7 +46,7 @@ cp .env.example .env
 # Éditer .env avec votre URL HA, token, et entité climate
 
 # 4. (Optionnel) Extraire le SVG du schéma de bloc
-python setup_diagram.py /chemin/vers/smartpi_block_diagram.html
+python setup_diagram.py static/smartpi_block_diagram_v2.html
 
 # 5. Lancer
 python app.py
