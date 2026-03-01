@@ -255,10 +255,10 @@
     overflow: hidden;
   }
   /* uPlot dark theme overrides */
-  .chart-canvas-wrap .u-legend { font: 10px 'JetBrains Mono', monospace; padding: 4px 8px; }
-  .chart-canvas-wrap .u-legend .u-series { padding: 2px 6px; }
+  .chart-canvas-wrap .u-legend { font: 10px 'JetBrains Mono', monospace; padding: 2px 8px; }
+  .chart-canvas-wrap .u-legend .u-series { display: inline; padding: 0 6px; }
   .chart-canvas-wrap .u-legend .u-label { color: #94a3b8; }
-  .chart-canvas-wrap .u-legend .u-value { color: #e2e8f0; }
+  .chart-canvas-wrap .u-legend .u-value { color: #e2e8f0; font-weight: 600; }
 
   /* ─── Block Diagram Panel ──────────────────────────────── */
   .diagram-wrap {
@@ -385,79 +385,273 @@
   .dc-badge.dc-warn  { color: var(--accent-orange); border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.06); }
   .dc-badge.dc-error { color: var(--accent-red); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
 
-  .dc-chain {
+  /* ─── Chaîne U — Card Layout ─────────────────────────────── */
+  .cu-layout {
     display: grid;
-    grid-template-columns: auto 28px auto 28px auto 28px auto 28px auto 28px auto 28px auto;
-    grid-template-rows: auto 12px auto 12px auto;
-    align-items: center; justify-items: center;
-    padding: 24px 16px; gap: 0;
-    overflow-x: auto; min-width: 0;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px; padding: 2px;
+  }
+  .cu-full { grid-column: 1 / -1; }
+
+  .cu-card {
+    background: var(--bg-panel);
+    padding: 16px 20px;
+    transition: background 0.2s;
+  }
+  .cu-card:hover { background: rgba(17,24,39,0.9); }
+  .cu-card-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cu-card-title {
+    font: 600 13px 'JetBrains Mono', monospace;
+    color: var(--text-bright); letter-spacing: 0.5px;
+  }
+  .cu-card-icon { font-size: 16px; }
+
+  /* Progress bar */
+  .cu-power-bar { margin-bottom: 16px; }
+  .cu-power-track {
+    height: 28px; background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .cu-power-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-orange));
+    transition: width 0.5s ease;
+  }
+  .cu-power-label {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font: 700 14px 'JetBrains Mono', monospace;
+    color: var(--text-white); text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+  .cu-power-dots {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; padding: 0 8px; gap: 4px;
+    pointer-events: none;
+  }
+  .cu-power-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--border-highlight); opacity: 0.4; flex-shrink: 0;
+  }
+  .cu-power-dots span.cu-dot-active {
+    background: var(--text-white); opacity: 0.9;
   }
 
-  .dc-node {
+  /* Data table */
+  .cu-table {
+    width: 100%; border-collapse: collapse;
+    font: 400 11px 'JetBrains Mono', monospace;
+  }
+  .cu-table th {
+    text-align: left; padding: 4px 8px;
+    color: var(--text-dim); font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .cu-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+    color: var(--text);
+  }
+  .cu-table td.cu-val {
+    color: var(--accent-cyan); font-weight: 600;
+    text-align: right; white-space: nowrap;
+  }
+  .cu-table td.cu-eq {
+    color: var(--text-dim); font-size: 9px;
+  }
+  .cu-table tr.cu-highlight td {
+    font-weight: 700;
+  }
+  .cu-table tr.cu-highlight td.cu-val {
+    color: var(--accent-orange); font-size: 14px;
+  }
+
+  /* Indicator badges */
+  .cu-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 500 10px 'JetBrains Mono', monospace;
+    padding: 3px 10px; border-radius: 4px;
+    border: 1px solid var(--border); margin: 0 4px 4px 0;
+  }
+  .cu-indicator.cu-on {
+    color: var(--accent-green);
+    border-color: rgba(34,197,94,0.3);
+    background: rgba(34,197,94,0.06);
+  }
+  .cu-indicator.cu-off {
+    color: var(--text-dim);
+    border-color: var(--border);
+    background: var(--bg-card);
+  }
+  .cu-indicator .cu-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block;
+  }
+  .cu-indicator.cu-on .cu-dot { background: var(--accent-green); }
+  .cu-indicator.cu-off .cu-dot { background: var(--text-dim); }
+
+  /* Flow chain */
+  .cu-flow {
+    display: flex; align-items: center; gap: 0;
+    padding: 16px 0; overflow-x: auto;
+    justify-content: center;
+  }
+  .cu-flow-node {
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 6px; padding: 6px 10px;
-    font-family: 'JetBrains Mono', monospace; text-align: center;
-    min-width: 72px; white-space: nowrap;
+    border-radius: 6px; padding: 8px 14px; text-align: center;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
   }
-  .dc-node-label {
-    font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px;
-    color: var(--text-dim); margin-bottom: 2px;
+  .cu-flow-node-label {
+    font-size: 8px; text-transform: uppercase;
+    color: var(--text-dim); letter-spacing: 0.5px;
+    margin-bottom: 2px;
   }
-  .dc-node-value {
-    font-size: 16px; font-weight: 700; color: var(--accent-cyan); line-height: 1.2;
+  .cu-flow-node-value {
+    font-size: 16px; font-weight: 700;
+    color: var(--accent-cyan);
   }
-  .dc-node-unit  { font-size: 9px; color: var(--text-dim); }
-  .dc-node-eq    { font-size: 7px; color: var(--text-dim); opacity: 0.7; margin-top: 1px; }
-  .dc-node-sub   { font-size: 8px; color: var(--accent-yellow); margin-top: 1px; }
-
-  .dc-input  { border-color: var(--accent-blue); }
-  .dc-input .dc-node-value { color: var(--accent-blue); }
-  .dc-process { border-color: var(--border-highlight); background: var(--bg-block); }
-  .dc-process .dc-node-value { color: var(--text-bright); font-size: 13px; }
-  .dc-signal  { border-style: dashed; border-color: var(--accent-cyan); }
-  .dc-output  { border-color: var(--accent-orange); border-width: 2px; box-shadow: 0 0 12px rgba(249,115,22,0.15); }
-  .dc-output .dc-node-value { color: var(--accent-orange); font-size: 20px; }
-
-  .dc-anomaly-warn  { border-color: var(--accent-orange) !important; box-shadow: 0 0 8px rgba(249,115,22,0.2); }
-  .dc-anomaly-error { border-color: var(--accent-red) !important; box-shadow: 0 0 12px rgba(239,68,68,0.25); animation: pulse-glow 2s ease-in-out infinite; }
-  .dc-saturated     { border-color: var(--accent-yellow) !important; box-shadow: 0 0 8px rgba(234,179,8,0.2); }
-
-  /* Arrows */
-  .dc-arr {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; height: 2px; position: relative;
+  .cu-flow-node.cu-flow-output {
+    border-color: var(--accent-orange); border-width: 2px;
+    box-shadow: 0 0 12px rgba(249,115,22,0.15);
   }
-  .dc-arr::before {
-    content: ''; position: absolute; left: 0; right: 6px; top: 0;
-    height: 2px; background: var(--border-highlight);
+  .cu-flow-node.cu-flow-output .cu-flow-node-value {
+    color: var(--accent-orange); font-size: 18px;
   }
-  .dc-arr::after {
+  .cu-flow-arrow {
+    width: 36px; height: 2px; background: var(--border-highlight);
+    position: relative; flex-shrink: 0;
+  }
+  .cu-flow-arrow::after {
     content: ''; position: absolute; right: 0; top: -3px;
-    width: 0; height: 0;
-    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
     border-left: 6px solid var(--border-highlight);
   }
 
-  /* Merge bracket (vertical lines converging to u_pi) */
-  .dc-merge-top { border-right: 2px solid var(--border-highlight); border-bottom: 2px solid var(--border-highlight); border-radius: 0 0 6px 0; height: 100%; width: 50%; justify-self: end; }
-  .dc-merge-mid { border-right: 2px solid var(--border-highlight); height: 100%; width: 50%; justify-self: end; }
-  .dc-merge-bot { border-right: 2px solid var(--border-highlight); border-top: 2px solid var(--border-highlight); border-radius: 0 6px 0 0; height: 100%; width: 50%; justify-self: end; }
-  .dc-merge-out { display: flex; align-items: center; width: 100%; }
-  .dc-merge-out::before { content: ''; flex: 1; height: 2px; background: var(--border-highlight); }
-  .dc-merge-out::after { content: ''; width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid var(--border-highlight); }
+  /* Saturation badge */
+  .cu-sat-nominal { color: var(--accent-green); }
+  .cu-sat-high, .cu-sat-low { color: var(--accent-yellow); }
 
-  /* Spacer for empty grid cells */
-  .dc-empty { }
-
-  /* T_in label on error nodes */
-  .dc-tin-ref { font-size: 7px; color: var(--text-dim); opacity: 0.6; }
+  /* Waterfall chart */
+  .cu-waterfall-wrap {
+    width: 100%; height: 220px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    position: relative; overflow: hidden;
+  }
 
   @media (max-width: 900px) {
-    .dc-node-value { font-size: 13px; }
-    .dc-output .dc-node-value { font-size: 16px; }
-    .dc-node { min-width: 60px; padding: 4px 6px; }
+    .cu-layout { grid-template-columns: 1fr; }
+    .cu-flow-node-value { font-size: 13px; }
+    .cu-flow-node { padding: 6px 10px; }
   }
+
+  /* ─── Model Health Tab ─────────────────────────────────────── */
+  .mh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 2px; padding: 2px;
+  }
+  .mh-health-score {
+    grid-column: 1 / -1;
+    background: var(--bg-panel);
+    padding: 20px 24px;
+    display: flex; align-items: center; gap: 24px;
+    border-bottom: 2px solid var(--border);
+  }
+  .mh-gauge {
+    width: 80px; height: 80px; border-radius: 50%;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .mh-gauge::before {
+    content: ''; position: absolute;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--bg-panel);
+  }
+  .mh-gauge.mh-good { background: conic-gradient(var(--accent-green) var(--pct), var(--border) var(--pct)); }
+  .mh-gauge.mh-warn { background: conic-gradient(var(--accent-orange) var(--pct), var(--border) var(--pct)); }
+  .mh-gauge.mh-bad  { background: conic-gradient(var(--accent-red) var(--pct), var(--border) var(--pct)); }
+  .mh-gauge-value {
+    font: 700 22px 'JetBrains Mono', monospace;
+    color: var(--text-white); position: relative; z-index: 1;
+  }
+  .mh-health-title {
+    font: 600 14px 'JetBrains Mono', monospace;
+    color: var(--text-white); margin-bottom: 4px;
+  }
+  .mh-health-summary {
+    font: 500 11px 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+  .mh-card {
+    background: var(--bg-panel);
+    padding: 16px 20px; transition: background 0.2s;
+  }
+  .mh-card:hover { background: rgba(17,24,39,0.9); }
+  .mh-card-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mh-card-icon { font-size: 16px; }
+  .mh-card-title {
+    font: 600 12px 'JetBrains Mono', monospace;
+    color: var(--text-bright); letter-spacing: 0.5px;
+  }
+  .mh-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font: 500 10px 'JetBrains Mono', monospace;
+    padding: 3px 10px; border-radius: 4px;
+    border: 1px solid var(--border); color: var(--text);
+    background: var(--bg-card); margin: 2px;
+  }
+  .mh-badge.mh-ok    { color: var(--accent-green); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
+  .mh-badge.mh-warn  { color: var(--accent-orange); border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.06); }
+  .mh-badge.mh-error { color: var(--accent-red); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+  .mh-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  }
+  .mh-dot.mh-ok    { background: var(--accent-green); }
+  .mh-dot.mh-warn  { background: var(--accent-orange); }
+  .mh-dot.mh-error { background: var(--accent-red); }
+  .mh-progress-wrap { margin: 6px 0; }
+  .mh-progress-label {
+    display: flex; justify-content: space-between;
+    font: 500 10px 'JetBrains Mono', monospace;
+    color: var(--text-dim); margin-bottom: 4px;
+  }
+  .mh-progress-bar {
+    height: 6px; background: var(--border);
+    border-radius: 3px; overflow: hidden;
+  }
+  .mh-progress-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.5s ease; background: var(--accent-cyan);
+  }
+  .mh-param-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0;
+    font: 500 11px 'JetBrains Mono', monospace;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+  }
+  .mh-param-row:last-child { border-bottom: none; }
+  .mh-param-key { color: var(--text-dim); }
+  .mh-param-val { color: var(--accent-cyan); font-weight: 500; }
+  .mh-param-status {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-left: 8px; flex-shrink: 0;
+  }
+  .mh-param-status.mh-ok { background: var(--accent-green); }
+  .mh-param-status.mh-error { background: var(--accent-red); }
 </style>
 </head>
 <body>
@@ -530,6 +724,7 @@
   <button class="tab-btn" data-tab="tab-charts">📈 Historique</button>
   <button class="tab-btn" data-tab="tab-diagram">🔄 Schéma Bloc</button>
   <button class="tab-btn" data-tab="tab-debug-chain">🔗 Chaîne U</button>
+  <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
   <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
 </nav>
 
@@ -558,7 +753,7 @@
         <option value="48">48h</option>
       </select>
     </div>
-    <div class="chart-canvas-wrap" id="chart-temp"></div>
+    <div class="chart-canvas-wrap" id="chart-temp" style="height:390px"></div>
   </div>
   <div class="chart-container" style="margin-top:2px">
     <div class="chart-header"><h3>⚡ Commande & Puissance</h3></div>
@@ -606,135 +801,170 @@
     <div class="dc-badge" id="dc-near-band">Near-band: --</div>
   </div>
 
-  <!-- Chain grid: 13 cols x 5 rows -->
-  <!-- Cols: node arr node arr node arr node merge node arr node arr node -->
-  <!-- Rows: P-path, spacer, I-path, spacer, FF-path -->
-  <div class="dc-chain">
-    <!-- ═══ Row 1: P-path ═══ -->
-    <!-- Col1: SP_brut -->
-    <div class="dc-node dc-input" style="grid-row:1;grid-column:1">
-      <div class="dc-node-label">SP_brut</div>
-      <div class="dc-node-value" id="dcv-sp-brut">--</div>
-      <div class="dc-node-unit">&deg;C</div>
-    </div>
-    <!-- Col2: arrow -->
-    <div class="dc-arr" style="grid-row:1;grid-column:2"></div>
-    <!-- Col3: Filter -->
-    <div class="dc-node dc-process" style="grid-row:1;grid-column:3">
-      <div class="dc-node-label">Filter</div>
-      <div class="dc-node-sub" id="dcv-filter-mode">--</div>
-    </div>
-    <!-- Col4: arrow -->
-    <div class="dc-arr" style="grid-row:1;grid-column:4"></div>
-    <!-- Col5: e_p -->
-    <div class="dc-node dc-signal" id="dc-ep" style="grid-row:1;grid-column:5">
-      <div class="dc-node-label">e_p</div>
-      <div class="dc-node-value" id="dcv-ep">--</div>
-      <div class="dc-node-unit">&deg;C</div>
-      <div class="dc-node-eq">SP_for_P &minus; T_in</div>
-    </div>
-    <!-- Col6: arrow -->
-    <div class="dc-arr" style="grid-row:1;grid-column:6"></div>
-    <!-- Col7: x Kp -->
-    <div class="dc-node dc-process" id="dc-kp" style="grid-row:1;grid-column:7">
-      <div class="dc-node-label">&times; Kp</div>
-      <div class="dc-node-value" id="dcv-kp">--</div>
-    </div>
-    <!-- Col8: merge top bracket -->
-    <div class="dc-merge-top" style="grid-row:1;grid-column:8"></div>
-    <!-- Col9-13: empty on row 1 -->
+  <div class="cu-layout">
 
-    <!-- ═══ Row 2: spacer ═══ -->
-    <div class="dc-empty" style="grid-row:2;grid-column:1/8"></div>
-    <div class="dc-merge-mid" style="grid-row:2;grid-column:8"></div>
-    <!-- Col9: u_pi (spans rows 1-5 vertically centered via row 2-4) -->
-    <div class="dc-merge-out" style="grid-row:2;grid-column:8/10"></div>
-
-    <!-- ═══ Row 3: I-path + output chain ═══ -->
-    <!-- Col1: SP_brut (same input, label only) -->
-    <div class="dc-node dc-input" style="grid-row:3;grid-column:1;opacity:0.5">
-      <div class="dc-node-label">SP_brut</div>
-      <div class="dc-node-unit">(direct)</div>
-    </div>
-    <!-- Col2: arrow -->
-    <div class="dc-arr" style="grid-row:3;grid-column:2"></div>
-    <!-- Col3: T_in reference -->
-    <div class="dc-node dc-input" style="grid-row:3;grid-column:3">
-      <div class="dc-node-label">T_in</div>
-      <div class="dc-node-value" id="dcv-t-in">--</div>
-      <div class="dc-node-unit">&deg;C</div>
-    </div>
-    <!-- Col4: arrow -->
-    <div class="dc-arr" style="grid-row:3;grid-column:4"></div>
-    <!-- Col5: e_i -->
-    <div class="dc-node dc-signal" id="dc-ei" style="grid-row:3;grid-column:5">
-      <div class="dc-node-label">e_i</div>
-      <div class="dc-node-value" id="dcv-ei">--</div>
-      <div class="dc-node-unit">&deg;C</div>
-      <div class="dc-node-eq">SP_brut &minus; T_in</div>
-    </div>
-    <!-- Col6: arrow -->
-    <div class="dc-arr" style="grid-row:3;grid-column:6"></div>
-    <!-- Col7: Ki.integral -->
-    <div class="dc-node dc-process" id="dc-ki" style="grid-row:3;grid-column:7">
-      <div class="dc-node-label">Ki &middot; &int;</div>
-      <div class="dc-node-value" id="dcv-ki">--</div>
-      <div class="dc-node-sub" id="dcv-i-state">--</div>
-    </div>
-    <!-- Col8: merge mid -->
-    <div class="dc-merge-mid" style="grid-row:3;grid-column:8"></div>
-    <!-- Col9: u_pi -->
-    <div class="dc-node dc-signal" id="dc-u-pi" style="grid-row:3;grid-column:9">
-      <div class="dc-node-label">u_pi</div>
-      <div class="dc-node-value" id="dcv-u-pi">--</div>
-      <div class="dc-node-unit">%</div>
-    </div>
-    <!-- Col10: arrow -->
-    <div class="dc-arr" style="grid-row:3;grid-column:10"></div>
-    <!-- Col11: Governance -->
-    <div class="dc-node dc-process" id="dc-governance" style="grid-row:3;grid-column:11">
-      <div class="dc-node-label">Governance</div>
-      <div class="dc-node-sub" id="dcv-gov-action">--</div>
-    </div>
-    <!-- Col12: arrow -->
-    <div class="dc-arr" style="grid-row:3;grid-column:12"></div>
-    <!-- Col13: u_applied (final output) -->
-    <div class="dc-node dc-output" id="dc-u-applied" style="grid-row:3;grid-column:13">
-      <div class="dc-node-label">u_applied</div>
-      <div class="dc-node-value" id="dcv-u-applied">--</div>
-      <div class="dc-node-unit">%</div>
+    <!-- ══ Sortie Puissance (full width) ══ -->
+    <div class="cu-card cu-full">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#9889;</span>
+        <span class="cu-card-title">Sortie puissance</span>
+      </div>
+      <div class="cu-power-bar">
+        <div class="cu-power-track">
+          <div class="cu-power-dots" id="cu-power-dots"></div>
+          <div class="cu-power-fill" id="cu-power-fill" style="width:0%"></div>
+          <span class="cu-power-label" id="cu-power-label">-- %</span>
+        </div>
+      </div>
+      <div style="margin-bottom:4px">
+        <span class="cu-indicator cu-off" id="cu-ff-indicator"><span class="cu-dot"></span> feedforward</span>
+        <span class="cu-indicator cu-off" id="cu-pi-indicator"><span class="cu-dot"></span> correction PI</span>
+      </div>
     </div>
 
-    <!-- ═══ Row 4: spacer ═══ -->
-    <div class="dc-empty" style="grid-row:4;grid-column:1/8"></div>
-    <div class="dc-merge-mid" style="grid-row:4;grid-column:8"></div>
+    <!-- ══ Composantes table (left) ══ -->
+    <div class="cu-card">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#128202;</span>
+        <span class="cu-card-title">Composantes</span>
+      </div>
+      <table class="cu-table">
+        <thead>
+          <tr><th>Composante</th><th style="text-align:right">Valeur</th><th></th></tr>
+        </thead>
+        <tbody id="cu-composantes-body">
+          <tr><td colspan="3" style="color:var(--text-dim)">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-    <!-- ═══ Row 5: FF-path ═══ -->
-    <!-- Col1: T_ext -->
-    <div class="dc-node dc-input" style="grid-row:5;grid-column:1">
-      <div class="dc-node-label">T_ext</div>
-      <div class="dc-node-value" id="dcv-t-ext">--</div>
-      <div class="dc-node-unit">&deg;C</div>
+    <!-- ══ Cha&icirc;ne de commande (right) ══ -->
+    <div class="cu-card">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#128279;</span>
+        <span class="cu-card-title">Cha&icirc;ne de commande</span>
+      </div>
+      <div class="cu-flow" id="cu-flow"></div>
+      <div style="margin-top:4px">
+        <span class="cu-indicator cu-off" id="cu-saturation"><span class="cu-dot"></span> Saturation: --</span>
+      </div>
     </div>
-    <!-- Col2: arrow -->
-    <div class="dc-arr" style="grid-row:5;grid-column:2"></div>
-    <!-- Col3: Feedforward block -->
-    <div class="dc-node dc-process" style="grid-row:5;grid-column:3">
-      <div class="dc-node-label">Feedforward</div>
-      <div class="dc-node-eq">K_ff &middot; (SP &minus; T_ext)</div>
+
+    <!-- ══ Feedforward d&eacute;tail (left) ══ -->
+    <div class="cu-card">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#127919;</span>
+        <span class="cu-card-title">Feedforward &mdash; d&eacute;tail</span>
+      </div>
+      <table class="cu-table">
+        <thead>
+          <tr><th>Param&egrave;tre</th><th style="text-align:right">Valeur</th></tr>
+        </thead>
+        <tbody id="cu-ff-body">
+          <tr><td colspan="2" style="color:var(--text-dim)">Chargement...</td></tr>
+        </tbody>
+      </table>
     </div>
-    <!-- Col4: arrow -->
-    <div class="dc-arr" style="grid-row:5;grid-column:4"></div>
-    <!-- Col5: u_ff value -->
-    <div class="dc-node dc-signal" style="grid-row:5;grid-column:5">
-      <div class="dc-node-label">u_ff</div>
-      <div class="dc-node-value" id="dcv-uff">--</div>
-      <div class="dc-node-unit">%</div>
+
+    <!-- ══ PI d&eacute;tail (right) ══ -->
+    <div class="cu-card">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#128295;</span>
+        <span class="cu-card-title">PI &mdash; d&eacute;tail</span>
+      </div>
+      <table class="cu-table">
+        <thead>
+          <tr><th>Param&egrave;tre</th><th style="text-align:right">Valeur</th></tr>
+        </thead>
+        <tbody id="cu-pi-body">
+          <tr><td colspan="2" style="color:var(--text-dim)">Chargement...</td></tr>
+        </tbody>
+      </table>
     </div>
-    <!-- Col6-7: long arrow to merge -->
-    <div class="dc-arr" style="grid-row:5;grid-column:6/8"></div>
-    <!-- Col8: merge bottom bracket -->
-    <div class="dc-merge-bot" style="grid-row:5;grid-column:8"></div>
+
+    <!-- ══ Waterfall chart (full width) ══ -->
+    <div class="cu-card cu-full">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#128202;</span>
+        <span class="cu-card-title">D&eacute;composition de la commande</span>
+      </div>
+      <div class="cu-waterfall-wrap" id="cu-waterfall"></div>
+    </div>
+
+    <!-- ══ Time-series chart (full width) ══ -->
+    <div class="cu-card cu-full">
+      <div class="cu-card-header">
+        <span class="cu-card-icon">&#128200;</span>
+        <span class="cu-card-title">Historique composantes U</span>
+      </div>
+      <div class="chart-canvas-wrap" id="cu-chart-u" style="height:280px"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Model Health (Santé Modèle)                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-model-health">
+  <div class="mh-grid">
+
+    <!-- Overall Health Score -->
+    <div class="mh-health-score" id="mh-score-card">
+      <div class="mh-gauge mh-good" id="mh-gauge" style="--pct: 100%">
+        <span class="mh-gauge-value" id="mh-score-val">--</span>
+      </div>
+      <div>
+        <div class="mh-health-title" id="mh-score-title">Santé du Modèle</div>
+        <div class="mh-health-summary" id="mh-score-summary">Chargement...</div>
+      </div>
+    </div>
+
+    <!-- Reliability Flags -->
+    <div class="mh-card">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🚦</span>
+        <span class="mh-card-title">Drapeaux de Fiabilité</span>
+      </div>
+      <div id="mh-flags-container"></div>
+    </div>
+
+    <!-- AutoCalib Status -->
+    <div class="mh-card">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🔧</span>
+        <span class="mh-card-title">AutoCalibration</span>
+      </div>
+      <div id="mh-autocalib-container"></div>
+    </div>
+
+    <!-- Thermal Twin Quality -->
+    <div class="mh-card">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🔬</span>
+        <span class="mh-card-title">Qualité Thermal Twin</span>
+      </div>
+      <div id="mh-twin-container"></div>
+    </div>
+
+    <!-- Learning Progress -->
+    <div class="mh-card">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">📚</span>
+        <span class="mh-card-title">Progression Apprentissage</span>
+      </div>
+      <div id="mh-learning-container"></div>
+    </div>
+
+    <!-- Model Parameters -->
+    <div class="mh-card">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🏠</span>
+        <span class="mh-card-title">Paramètres du Modèle</span>
+      </div>
+      <div id="mh-params-container"></div>
+    </div>
+
   </div>
 </div>
 
@@ -786,6 +1016,22 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           // Re-render data after resize
           if (historyData && historyData.length) updateCharts(historyData);
         }
+      }, 50);
+    }
+    // Lazy-init U components chart + re-render waterfall when Chaîne U tab opens
+    if (btn.dataset.tab === 'tab-debug-chain') {
+      setTimeout(() => {
+        if (!charts.cuU) {
+          initCuChart();
+        } else {
+          const cuEl = document.getElementById('cu-chart-u');
+          if (cuEl && cuEl.clientWidth > 0) {
+            charts.cuU.setSize({ width: cuEl.clientWidth, height: 260 });
+          }
+        }
+        if (historyData && historyData.length) updateCharts(historyData);
+        // Re-render waterfall with current data
+        if (currentState) updateWaterfallChart(currentState.raw_attributes || {});
       }, 50);
     }
   });
@@ -949,27 +1195,38 @@ function uPlotTheme() {
 }
 
 function makeSeries(label, color, width, dash) {
-  const s = { label, stroke: color, width: width || 2, points: { show: false } };
+  const s = {
+    label,
+    stroke: color,
+    width: width || 2,
+    points: { show: false },
+    value: (u, v) => v == null ? '—' : v.toFixed(2),
+  };
   if (dash) s.dash = dash;
   return s;
 }
 
-function makeOpts(el, seriesDefs, yLabel, yRange) {
+function makeOpts(el, seriesDefs, yLabel, yRange, height) {
   const rect = el.getBoundingClientRect();
   const theme = uPlotTheme();
-  const axes = JSON.parse(JSON.stringify(theme.axes));
+  // Deep-clone axes while preserving functions
+  const axes = theme.axes.map(a => Object.assign({}, a,
+    a.grid ? { grid: Object.assign({}, a.grid) } : {},
+    a.ticks ? { ticks: Object.assign({}, a.ticks) } : {},
+  ));
   if (yLabel) axes[1].label = yLabel;
   if (yRange) axes[1].range = () => yRange;
 
   return {
     width: rect.width || el.clientWidth || 600,
-    height: rect.height || el.clientHeight || 300,
+    height: height || 260,
     cursor: {
       drag: { x: false, y: false },
+      focus: { prox: 16 },
     },
     legend: {
       show: true,
-      live: false,
+      live: true,
     },
     series: [
       {},
@@ -983,6 +1240,31 @@ function makeOpts(el, seriesDefs, yLabel, yRange) {
 }
 
 let chartsInitialized = false;
+
+function initCuChart() {
+  if (charts.cuU) return; // already created
+  const cuEl = document.getElementById('cu-chart-u');
+  if (!cuEl || cuEl.clientWidth === 0) return; // tab not visible
+  const cuSeries = [
+    { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.12)', paths: uPlot.paths.stepped({ align: -1 }) },
+    makeSeries('u_pi (%)', '#22c55e', 1.5),
+    makeSeries('u_ff (%)', '#06b6d4', 1.5),
+    makeSeries('u_cmd (%)', '#ec4899', 1, [4,3]),
+    makeSeries('u_p (%)', '#3b82f6', 1, [3,3]),
+    makeSeries('u_i (%)', '#8b5cf6', 1, [3,3]),
+  ];
+  charts.cuU = new uPlot(
+    makeOpts(cuEl, cuSeries, '%', [null, null], 260),
+    [[], [], [], [], [], [], []],
+    cuEl
+  );
+  // Resize observer for this chart
+  const cuRo = new ResizeObserver(() => {
+    const w = cuEl.clientWidth;
+    if (w > 0 && charts.cuU) charts.cuU.setSize({ width: w, height: 260 });
+  });
+  cuRo.observe(cuEl);
+}
 
 function initCharts() {
   // Charts must be created when tab is visible (non-zero dimensions)
@@ -1000,11 +1282,28 @@ function initCharts() {
   const tempSeries = [
     makeSeries('T_in', '#3b82f6', 2),
     makeSeries('Consigne', '#06b6d4', 1.5, [6,3]),
-    makeSeries('T_ext', '#22c55e', 1),
+    { ...makeSeries('T_ext', '#22c55e', 1), scale: 't_ext' },
     makeSeries('Twin T\u0302', '#64748b', 1, [3,3]),
+    makeSeries('Near band +', '#f59e0b', 1, [4,4]),
+    makeSeries('Near band \u2212', '#f59e0b', 1, [4,4]),
   ];
-  const emptyData = [[], [], [], [], []];
-  charts.temp = new uPlot(makeOpts(tempEl, tempSeries, '\u00b0C'), emptyData, tempEl);
+  const tempOpts = makeOpts(tempEl, tempSeries, '\u00b0C', null, 350);
+  // Right axis for T_ext (separate scale to avoid crushing indoor data)
+  tempOpts.axes.push({
+    scale: 't_ext',
+    side: 1,
+    stroke: '#22c55e',
+    grid: { show: false },
+    ticks: { stroke: 'rgba(34,197,94,0.4)', width: 1 },
+    font: '9px JetBrains Mono',
+    label: 'T_ext \u00b0C',
+  });
+  // Fill between near band upper and lower (series indices 5 and 6)
+  tempOpts.bands = [
+    { series: [5, 6], fill: 'rgba(245,158,11,0.10)' },
+  ];
+  const emptyData = [[], [], [], [], [], [], []];
+  charts.temp = new uPlot(tempOpts, emptyData, tempEl);
 
   // Power chart
   const powerSeries = [
@@ -1020,18 +1319,18 @@ function initCharts() {
   ];
   charts.twin = new uPlot(makeOpts(twinEl, twinSeries), [[], [], []], twinEl);
 
-  // Resize handling — only when tab is visible (width > 0)
+  // U components chart (for Chaîne U tab — lazy, may not be visible yet)
+  initCuChart();
+
+  // Resize handling — only track width changes, keep fixed chart heights
+  let lastW = 0;
   const ro = new ResizeObserver(() => {
-    if (tempEl.clientWidth === 0) return; // tab hidden
-    [
-      { chart: charts.temp, el: tempEl },
-      { chart: charts.power, el: powerEl },
-      { chart: charts.twin, el: twinEl },
-    ].forEach(({ chart, el }) => {
-      if (chart) {
-        chart.setSize({ width: el.clientWidth, height: el.clientHeight || 300 });
-      }
-    });
+    const w = tempEl.clientWidth;
+    if (w === 0 || w === lastW) return; // tab hidden or no width change
+    lastW = w;
+    if (charts.temp) charts.temp.setSize({ width: w, height: 350 });
+    if (charts.power) charts.power.setSize({ width: w, height: 260 });
+    if (charts.twin) charts.twin.setSize({ width: w, height: 260 });
   });
   ro.observe(tempEl);
 
@@ -1041,45 +1340,62 @@ function initCharts() {
   }
 }
 
-function updateCharts(history) {
-  if (!history || !history.length) {
-    return;
-  }
-  if (!charts.temp) {
-    return;
-  }
-
+function _filterHistory(history) {
   const rangeHours = parseInt(document.getElementById('chart-range').value) || 12;
   const cutoff = Date.now() - rangeHours * 3600 * 1000;
   const filtered = history.filter(p => p.ts && new Date(p.ts).getTime() > cutoff);
-  // Sort by timestamp
   filtered.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  return filtered;
+}
 
-  // Build columnar arrays for uPlot [timestamps, series1, series2, ...]
-  const ts = filtered.map(p => new Date(p.ts).getTime() / 1000); // uPlot uses seconds
+function updateCharts(history) {
+  if (!history || !history.length) return;
 
-  // Temperature chart
-  const tIn = filtered.map(p => p.t_in != null ? p.t_in : null);
-  const tTarget = filtered.map(p => p.t_target != null ? p.t_target : null);
-  const tExt = filtered.map(p => p.t_ext != null ? p.t_ext : null);
-  const twinTHat = filtered.map(p => p.twin_t_hat != null ? p.twin_t_hat : null);
-  charts.temp.setData([ts, tIn, tTarget, tExt, twinTHat]);
+  const filtered = _filterHistory(history);
+  if (!filtered.length) return;
 
-  // Power chart
-  const uApplied = filtered.map(p => {
-    const v = p.u_applied != null ? p.u_applied : p.on_percent;
-    return v != null ? v * (v <= 1 ? 100 : 1) : null;
-  });
-  const uFf = filtered.map(p => {
-    const v = p.u_ff;
-    return v != null ? v * (v <= 1 ? 100 : 1) : null;
-  });
-  charts.power.setData([ts, uApplied, uFf]);
+  const ts = filtered.map(p => new Date(p.ts).getTime() / 1000);
 
-  // Twin chart
-  const innovation = filtered.map(p => p.twin_innovation != null ? p.twin_innovation : null);
-  const dHat = filtered.map(p => p.twin_d_hat != null ? p.twin_d_hat : null);
-  charts.twin.setData([ts, innovation, dHat]);
+  // Main charts (Historique tab) — only if initialized
+  if (charts.temp) {
+    const tIn = filtered.map(p => p.t_in != null ? p.t_in : null);
+    const tTarget = filtered.map(p => p.t_target != null ? p.t_target : null);
+    const tExt = filtered.map(p => p.t_ext != null ? p.t_ext : null);
+    const twinTHat = filtered.map(p => p.twin_t_hat != null ? p.twin_t_hat : null);
+    const nbAbove = filtered.map(p => p.near_band_above != null && p.t_target != null ? p.t_target + p.near_band_above : null);
+    const nbBelow = filtered.map(p => p.near_band_below != null && p.t_target != null ? p.t_target - p.near_band_below : null);
+    charts.temp.setData([ts, tIn, tTarget, tExt, twinTHat, nbAbove, nbBelow]);
+  }
+
+  if (charts.power) {
+    const uApplied = filtered.map(p => {
+      const v = p.u_applied != null ? p.u_applied : p.on_percent;
+      return v != null ? v * (v <= 1 ? 100 : 1) : null;
+    });
+    const uFf = filtered.map(p => {
+      const v = p.u_ff;
+      return v != null ? v * (v <= 1 ? 100 : 1) : null;
+    });
+    charts.power.setData([ts, uApplied, uFf]);
+  }
+
+  if (charts.twin) {
+    const innovation = filtered.map(p => p.twin_innovation != null ? p.twin_innovation : null);
+    const dHat = filtered.map(p => p.twin_d_hat != null ? p.twin_d_hat : null);
+    charts.twin.setData([ts, innovation, dHat]);
+  }
+
+  // U components chart (Chaîne U tab) — independent of main charts
+  if (charts.cuU) {
+    const norm = v => v != null ? v * (Math.abs(v) <= 1.01 ? 100 : 1) : null;
+    const cuUApplied = filtered.map(p => norm(p.u_applied != null ? p.u_applied : p.on_percent));
+    const cuUPi = filtered.map(p => norm(p.u_pi));
+    const cuUFf = filtered.map(p => norm(p.u_ff));
+    const cuUCmd = filtered.map(p => norm(p.u_cmd));
+    const cuUP = filtered.map(p => norm(p.u_p));
+    const cuUI = filtered.map(p => norm(p.u_i));
+    charts.cuU.setData([ts, cuUApplied, cuUPi, cuUFf, cuUCmd, cuUP, cuUI]);
+  }
 }
 
 document.getElementById('chart-range').addEventListener('change', () => updateCharts(historyData));
@@ -1200,10 +1516,6 @@ function setupDiagramInteractions() {
 }
 
 // ─── Debug Chain U ───────────────────────────────────────────
-function dcText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
 function dcBadge(id, label, value, state) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1216,43 +1528,18 @@ function dcFv(val, dec) {
 }
 function dcPct(val) {
   if (val == null) return '--';
-  const v = (val <= 1 && val >= 0) ? val * 100 : val;
+  const v = (Math.abs(val) <= 1.01) ? val * 100 : val;
   return v.toFixed(1);
+}
+function dcPctNum(val) {
+  if (val == null) return null;
+  return (Math.abs(val) <= 1.01) ? val * 100 : val;
 }
 
 function updateDebugChain(data) {
   const a = data.raw_attributes || {};
 
-  // Inputs
-  dcText('dcv-sp-brut', dcFv(a.temperature || a.smartpi_sp_brut, 1));
-  dcText('dcv-t-in', dcFv(a.current_temperature, 1));
-  dcText('dcv-t-ext', dcFv(a.smartpi_t_ext, 1));
-
-  // Filter
-  dcText('dcv-filter-mode', a.smartpi_filter_mode || '--');
-
-  // Errors
-  dcText('dcv-ep', dcFv(a.smartpi_error_p, 3));
-  dcText('dcv-ei', dcFv(a.smartpi_error_i, 3));
-
-  // Gains
-  dcText('dcv-kp', dcFv(a.smartpi_kp, 4));
-  dcText('dcv-ki', dcFv(a.smartpi_ki, 6));
-  dcText('dcv-i-state', a.smartpi_integral_state || '--');
-
-  // Feedforward
-  dcText('dcv-uff', dcPct(a.smartpi_ff_u_ff || a.smartpi_u_ff));
-
-  // PI sum
-  dcText('dcv-u-pi', dcPct(a.smartpi_u_pi));
-
-  // Governance
-  dcText('dcv-gov-action', a.smartpi_regime || '--');
-
-  // Output
-  dcText('dcv-u-applied', dcPct(a.smartpi_u_applied));
-
-  // Status badges
+  // ── Status badges ──
   dcBadge('dc-regime', 'Regime', a.smartpi_regime,
     a.smartpi_regime === 'nominal' || a.smartpi_regime === 'NOMINAL' ? 'ok' : 'warn');
   dcBadge('dc-phase', 'Phase', a.smartpi_phase,
@@ -1272,31 +1559,395 @@ function updateDebugChain(data) {
     a.smartpi_in_near_band ? 'IN' : 'out',
     a.smartpi_in_near_band ? 'warn' : 'ok');
 
-  // Anomaly highlighting
-  const uNode = document.getElementById('dc-u-applied');
-  if (uNode) {
-    uNode.className = 'dc-node dc-output';
-    if (a.smartpi_guard_cut_active) uNode.classList.add('dc-anomaly-error');
-    else if (a.smartpi_thermal_guard_active) uNode.classList.add('dc-anomaly-warn');
+  // ── Power bar ──
+  const uApplied = a.smartpi_u_applied;
+  const pct = uApplied != null ? dcPctNum(uApplied) : 0;
+  const fillEl = document.getElementById('cu-power-fill');
+  const labelEl = document.getElementById('cu-power-label');
+  if (fillEl) fillEl.style.width = Math.max(0, Math.min(100, pct)).toFixed(1) + '%';
+  if (labelEl) labelEl.textContent = uApplied != null ? pct.toFixed(1) + '%' : '-- %';
+
+  // Dot bar (20 dots)
+  const dotsEl = document.getElementById('cu-power-dots');
+  if (dotsEl && !dotsEl.hasChildNodes()) {
+    for (let i = 0; i < 20; i++) {
+      dotsEl.appendChild(document.createElement('span'));
+    }
   }
-  const kiNode = document.getElementById('dc-ki');
-  if (kiNode) {
-    kiNode.className = 'dc-node dc-process';
-    if (a.smartpi_integral_state && a.smartpi_integral_state !== 'NORMAL') kiNode.classList.add('dc-anomaly-warn');
-  }
-  const govNode = document.getElementById('dc-governance');
-  if (govNode) {
-    govNode.className = 'dc-node dc-process';
-    if (a.smartpi_regime && a.smartpi_regime !== 'nominal' && a.smartpi_regime !== 'NOMINAL') govNode.classList.add('dc-anomaly-warn');
+  if (dotsEl) {
+    const activeDots = Math.round(pct / 5);
+    dotsEl.querySelectorAll('span').forEach((dot, i) => {
+      dot.className = i < activeDots ? 'cu-dot-active' : '';
+    });
   }
 
-  // Error color coding: positive=cyan(heating), negative=orange(overshoot), ~0=green
-  [['dc-ep', a.smartpi_error_p], ['dc-ei', a.smartpi_error_i]].forEach(([nid, v]) => {
-    const valEl = document.getElementById(nid)?.querySelector('.dc-node-value');
-    if (!valEl) return;
-    if (v == null) { valEl.style.color = ''; return; }
-    valEl.style.color = v > 0.1 ? 'var(--accent-cyan)' : v < -0.1 ? 'var(--accent-orange)' : 'var(--accent-green)';
+  // ── FF / PI indicators ──
+  const ffEnabled = a.smartpi_ff_enabled;
+  const ffInd = document.getElementById('cu-ff-indicator');
+  if (ffInd) {
+    ffInd.innerHTML = '<span class="cu-dot"></span> feedforward \u00b7 ' + (ffEnabled ? 'actif' : 'arr\u00eat');
+    ffInd.className = 'cu-indicator ' + (ffEnabled ? 'cu-on' : 'cu-off');
+  }
+
+  const iState = a.smartpi_integral_state || '';
+  const piActive = iState !== 'HARD_FREEZE' && iState !== '';
+  const piInd = document.getElementById('cu-pi-indicator');
+  if (piInd) {
+    piInd.innerHTML = '<span class="cu-dot"></span> correction PI \u00b7 ' + (piActive ? (iState || 'actif') : 'arr\u00eat');
+    piInd.className = 'cu-indicator ' + (piActive ? 'cu-on' : 'cu-off');
+  }
+
+  // ── Composantes table ──
+  const uPi = a.smartpi_u_pi;
+  const uFf = a.smartpi_ff_u_ff || a.smartpi_u_ff;
+  const uP = a.smartpi_u_p;
+  const uI = a.smartpi_u_i;
+  const awDu = a.smartpi_aw_du;
+  const kp = a.smartpi_kp;
+  const ki = a.smartpi_ki;
+  const ep = a.smartpi_error_p;
+  const ei = a.smartpi_error_i;
+
+  const uPCalc = uP != null ? uP : (kp != null && ep != null ? kp * ep : null);
+  const uICalc = uI != null ? uI : null;
+  const piTheo = (uPCalc != null && uICalc != null) ? uPCalc + uICalc : null;
+
+  const composantes = [
+    { label: 'Appliqu\u00e9e', val: uApplied, eq: '', hl: true },
+    { label: 'Feedforward (u_ff)', val: uFf, eq: 'K_ff \u00b7 (SP \u2212 T_ext)' },
+    { label: 'PI (u_pi)', val: uPi, eq: 'u_p + u_i + u_ff' },
+    { label: 'PI th\u00e9orique', val: piTheo, eq: 'Kp\u00b7ep + Ki\u00b7\u222Be' },
+    { label: 'Anti-windup (aw_du)', val: awDu, eq: '' },
+  ];
+
+  const tbody = document.getElementById('cu-composantes-body');
+  if (tbody) {
+    tbody.innerHTML = composantes.map(c => {
+      const valStr = c.val != null ? dcPct(c.val) + '%' : '\u2014';
+      const cls = c.hl ? ' class="cu-highlight"' : '';
+      return '<tr' + cls + '><td>' + c.label + '</td><td class="cu-val">' + valStr + '</td><td class="cu-eq">' + c.eq + '</td></tr>';
+    }).join('');
+  }
+
+  // ── Saturation indicator ──
+  const sat = a.smartpi_cycle_state;
+  const satInd = document.getElementById('cu-saturation');
+  if (satInd) {
+    let satLabel = 'nominal', satClass = 'cu-on';
+    if (sat != null && String(sat).includes('high')) {
+      satLabel = '\u2191 but\u00e9e haute'; satClass = 'cu-off';
+    } else if (sat != null && String(sat).includes('low')) {
+      satLabel = '\u2193 but\u00e9e basse'; satClass = 'cu-off';
+    } else if (sat != null && sat !== 'ok' && sat !== 'nominal' && sat !== true && sat !== false) {
+      satLabel = String(sat); satClass = 'cu-off';
+    }
+    satInd.innerHTML = '<span class="cu-dot"></span> Saturation: ' + satLabel;
+    satInd.className = 'cu-indicator ' + satClass;
+  }
+
+  // ── Flow chain: u_cmd → u_limited → u_applied ──
+  const uCmd = a.smartpi_u_cmd;
+  const uLimited = a.smartpi_u_limited;
+  const flowEl = document.getElementById('cu-flow');
+  if (flowEl) {
+    const nodes = [
+      { label: 'u_cmd', val: uCmd },
+      null,
+      { label: 'u_limited', val: uLimited },
+      null,
+      { label: 'u_applied', val: uApplied, output: true },
+    ];
+    flowEl.innerHTML = nodes.map(item => {
+      if (item === null) return '<div class="cu-flow-arrow"></div>';
+      const cls = item.output ? ' cu-flow-output' : '';
+      return '<div class="cu-flow-node' + cls + '">' +
+        '<div class="cu-flow-node-label">' + item.label + '</div>' +
+        '<div class="cu-flow-node-value">' + (item.val != null ? dcPct(item.val) + '%' : '\u2014') + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ── Feedforward detail table ──
+  const ffBody = document.getElementById('cu-ff-body');
+  if (ffBody) {
+    const ffReason = a.smartpi_ff_gate;
+    const ffRaw = a.smartpi_ff_u_ff;
+    const ffScale = a.smartpi_ff_scale;
+    const ffWarmup = a.smartpi_ff_warmup;
+    const ffWarmupOk = a.smartpi_ff_warmup_ok_count;
+    const ffKff = a.smartpi_ff_k_ff;
+    const ffMaxNote = ffScale != null ? '' : '\u2014 \u00b7 max non fiable : 0.3';
+
+    const ffRows = [
+      ['Raison', '<code style="background:var(--bg-card);padding:2px 6px;border-radius:3px">' + (ffReason || '\u2014') + '</code>'],
+      ['Brut (ff_raw)', ffRaw != null ? dcPct(ffRaw) + '%' : '\u2014'],
+      ['\u00c9chelle (ff_scale)', ffScale != null ? ffScale.toFixed(3) : ffMaxNote],
+      ['Warmup FF', ffWarmup != null ? ffWarmup + (ffWarmupOk != null ? '/' + ffWarmupOk + ' cycles OK' : '') : '\u2014'],
+      ['K_ff (b/a)', ffKff != null ? ffKff.toFixed(4) : '\u2014'],
+    ];
+    ffBody.innerHTML = ffRows.map(r =>
+      '<tr><td>' + r[0] + '</td><td class="cu-val">' + r[1] + '</td></tr>'
+    ).join('');
+  }
+
+  // ── PI detail table ──
+  const piBody = document.getElementById('cu-pi-body');
+  if (piBody) {
+    const piRows = [
+      ['Kp', kp != null ? kp.toFixed(4) : '\u2014'],
+      ['Ki', ki != null ? ki.toFixed(6) : '\u2014'],
+      ['Erreur P (e_p)', ep != null ? '<span style="color:' + (ep > 0.1 ? 'var(--accent-cyan)' : ep < -0.1 ? 'var(--accent-orange)' : 'var(--accent-green)') + '">' + ep.toFixed(3) + ' \u00b0C</span>' : '\u2014'],
+      ['Erreur I (\u222Be)', ei != null ? ei.toFixed(3) + ' \u00b0C' : '\u2014'],
+      ['\u00c9tat int\u00e9gral', iState || '\u2014'],
+      ['u_p = Kp\u00b7ep', uPCalc != null ? dcPct(uPCalc) + '%' : '\u2014'],
+      ['u_i = Ki\u00b7\u222Bei', uICalc != null ? dcPct(uICalc) + '%' : '\u2014'],
+    ];
+    piBody.innerHTML = piRows.map(r =>
+      '<tr><td>' + r[0] + '</td><td class="cu-val">' + r[1] + '</td></tr>'
+    ).join('');
+  }
+
+  // ── Waterfall chart ──
+  updateWaterfallChart(a);
+}
+
+// ─── Waterfall Chart (SVG) ──────────────────────────────────
+function updateWaterfallChart(a) {
+  const container = document.getElementById('cu-waterfall');
+  if (!container) return;
+  const W = container.clientWidth || 600;
+  const H = container.clientHeight || 220;
+  if (W < 50) return; // hidden tab, skip
+
+  const PAD = { top: 24, right: 20, bottom: 36, left: 54 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  // Normalize values to %
+  const n = v => dcPctNum(v);
+  const uP  = n(a.smartpi_u_p) ?? (a.smartpi_kp != null && a.smartpi_error_p != null
+    ? n(a.smartpi_kp * a.smartpi_error_p) : null);
+  const uI  = n(a.smartpi_u_i);
+  const uFf = n(a.smartpi_ff_u_ff || a.smartpi_u_ff);
+  const awDu = n(a.smartpi_aw_du);
+  const uPi  = n(a.smartpi_u_pi);
+  const uCmd = n(a.smartpi_u_cmd);
+  const uApp = n(a.smartpi_u_applied);
+
+  // Build waterfall segments
+  const segs = [];
+  let running = 0;
+
+  if (uP != null) { segs.push({ label: 'u_p', val: uP, start: running }); running += uP; }
+  if (uI != null) { segs.push({ label: 'u_i', val: uI, start: running }); running += uI; }
+  if (uFf != null) { segs.push({ label: 'u_ff', val: uFf, start: running }); running += uFf; }
+  if (awDu != null && Math.abs(awDu) > 0.01) { segs.push({ label: 'aw_du', val: awDu, start: running }); running += awDu; }
+
+  if (uPi != null) segs.push({ label: 'u_pi', val: uPi, start: 0, total: true });
+
+  if (uCmd != null && uPi != null) {
+    const delta = uCmd - uPi;
+    if (Math.abs(delta) > 0.01) segs.push({ label: 'gov \u0394', val: delta, start: uPi });
+  }
+  if (uCmd != null) segs.push({ label: 'u_cmd', val: uCmd, start: 0, total: true });
+
+  if (uApp != null && uCmd != null) {
+    const delta = uApp - uCmd;
+    if (Math.abs(delta) > 0.01) segs.push({ label: 'sat \u0394', val: delta, start: uCmd });
+  }
+  if (uApp != null) segs.push({ label: 'u_applied', val: uApp, start: 0, total: true });
+
+  if (segs.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:60px 0;font-family:JetBrains Mono,monospace;font-size:11px">Donn\u00e9es insuffisantes</p>';
+    return;
+  }
+
+  // Y scale
+  const allY = segs.flatMap(s => s.total ? [0, s.val] : [s.start, s.start + s.val]);
+  const yMin = Math.min(0, ...allY) - 5;
+  const yMax = Math.max(100, ...allY) + 10;
+  const yOf = v => PAD.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+
+  const barW = Math.min(56, (plotW / segs.length) - 10);
+  const gap = plotW / segs.length;
+
+  const COLORS = {
+    'u_p': '#3b82f6', 'u_i': '#8b5cf6', 'u_ff': '#06b6d4',
+    'aw_du': '#eab308', 'u_pi': '#22c55e', 'gov \u0394': '#f97316',
+    'u_cmd': '#ec4899', 'sat \u0394': '#ef4444', 'u_applied': '#f97316',
+  };
+
+  let svg = '';
+
+  // Y-axis + gridlines
+  svg += `<line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${H-PAD.bottom}" stroke="var(--border)" stroke-width="1"/>`;
+  const zeroY = yOf(0);
+  svg += `<line x1="${PAD.left}" y1="${zeroY}" x2="${W-PAD.right}" y2="${zeroY}" stroke="var(--border-highlight)" stroke-width="1" stroke-dasharray="4,4"/>`;
+  svg += `<text x="${PAD.left-4}" y="${zeroY+3}" text-anchor="end" fill="var(--text-dim)" font-size="9" font-family="JetBrains Mono,monospace">0%</text>`;
+
+  if (yMax >= 100) {
+    const y100 = yOf(100);
+    svg += `<line x1="${PAD.left}" y1="${y100}" x2="${W-PAD.right}" y2="${y100}" stroke="rgba(249,115,22,0.25)" stroke-width="1" stroke-dasharray="4,4"/>`;
+    svg += `<text x="${PAD.left-4}" y="${y100+3}" text-anchor="end" fill="var(--text-dim)" font-size="9" font-family="JetBrains Mono,monospace">100%</text>`;
+  }
+  // 50% line
+  const y50 = yOf(50);
+  svg += `<line x1="${PAD.left}" y1="${y50}" x2="${W-PAD.right}" y2="${y50}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2,4"/>`;
+  svg += `<text x="${PAD.left-4}" y="${y50+3}" text-anchor="end" fill="var(--text-dim)" font-size="8" font-family="JetBrains Mono,monospace">50%</text>`;
+
+  // Bars
+  segs.forEach((s, i) => {
+    const x = PAD.left + (i + 0.5) * gap - barW / 2;
+    const color = COLORS[s.label] || '#94a3b8';
+
+    if (s.total) {
+      // Full bar from 0
+      const y0 = yOf(0);
+      const y1 = yOf(s.val);
+      const h = Math.abs(y1 - y0);
+      svg += `<rect x="${x}" y="${Math.min(y0,y1)}" width="${barW}" height="${Math.max(h,1)}" fill="${color}" opacity="0.85" rx="3"/>`;
+    } else {
+      // Incremental bar
+      const y0 = yOf(s.start);
+      const y1 = yOf(s.start + s.val);
+      const h = Math.abs(y1 - y0);
+      svg += `<rect x="${x}" y="${Math.min(y0,y1)}" width="${barW}" height="${Math.max(h,1)}" fill="${color}" opacity="0.65" rx="3"/>`;
+      // Connector line from previous total
+      if (i > 0 && !segs[i-1].total) {
+        svg += `<line x1="${x-gap+barW}" y1="${yOf(s.start)}" x2="${x}" y2="${yOf(s.start)}" stroke="${color}" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>`;
+      }
+    }
+
+    // Label below
+    const labelX = x + barW / 2;
+    svg += `<text x="${labelX}" y="${H-8}" text-anchor="middle" fill="${color}" font-size="9" font-weight="500" font-family="JetBrains Mono,monospace">${s.label}</text>`;
+
+    // Value on bar
+    const valTop = s.total ? yOf(s.val) : yOf(Math.max(s.start, s.start + s.val));
+    const valY = valTop - 5;
+    svg += `<text x="${labelX}" y="${valY}" text-anchor="middle" fill="var(--text-bright)" font-size="10" font-weight="700" font-family="JetBrains Mono,monospace">${s.val.toFixed(1)}%</text>`;
   });
+
+  container.innerHTML = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+// ─── Model Health Tab ────────────────────────────────────────
+const MH_LEARN_TARGET = 31;
+
+function computeHealthScore(a) {
+  let score = 100;
+  let issues = [];
+  if (a.smartpi_deadtime_heat_reliable === false) { score -= 15; issues.push('deadtime heat non fiable'); }
+  if (a.smartpi_deadtime_cool_reliable === false) { score -= 15; issues.push('deadtime cool non fiable'); }
+  if (a.smartpi_tau_reliable === false)            { score -= 15; issues.push('tau non fiable'); }
+  if (a.smartpi_autocalib_model_degraded === true) { score -= 25; issues.push('modèle dégradé'); }
+  const rmse = a.smartpi_twin_rmse;
+  if (rmse != null) {
+    if (rmse > 1.0) { score -= 20; issues.push('RMSE > 1.0°C'); }
+    else if (rmse > 0.5) { score -= 10; issues.push('RMSE > 0.5°C'); }
+  }
+  const cusum = a.smartpi_twin_cusum;
+  if (cusum != null && cusum > 5) { score -= 10; issues.push('CUSUM élevé (' + cusum.toFixed(1) + ')'); }
+  const age = a.smartpi_autocalib_snapshot_age_h;
+  if (age != null && age > 48) { score -= 10; issues.push('snapshot > 48h'); }
+  const retries = a.smartpi_autocalib_retry_count;
+  if (retries != null && retries > 2) { score -= 5; issues.push(retries + ' retries calibration'); }
+  return { score: Math.max(0, score), issues };
+}
+
+function updateModelHealth(data) {
+  const a = data.raw_attributes || {};
+
+  // 1. Overall Health Score
+  const { score, issues } = computeHealthScore(a);
+  const gaugeEl = document.getElementById('mh-gauge');
+  document.getElementById('mh-score-val').textContent = score;
+  gaugeEl.style.setProperty('--pct', score + '%');
+  gaugeEl.className = 'mh-gauge ' + (score >= 75 ? 'mh-good' : score >= 40 ? 'mh-warn' : 'mh-bad');
+  document.getElementById('mh-score-title').textContent =
+    score >= 75 ? 'Modèle en bonne santé' : score >= 40 ? 'Modèle dégradé' : 'Modèle en mauvais état';
+  document.getElementById('mh-score-summary').textContent =
+    issues.length === 0 ? 'Tous les indicateurs sont nominaux.' : issues.join(' · ');
+
+  // 2. Reliability Flags
+  const flags = [
+    { label: 'Deadtime Heat', key: 'smartpi_deadtime_heat_reliable' },
+    { label: 'Deadtime Cool', key: 'smartpi_deadtime_cool_reliable' },
+    { label: 'Tau',           key: 'smartpi_tau_reliable' },
+    { label: 'Modèle Dégradé',key: 'smartpi_autocalib_model_degraded', invert: true },
+  ];
+  document.getElementById('mh-flags-container').innerHTML = flags.map(f => {
+    const val = a[f.key];
+    const ok = f.invert ? val === false || val == null : val === true;
+    const state = val == null ? '' : (ok ? 'mh-ok' : 'mh-error');
+    const label = val == null ? '?' : (ok ? 'OK' : (f.invert ? 'DÉGRADÉ' : 'NON FIABLE'));
+    return `<span class="mh-badge ${state}"><span class="mh-dot ${state}"></span>${f.label}: ${label}</span>`;
+  }).join('');
+
+  // 3. AutoCalib Status
+  const acState = a.smartpi_autocalib_state || '—';
+  const acRetry = a.smartpi_autocalib_retry_count;
+  const acAge = a.smartpi_autocalib_snapshot_age_h;
+  const acStateClass = /^idle$/i.test(acState) ? 'mh-ok' : 'mh-warn';
+  const acAgeClass = acAge == null ? '' : (acAge <= 24 ? 'mh-ok' : acAge <= 48 ? 'mh-warn' : 'mh-error');
+  const acRetryClass = acRetry == null ? '' : (acRetry === 0 ? 'mh-ok' : acRetry <= 2 ? 'mh-warn' : 'mh-error');
+  document.getElementById('mh-autocalib-container').innerHTML = `
+    <div class="mh-param-row"><span class="mh-param-key">État FSM</span><span class="mh-badge ${acStateClass}">${acState}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">Retry count</span><span class="mh-badge ${acRetryClass}">${acRetry != null ? acRetry : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">Snapshot age</span><span class="mh-badge ${acAgeClass}">${acAge != null ? acAge.toFixed(1) + ' h' : '—'}</span></div>`;
+
+  // 4. Thermal Twin Quality
+  const rmse = a.smartpi_twin_rmse;
+  const innovation = a.smartpi_twin_innovation;
+  const cusum = a.smartpi_twin_cusum;
+  const tSteady = a.smartpi_twin_t_steady;
+  const rmseClass = rmse == null ? '' : (rmse <= 0.3 ? 'mh-ok' : rmse <= 0.7 ? 'mh-warn' : 'mh-error');
+  const cusumClass = cusum == null ? '' : (cusum <= 3 ? 'mh-ok' : cusum <= 5 ? 'mh-warn' : 'mh-error');
+  const innovColor = innovation == null ? 'var(--text-dim)' :
+    (Math.abs(innovation) <= 0.2 ? 'var(--accent-green)' : Math.abs(innovation) <= 0.5 ? 'var(--accent-orange)' : 'var(--accent-red)');
+  document.getElementById('mh-twin-container').innerHTML = `
+    <div class="mh-param-row"><span class="mh-param-key">RMSE</span><span class="mh-badge ${rmseClass}">${rmse != null ? rmse.toFixed(3) + ' °C' : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">Innovation</span><span class="mh-param-val" style="color:${innovColor}">${innovation != null ? innovation.toFixed(3) + ' °C' : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">CUSUM</span><span class="mh-badge ${cusumClass}">${cusum != null ? cusum.toFixed(2) : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">T_steady</span><span class="mh-param-val">${tSteady != null ? tSteady.toFixed(2) + ' °C' : '—'}</span></div>`;
+
+  // 5. Learning Progress
+  const countA = a.smartpi_learn_ok_count_a || 0;
+  const countB = a.smartpi_learn_ok_count_b || 0;
+  const pctA = Math.min(100, Math.round((countA / MH_LEARN_TARGET) * 100));
+  const pctB = Math.min(100, Math.round((countB / MH_LEARN_TARGET) * 100));
+  document.getElementById('mh-learning-container').innerHTML = `
+    <div class="mh-progress-wrap">
+      <div class="mh-progress-label"><span>Param a (gain thermique)</span><span>${countA} / ${MH_LEARN_TARGET}</span></div>
+      <div class="mh-progress-bar"><div class="mh-progress-fill" style="width:${pctA}%;background:${pctA >= 100 ? 'var(--accent-green)' : 'var(--accent-cyan)'}"></div></div>
+    </div>
+    <div class="mh-progress-wrap">
+      <div class="mh-progress-label"><span>Param b (pertes thermiques)</span><span>${countB} / ${MH_LEARN_TARGET}</span></div>
+      <div class="mh-progress-bar"><div class="mh-progress-fill" style="width:${pctB}%;background:${pctB >= 100 ? 'var(--accent-green)' : 'var(--accent-cyan)'}"></div></div>
+    </div>`;
+
+  // 6. Model Parameters
+  const params = [
+    { label: 'a (gain)', key: 'smartpi_a', unit: '°C/%/min', reliable: null },
+    { label: 'b (pertes)', key: 'smartpi_b', unit: '1/min', reliable: null },
+    { label: 'τ', key: 'smartpi_tau_min', unit: 'min', reliable: 'smartpi_tau_reliable' },
+    { label: 'Deadtime heat', key: 'smartpi_deadtime_heat_s', unit: 's', reliable: 'smartpi_deadtime_heat_reliable' },
+    { label: 'Deadtime cool', key: 'smartpi_deadtime_cool_s', unit: 's', reliable: 'smartpi_deadtime_cool_reliable' },
+  ];
+  document.getElementById('mh-params-container').innerHTML = params.map(p => {
+    const val = a[p.key];
+    const relVal = p.reliable ? a[p.reliable] : null;
+    const dotClass = p.reliable == null ? '' : (relVal === true ? 'mh-ok' : relVal === false ? 'mh-error' : '');
+    const valStr = val != null ? (typeof val === 'number' ? val.toFixed(4) : val) : '—';
+    const dotHtml = dotClass ? `<span class="mh-param-status ${dotClass}" title="${relVal ? 'fiable' : 'non fiable'}"></span>` : '';
+    return `<div class="mh-param-row">
+      <span class="mh-param-key">${p.label}</span>
+      <span style="display:flex;align-items:center">
+        <span class="mh-param-val">${valStr} <span style="color:var(--text-dim);font-size:9px">${p.unit}</span></span>
+        ${dotHtml}
+      </span>
+    </div>`;
+  }).join('');
 }
 
 // ─── Main polling loop ───────────────────────────────────────
@@ -1312,6 +1963,7 @@ async function fetchState() {
     updateGroups(data.groups);
     updateRaw(data.raw_attributes);
     updateDebugChain(data);
+    updateModelHealth(data);
 
     if (data.last_update) {
       const d = new Date(data.last_update);

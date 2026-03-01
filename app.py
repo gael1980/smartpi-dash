@@ -61,7 +61,8 @@ SMARTPI_GROUPS = {
             "current_temperature", "target_temperature", "on_percent",
             "smartpi_error_p", "smartpi_error_i",
             "smartpi_kp", "smartpi_ki", "smartpi_u_p", "smartpi_u_i", "smartpi_u_ff",
-            "smartpi_u_pi", "smartpi_u_cmd", "smartpi_u_applied",
+            "smartpi_u_pi", "smartpi_u_cmd", "smartpi_u_applied", "smartpi_u_limited",
+            "smartpi_aw_du",
         ],
     },
     "model": {
@@ -101,7 +102,7 @@ SMARTPI_GROUPS = {
         "keys": [
             "smartpi_ff_enabled", "smartpi_ff_k_ff",
             "smartpi_ff_u_ff", "smartpi_ff_warmup",
-            "smartpi_ff_gate",
+            "smartpi_ff_gate", "smartpi_ff_scale",
         ],
     },
     "calibration": {
@@ -174,11 +175,16 @@ def _flatten_smartpi_attrs(raw_attrs: dict) -> dict:
         "u_applied": "smartpi_u_applied",
         "u_limited": "smartpi_u_limited",
         "u_ff": "smartpi_u_ff",
+        "u_p": "smartpi_u_p",
+        "u_i": "smartpi_u_i",
+        "aw_du": "smartpi_aw_du",
         "on_percent": "smartpi_on_percent",
         # We also keep the top-level target from filtered_setpoint
         "filtered_setpoint": "smartpi_sp_for_p",
         # Setpoint filter
         "near_band_deg": "smartpi_near_band_deg",
+        "near_band_above_deg": "smartpi_near_band_above_deg",
+        "near_band_below_deg": "smartpi_near_band_below_deg",
         "in_near_band": "smartpi_in_near_band",
         "in_deadband": "smartpi_in_deadband",
         # Thermal model
@@ -205,6 +211,7 @@ def _flatten_smartpi_attrs(raw_attrs: dict) -> dict:
         "ff_reason": "smartpi_ff_gate",
         "ff_warmup_cycles": "smartpi_ff_warmup",
         "ff_warmup_ok_count": "smartpi_ff_warmup_ok_count",
+        "ff_warmup_scale": "smartpi_ff_scale",
         # Note: ff_enabled is derived from ff_reason != "ff_none"
         # Calibration
         "calibration_state": "smartpi_calibration_state",
@@ -319,6 +326,11 @@ def _snapshot_for_history(attrs: dict) -> dict:
         "on_percent": attrs.get("on_percent"),
         "u_applied": attrs.get("smartpi_u_applied"),
         "u_ff": attrs.get("smartpi_ff_u_ff") or attrs.get("smartpi_u_ff"),
+        "u_pi": attrs.get("smartpi_u_pi"),
+        "u_cmd": attrs.get("smartpi_u_cmd"),
+        "u_limited": attrs.get("smartpi_u_limited"),
+        "u_p": attrs.get("smartpi_u_p"),
+        "u_i": attrs.get("smartpi_u_i"),
         "twin_t_hat": attrs.get("smartpi_twin_t_hat"),
         "twin_innovation": attrs.get("smartpi_twin_innovation"),
         "twin_d_hat": attrs.get("smartpi_twin_d_hat_ema"),
@@ -327,6 +339,9 @@ def _snapshot_for_history(attrs: dict) -> dict:
         "ki": attrs.get("smartpi_ki"),
         "regime": attrs.get("smartpi_regime"),
         "phase": attrs.get("smartpi_phase"),
+        "near_band_above": attrs.get("smartpi_near_band_above_deg"),
+        "near_band_below": attrs.get("smartpi_near_band_below_deg"),
+        "in_deadband": attrs.get("smartpi_in_deadband"),
     }
 
 
