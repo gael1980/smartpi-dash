@@ -364,8 +364,6 @@ def ha_get_history(entity_id: str, hours: int = 24) -> list:
             headers=ha_headers(),
             params={
                 "filter_entity_id": entity_id,
-                "minimal_response": "true",
-                "no_attributes": "false",
                 "end_time": end.isoformat(),
             },
             timeout=30,

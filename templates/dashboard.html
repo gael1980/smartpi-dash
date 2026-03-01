@@ -254,7 +254,11 @@
     border-radius: 6px;
     overflow: hidden;
   }
-  canvas { width: 100% !important; height: 100% !important; }
+  /* uPlot dark theme overrides */
+  .chart-canvas-wrap .u-legend { font: 10px 'JetBrains Mono', monospace; padding: 4px 8px; }
+  .chart-canvas-wrap .u-legend .u-series { padding: 2px 6px; }
+  .chart-canvas-wrap .u-legend .u-label { color: #94a3b8; }
+  .chart-canvas-wrap .u-legend .u-value { color: #e2e8f0; }
 
   /* ─── Block Diagram Panel ──────────────────────────────── */
   .diagram-wrap {
@@ -465,21 +469,15 @@
         <option value="48">48h</option>
       </select>
     </div>
-    <div class="chart-canvas-wrap">
-      <canvas id="chart-temp"></canvas>
-    </div>
+    <div class="chart-canvas-wrap" id="chart-temp"></div>
   </div>
   <div class="chart-container" style="margin-top:2px">
     <div class="chart-header"><h3>⚡ Commande & Puissance</h3></div>
-    <div class="chart-canvas-wrap">
-      <canvas id="chart-power"></canvas>
-    </div>
+    <div class="chart-canvas-wrap" id="chart-power"></div>
   </div>
   <div class="chart-container" style="margin-top:2px">
     <div class="chart-header"><h3>🔬 Thermal Twin — Innovation & d̂</h3></div>
-    <div class="chart-canvas-wrap">
-      <canvas id="chart-twin"></canvas>
-    </div>
+    <div class="chart-canvas-wrap" id="chart-twin"></div>
   </div>
 </div>
 
@@ -505,10 +503,10 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- CHART.JS CDN                                                   -->
+<!-- uPlot (lightweight time-series charts)                         -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<script src="/static/chart.umd.min.js"></script>
-<script src="/static/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link rel="stylesheet" href="/static/uPlot.min.css">
+<script src="/static/uPlot.iife.min.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -536,9 +534,23 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'tab-diagram' && !document.querySelector('#diagram-container svg')) {
       loadBlockDiagram();
     }
-    // Resize charts when tab becomes visible
+    // Init or resize charts when tab becomes visible
     if (btn.dataset.tab === 'tab-charts') {
-      Object.values(charts).forEach(c => c.resize());
+      // setTimeout lets the browser layout the now-visible tab first
+      setTimeout(() => {
+        if (!chartsInitialized) {
+          initCharts();
+        } else {
+          Object.values(charts).forEach(c => {
+            const el = c.root.parentElement;
+            if (el && el.clientWidth > 0) {
+              c.setSize({ width: el.clientWidth, height: el.clientHeight || 300 });
+            }
+          });
+          // Re-render data after resize
+          if (historyData && historyData.length) updateCharts(historyData);
+        }
+      }, 50);
     }
   });
 });
@@ -676,124 +688,162 @@ function updateConnectionStatus(connected) {
   }
 }
 
-// ─── Charts ──────────────────────────────────────────────────
-function initCharts() {
-  const commonOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 300 },
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-          font: { family: "'JetBrains Mono', monospace", size: 10 },
-          color: '#94a3b8',
-          boxWidth: 12,
-          padding: 12,
-        },
+// ─── Charts (uPlot) ──────────────────────────────────────────
+function uPlotTheme() {
+  return {
+    axes: [
+      {
+        stroke: '#475569',
+        grid: { stroke: 'rgba(30,41,59,0.5)', width: 1 },
+        ticks: { stroke: 'rgba(30,41,59,0.5)', width: 1 },
+        font: '9px JetBrains Mono',
+        values: (u, vals) => vals.map(v => {
+          const d = new Date(v * 1000);
+          return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+        }),
       },
-      tooltip: {
-        backgroundColor: '#1a2340',
-        titleColor: '#e2e8f0',
-        bodyColor: '#94a3b8',
-        borderColor: '#334155',
-        borderWidth: 1,
-        titleFont: { family: "'JetBrains Mono', monospace", size: 11 },
-        bodyFont: { family: "'JetBrains Mono', monospace", size: 10 },
-        callbacks: {
-          title: items => {
-            if (items.length && items[0].parsed.x) {
-              return new Date(items[0].parsed.x).toLocaleTimeString('fr-FR');
-            }
-            return '';
-          },
-        },
+      {
+        stroke: '#475569',
+        grid: { stroke: 'rgba(30,41,59,0.5)', width: 1 },
+        ticks: { stroke: 'rgba(30,41,59,0.5)', width: 1 },
+        font: '9px JetBrains Mono',
       },
+    ],
+  };
+}
+
+function makeSeries(label, color, width, dash) {
+  const s = { label, stroke: color, width: width || 2, points: { show: false } };
+  if (dash) s.dash = dash;
+  return s;
+}
+
+function makeOpts(el, seriesDefs, yLabel, yRange) {
+  const rect = el.getBoundingClientRect();
+  const theme = uPlotTheme();
+  const axes = JSON.parse(JSON.stringify(theme.axes));
+  if (yLabel) axes[1].label = yLabel;
+  if (yRange) axes[1].range = () => yRange;
+
+  return {
+    width: rect.width || el.clientWidth || 600,
+    height: rect.height || el.clientHeight || 300,
+    cursor: {
+      drag: { x: false, y: false },
     },
+    legend: {
+      show: true,
+      live: false,
+    },
+    series: [
+      {},
+      ...seriesDefs,
+    ],
+    axes,
     scales: {
-      x: {
-        type: 'time',
-        time: { displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } },
-        ticks: { font: { family: "'JetBrains Mono', monospace", size: 9 }, color: '#475569', maxTicksLimit: 12 },
-        grid: { color: 'rgba(30,41,59,0.5)' },
-      },
-      y: {
-        ticks: { font: { family: "'JetBrains Mono', monospace", size: 9 }, color: '#475569' },
-        grid: { color: 'rgba(30,41,59,0.5)' },
-      },
+      x: { time: true },
     },
   };
+}
+
+let chartsInitialized = false;
+
+function initCharts() {
+  // Charts must be created when tab is visible (non-zero dimensions)
+  const tempEl = document.getElementById('chart-temp');
+  if (tempEl.clientWidth === 0) {
+    return;
+  }
+  if (chartsInitialized) return;
+  chartsInitialized = true;
+
+  const powerEl = document.getElementById('chart-power');
+  const twinEl = document.getElementById('chart-twin');
 
   // Temperature chart
-  charts.temp = new Chart(document.getElementById('chart-temp'), {
-    type: 'line',
-    data: {
-      datasets: [
-        { label: 'T_in', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, pointRadius: 0, fill: false, data: [] },
-        { label: 'Consigne', borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', borderWidth: 1.5, pointRadius: 0, borderDash: [6,3], fill: false, data: [] },
-        { label: 'T_ext', borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 1, pointRadius: 0, fill: false, data: [] },
-        { label: 'Twin T̂', borderColor: '#64748b', backgroundColor: 'rgba(100,116,139,0.1)', borderWidth: 1, pointRadius: 0, borderDash: [3,3], fill: false, data: [] },
-      ],
-    },
-    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, title: { display: true, text: '°C', color: '#475569', font: { family: "'JetBrains Mono', monospace", size: 10 } } } } },
-  });
+  const tempSeries = [
+    makeSeries('T_in', '#3b82f6', 2),
+    makeSeries('Consigne', '#06b6d4', 1.5, [6,3]),
+    makeSeries('T_ext', '#22c55e', 1),
+    makeSeries('Twin T\u0302', '#64748b', 1, [3,3]),
+  ];
+  const emptyData = [[], [], [], [], []];
+  charts.temp = new uPlot(makeOpts(tempEl, tempSeries, '\u00b0C'), emptyData, tempEl);
 
   // Power chart
-  charts.power = new Chart(document.getElementById('chart-power'), {
-    type: 'line',
-    data: {
-      datasets: [
-        { label: 'u_applied (%)', borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.15)', borderWidth: 2, pointRadius: 0, fill: true, data: [], stepped: 'before' },
-        { label: 'u_ff (%)', borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', borderWidth: 1, pointRadius: 0, fill: false, data: [] },
-      ],
-    },
-    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0, max: 105, title: { display: true, text: '%', color: '#475569', font: { family: "'JetBrains Mono', monospace", size: 10 } } } } },
-  });
+  const powerSeries = [
+    { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.15)', paths: uPlot.paths.stepped({ align: -1 }) },
+    makeSeries('u_ff (%)', '#06b6d4', 1),
+  ];
+  charts.power = new uPlot(makeOpts(powerEl, powerSeries, '%', [0, 105]), [[], [], []], powerEl);
 
   // Twin diagnostics chart
-  charts.twin = new Chart(document.getElementById('chart-twin'), {
-    type: 'line',
-    data: {
-      datasets: [
-        { label: 'Innovation (°C)', borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, data: [] },
-        { label: 'd̂_ema', borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, data: [] },
-      ],
-    },
-    options: commonOpts,
+  const twinSeries = [
+    makeSeries('Innovation (\u00b0C)', '#8b5cf6', 1.5),
+    makeSeries('d\u0302_ema', '#ec4899', 1.5),
+  ];
+  charts.twin = new uPlot(makeOpts(twinEl, twinSeries), [[], [], []], twinEl);
+
+  // Resize handling — only when tab is visible (width > 0)
+  const ro = new ResizeObserver(() => {
+    if (tempEl.clientWidth === 0) return; // tab hidden
+    [
+      { chart: charts.temp, el: tempEl },
+      { chart: charts.power, el: powerEl },
+      { chart: charts.twin, el: twinEl },
+    ].forEach(({ chart, el }) => {
+      if (chart) {
+        chart.setSize({ width: el.clientWidth, height: el.clientHeight || 300 });
+      }
+    });
   });
+  ro.observe(tempEl);
+
+  // If we already have data, render it now
+  if (historyData && historyData.length) {
+    updateCharts(historyData);
+  }
 }
 
 function updateCharts(history) {
-  if (!history || !history.length || !charts.temp) return;
+  if (!history || !history.length) {
+    return;
+  }
+  if (!charts.temp) {
+    return;
+  }
 
   const rangeHours = parseInt(document.getElementById('chart-range').value) || 12;
   const cutoff = Date.now() - rangeHours * 3600 * 1000;
   const filtered = history.filter(p => p.ts && new Date(p.ts).getTime() > cutoff);
+  // Sort by timestamp
+  filtered.sort((a, b) => new Date(a.ts) - new Date(b.ts));
 
-  // Temperature
-  charts.temp.data.datasets[0].data = filtered.map(p => ({ x: new Date(p.ts), y: p.t_in })).filter(p => p.y != null);
-  charts.temp.data.datasets[1].data = filtered.map(p => ({ x: new Date(p.ts), y: p.t_target })).filter(p => p.y != null);
-  charts.temp.data.datasets[2].data = filtered.map(p => ({ x: new Date(p.ts), y: p.t_ext })).filter(p => p.y != null);
-  charts.temp.data.datasets[3].data = filtered.map(p => ({ x: new Date(p.ts), y: p.twin_t_hat })).filter(p => p.y != null);
-  charts.temp.update('none');
+  // Build columnar arrays for uPlot [timestamps, series1, series2, ...]
+  const ts = filtered.map(p => new Date(p.ts).getTime() / 1000); // uPlot uses seconds
 
-  // Power
-  const pctData = filtered.map(p => {
+  // Temperature chart
+  const tIn = filtered.map(p => p.t_in != null ? p.t_in : null);
+  const tTarget = filtered.map(p => p.t_target != null ? p.t_target : null);
+  const tExt = filtered.map(p => p.t_ext != null ? p.t_ext : null);
+  const twinTHat = filtered.map(p => p.twin_t_hat != null ? p.twin_t_hat : null);
+  charts.temp.setData([ts, tIn, tTarget, tExt, twinTHat]);
+
+  // Power chart
+  const uApplied = filtered.map(p => {
     const v = p.u_applied != null ? p.u_applied : p.on_percent;
-    return { x: new Date(p.ts), y: v != null ? v * (v <= 1 ? 100 : 1) : null };
-  }).filter(p => p.y != null);
-  charts.power.data.datasets[0].data = pctData;
-  charts.power.data.datasets[1].data = filtered.map(p => {
+    return v != null ? v * (v <= 1 ? 100 : 1) : null;
+  });
+  const uFf = filtered.map(p => {
     const v = p.u_ff;
-    return { x: new Date(p.ts), y: v != null ? v * (v <= 1 ? 100 : 1) : null };
-  }).filter(p => p.y != null);
-  charts.power.update('none');
+    return v != null ? v * (v <= 1 ? 100 : 1) : null;
+  });
+  charts.power.setData([ts, uApplied, uFf]);
 
-  // Twin
-  charts.twin.data.datasets[0].data = filtered.map(p => ({ x: new Date(p.ts), y: p.twin_innovation })).filter(p => p.y != null);
-  charts.twin.data.datasets[1].data = filtered.map(p => ({ x: new Date(p.ts), y: p.twin_d_hat })).filter(p => p.y != null);
-  charts.twin.update('none');
+  // Twin chart
+  const innovation = filtered.map(p => p.twin_innovation != null ? p.twin_innovation : null);
+  const dHat = filtered.map(p => p.twin_d_hat != null ? p.twin_d_hat : null);
+  charts.twin.setData([ts, innovation, dHat]);
 }
 
 document.getElementById('chart-range').addEventListener('change', () => updateCharts(historyData));
@@ -962,10 +1012,10 @@ async function fetchHistory() {
 
 // ─── Init ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof Chart !== 'undefined') {
+  if (typeof uPlot !== 'undefined') {
     initCharts();
   } else {
-    console.warn('Chart.js not loaded — charts disabled, data still available');
+    console.warn('uPlot not loaded — charts disabled, data still available');
   }
   fetchState();
   fetchHistory();
