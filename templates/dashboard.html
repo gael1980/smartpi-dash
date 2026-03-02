@@ -83,10 +83,26 @@
     background: rgba(239,68,68,0.1);
     border: 1px solid rgba(239,68,68,0.2);
   }
-  .topbar .entity-name {
+  .topbar .entity-select {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; color: var(--text-dim);
+    font-size: 11px; color: var(--text-bright);
     margin-left: auto;
+    background: var(--bg-block);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    max-width: 280px;
+  }
+  .topbar .entity-select:hover,
+  .topbar .entity-select:focus {
+    border-color: var(--accent-blue);
+  }
+  .topbar .entity-select option {
+    background: var(--bg-panel);
+    color: var(--text-bright);
   }
   .topbar .last-update {
     font-family: 'JetBrains Mono', monospace;
@@ -553,6 +569,167 @@
     .cu-flow-node { padding: 6px 10px; }
   }
 
+  /* ─── Feedforward Tab ─────────────────────────────────────── */
+  .ff-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px; padding: 2px;
+  }
+  .ff-full { grid-column: 1 / -1; }
+
+  /* Reuse cu-card pattern */
+  .ff-card {
+    background: var(--bg-panel);
+    padding: 16px 20px;
+    transition: background 0.2s;
+  }
+  .ff-card:hover { background: rgba(17,24,39,0.9); }
+  .ff-card-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ff-card-title {
+    font: 600 13px 'JetBrains Mono', monospace;
+    color: var(--text-bright); letter-spacing: 0.5px;
+  }
+  .ff-card-icon { font-size: 16px; }
+
+  /* Status bar */
+  .ff-status {
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .ff-status-main {
+    display: flex; align-items: center; gap: 8px;
+    font: 600 14px 'JetBrains Mono', monospace;
+  }
+  .ff-status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .ff-status-dot.ff-on { background: var(--accent-green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+  .ff-status-dot.ff-off { background: var(--text-dim); }
+  .ff-gate-badge {
+    font: 500 10px 'JetBrains Mono', monospace;
+    padding: 3px 10px; border-radius: 4px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* FF progress bar */
+  .ff-bar-track {
+    height: 24px; background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden; position: relative;
+    margin-top: 8px;
+  }
+  .ff-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, rgba(6,182,212,0.6), var(--accent-cyan));
+    transition: width 0.5s ease;
+  }
+  .ff-bar-label {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font: 700 13px 'JetBrains Mono', monospace;
+    color: var(--text-white); text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+
+  /* Equation block */
+  .ff-eq {
+    font: 400 11px 'JetBrains Mono', monospace;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 6px 0;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .ff-eq .ff-val { color: var(--accent-cyan); font-weight: 600; }
+  .ff-eq .ff-dim { color: var(--text-dim); font-size: 9px; }
+  .ff-eq .ff-hl  { color: var(--accent-orange); font-weight: 700; }
+  .ff-eq .ff-ok  { color: var(--accent-green); }
+  .ff-eq .ff-warn { color: var(--accent-yellow); }
+  .ff-eq .ff-err { color: var(--accent-red); }
+
+  /* Warmup gauge */
+  .ff-gauge-wrap {
+    display: flex; align-items: center; justify-content: center;
+    margin: 8px 0 12px;
+  }
+  .ff-gauge {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: conic-gradient(
+      var(--accent-cyan) calc(var(--pct) * 1%),
+      var(--bg-card) calc(var(--pct) * 1%)
+    );
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .ff-gauge::after {
+    content: '';
+    width: 76px; height: 76px; border-radius: 50%;
+    background: var(--bg-panel);
+    position: absolute;
+  }
+  .ff-gauge-val {
+    position: relative; z-index: 1;
+    font: 700 18px 'JetBrains Mono', monospace;
+    color: var(--accent-cyan);
+  }
+
+  /* Pipeline steps */
+  .ff-pipeline {
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .ff-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 14px;
+    border-left: 2px solid var(--border-highlight);
+    margin-left: 16px;
+  }
+  .ff-step:first-child { border-top-left-radius: 4px; }
+  .ff-step:last-child { border-bottom-left-radius: 4px; }
+  .ff-step-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--bg-card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0;
+  }
+  .ff-step-icon.ff-step-pass { border-color: var(--accent-green); color: var(--accent-green); }
+  .ff-step-icon.ff-step-fail { border-color: var(--accent-red); color: var(--accent-red); }
+  .ff-step-icon.ff-step-calc { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .ff-step-content {
+    flex: 1;
+    font: 400 11px 'JetBrains Mono', monospace;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .ff-step-content .ff-val { color: var(--accent-cyan); font-weight: 600; }
+  .ff-step-content .ff-hl  { color: var(--accent-orange); font-weight: 700; }
+  .ff-step-arrow {
+    display: flex; align-items: center; justify-content: center;
+    margin-left: 27px; height: 16px;
+    color: var(--border-highlight); font-size: 14px;
+  }
+
+  /* Param rows (reuse for K_ff / warmup tables) */
+  .ff-param-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+    font: 400 11px 'JetBrains Mono', monospace;
+  }
+  .ff-param-key { color: var(--text); }
+  .ff-param-val { color: var(--accent-cyan); font-weight: 600; }
+  .ff-param-unit { color: var(--text-dim); font-size: 9px; margin-left: 4px; }
+
+  @media (max-width: 900px) {
+    .ff-layout { grid-template-columns: 1fr; }
+    .ff-gauge { width: 80px; height: 80px; }
+    .ff-gauge::after { width: 60px; height: 60px; }
+  }
+
   /* ─── Model Health Tab ─────────────────────────────────────── */
   .mh-grid {
     display: grid;
@@ -666,7 +843,9 @@
     <span class="live-dot" id="live-dot"></span>
     <span id="conn-text">Connexion...</span>
   </span>
-  <span class="entity-name" id="entity-name">{{ climate_entity }}</span>
+  <select class="entity-select" id="entity-select">
+    <option value="{{ climate_entity }}">{{ climate_entity }}</option>
+  </select>
   <span class="last-update" id="last-update">—</span>
 </header>
 
@@ -724,6 +903,7 @@
   <button class="tab-btn" data-tab="tab-charts">📈 Historique</button>
   <button class="tab-btn" data-tab="tab-diagram">🔄 Schéma Bloc</button>
   <button class="tab-btn" data-tab="tab-debug-chain">🔗 Chaîne U</button>
+  <button class="tab-btn" data-tab="tab-feedforward">🎯 Feedforward</button>
   <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
   <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
 </nav>
@@ -904,6 +1084,81 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Feedforward                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-feedforward">
+  <div class="ff-layout">
+
+    <!-- ══ Status (full width) ══ -->
+    <div class="ff-card ff-full">
+      <div class="ff-card-header">
+        <span class="ff-card-icon">&#127919;</span>
+        <span class="ff-card-title">Feedforward &mdash; Status</span>
+      </div>
+      <div class="ff-status">
+        <div class="ff-status-main">
+          <span class="ff-status-dot ff-off" id="ff-status-dot"></span>
+          <span id="ff-status-label">Arr&ecirc;t</span>
+        </div>
+        <span class="ff-gate-badge" id="ff-gate-badge">gate: &mdash;</span>
+      </div>
+      <div class="ff-bar-track">
+        <div class="ff-bar-fill" id="ff-bar-fill" style="width:0%"></div>
+        <span class="ff-bar-label" id="ff-bar-label">u_ff = &mdash;</span>
+      </div>
+    </div>
+
+    <!-- ══ Calcul K_ff (left) ══ -->
+    <div class="ff-card">
+      <div class="ff-card-header">
+        <span class="ff-card-icon">&#128290;</span>
+        <span class="ff-card-title">Calcul K_ff</span>
+      </div>
+      <div id="ff-kff-content">
+        <p style="color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:11px">Chargement...</p>
+      </div>
+    </div>
+
+    <!-- ══ Warmup (right) ══ -->
+    <div class="ff-card">
+      <div class="ff-card-header">
+        <span class="ff-card-icon">&#9201;</span>
+        <span class="ff-card-title">Warmup</span>
+      </div>
+      <div class="ff-gauge-wrap">
+        <div class="ff-gauge" id="ff-warmup-gauge" style="--pct: 0">
+          <span class="ff-gauge-val" id="ff-warmup-pct">&mdash;</span>
+        </div>
+      </div>
+      <div id="ff-warmup-content">
+        <p style="color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:11px">Chargement...</p>
+      </div>
+    </div>
+
+    <!-- ══ Pipeline de calcul (full width) ══ -->
+    <div class="ff-card ff-full">
+      <div class="ff-card-header">
+        <span class="ff-card-icon">&#128208;</span>
+        <span class="ff-card-title">Pipeline de calcul</span>
+      </div>
+      <div class="ff-pipeline" id="ff-pipeline">
+        <p style="color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:11px;padding:20px 0;text-align:center">Chargement...</p>
+      </div>
+    </div>
+
+    <!-- ══ Historique u_ff (full width) ══ -->
+    <div class="ff-card ff-full">
+      <div class="ff-card-header">
+        <span class="ff-card-icon">&#128200;</span>
+        <span class="ff-card-title">Historique u_ff</span>
+      </div>
+      <div class="chart-canvas-wrap" id="ff-chart" style="height:260px"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- TAB: Model Health (Santé Modèle)                               -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-model-health">
@@ -980,13 +1235,18 @@
 // ═══════════════════════════════════════════════════════════════
 
 const POLL_INTERVAL = 3000; // ms between API polls
-const ENTITY_ID = "{{ climate_entity }}";
+const DEFAULT_ENTITY = "{{ climate_entity }}";
 
+let selectedEntity = localStorage.getItem('smartpi_selected_entity') || DEFAULT_ENTITY;
 let currentState = null;
 let previousValues = {};
 let charts = {};
 let historyData = [];
 let blockDiagramData = null;
+
+function entityParam() {
+  return `entity_id=${encodeURIComponent(selectedEntity)}`;
+}
 
 // ─── Tab Navigation ──────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1032,6 +1292,21 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (historyData && historyData.length) updateCharts(historyData);
         // Re-render waterfall with current data
         if (currentState) updateWaterfallChart(currentState.raw_attributes || {});
+      }, 50);
+    }
+    // Lazy-init FF chart when Feedforward tab opens
+    if (btn.dataset.tab === 'tab-feedforward') {
+      setTimeout(() => {
+        if (!charts.ff) {
+          initFfChart();
+        } else {
+          const ffEl = document.getElementById('ff-chart');
+          if (ffEl && ffEl.clientWidth > 0) {
+            charts.ff.setSize({ width: ffEl.clientWidth, height: 240 });
+          }
+        }
+        if (historyData && historyData.length) updateCharts(historyData);
+        if (currentState) updateFeedforward(currentState);
       }, 50);
     }
   });
@@ -1395,6 +1670,13 @@ function updateCharts(history) {
     const cuUP = filtered.map(p => norm(p.u_p));
     const cuUI = filtered.map(p => norm(p.u_i));
     charts.cuU.setData([ts, cuUApplied, cuUPi, cuUFf, cuUCmd, cuUP, cuUI]);
+  }
+
+  // FF chart (Feedforward tab)
+  if (charts.ff) {
+    const norm = v => v != null ? v * (Math.abs(v) <= 1.01 ? 100 : 1) : null;
+    const ffUff = filtered.map(p => norm(p.u_ff));
+    charts.ff.setData([ts, ffUff]);
   }
 }
 
@@ -1831,6 +2113,192 @@ function updateWaterfallChart(a) {
   container.innerHTML = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
 }
 
+// ─── Feedforward Tab ─────────────────────────────────────────
+function updateFeedforward(data) {
+  const a = data.raw_attributes || {};
+
+  // Gather all FF values
+  const ffEnabled = a.smartpi_ff_enabled;
+  const ffGate = a.smartpi_ff_gate;
+  const ffRaw = a.smartpi_ff_u_ff;
+  const ffScale = a.smartpi_ff_scale;
+  const ffWarmup = a.smartpi_ff_warmup;
+  const ffWarmupOk = a.smartpi_ff_warmup_ok_count;
+  const ffKff = a.smartpi_ff_k_ff;
+  const aVal = a.smartpi_a;
+  const bVal = a.smartpi_b;
+  const tauReliable = a.smartpi_tau_reliable;
+  const sp = a.temperature || a.smartpi_sp_brut;
+  const tExt = a.smartpi_t_ext;
+  const ep = a.smartpi_error_p;
+  const nbAbove = a.smartpi_near_band_above_deg;
+
+  // ── Status ──
+  const dot = document.getElementById('ff-status-dot');
+  const label = document.getElementById('ff-status-label');
+  if (dot && label) {
+    dot.className = 'ff-status-dot ' + (ffEnabled ? 'ff-on' : 'ff-off');
+    label.textContent = ffEnabled ? 'Actif' : 'Arr\u00eat';
+    label.style.color = ffEnabled ? 'var(--accent-green)' : 'var(--text-dim)';
+  }
+  const gateBadge = document.getElementById('ff-gate-badge');
+  if (gateBadge) gateBadge.textContent = 'gate: ' + (ffGate || '\u2014');
+
+  // FF bar
+  const uffPct = ffRaw != null ? dcPctNum(ffRaw) : 0;
+  const fillEl = document.getElementById('ff-bar-fill');
+  const barLabel = document.getElementById('ff-bar-label');
+  if (fillEl) fillEl.style.width = Math.max(0, Math.min(100, uffPct)).toFixed(1) + '%';
+  if (barLabel) barLabel.textContent = ffRaw != null ? 'u_ff = ' + uffPct.toFixed(1) + '%' : 'u_ff = \u2014';
+
+  // ── K_ff calculation card ──
+  const kffContent = document.getElementById('ff-kff-content');
+  if (kffContent) {
+    const kffBase = (aVal && bVal && aVal !== 0) ? bVal / aVal : null;
+    const kffClamped = kffBase != null ? Math.min(3, Math.max(0, kffBase)) : null;
+    const kffEff = (kffClamped != null && ffScale != null) ? kffClamped * ffScale : ffKff;
+    const clampOk = kffBase != null && kffBase >= 0 && kffBase <= 3;
+
+    let html = '';
+    html += '<div class="ff-eq">';
+    html += '<span class="ff-dim">Param\u00e8tres mod\u00e8le :</span><br>';
+    html += 'a = <span class="ff-val">' + (aVal != null ? aVal.toFixed(6) : '\u2014') + '</span> <span class="ff-dim">\u00b0C/%/min</span><br>';
+    html += 'b = <span class="ff-val">' + (bVal != null ? bVal.toFixed(6) : '\u2014') + '</span> <span class="ff-dim">1/min</span><br>';
+    html += '<br>';
+    html += '<span class="ff-dim">K_ff base :</span><br>';
+    html += 'K_ff = b / a = <span class="ff-val">' + (kffBase != null ? kffBase.toFixed(4) : '\u2014') + '</span>';
+    if (kffBase != null) {
+      html += ' <span class="' + (clampOk ? 'ff-ok' : 'ff-warn') + '">' + (clampOk ? '\u2713 [0, 3]' : '\u26a0 clamp\u00e9') + '</span>';
+    }
+    html += '<br><br>';
+    html += '<span class="ff-dim">Gain effectif :</span><br>';
+    html += 'K_ff_eff = K_ff \u00d7 warmup_scale<br>';
+    html += '= <span class="ff-val">' + (kffClamped != null ? kffClamped.toFixed(4) : '\u2014') + '</span>';
+    html += ' \u00d7 <span class="ff-val">' + (ffScale != null ? ffScale.toFixed(3) : '\u2014') + '</span>';
+    html += ' = <span class="ff-hl">' + (kffEff != null ? kffEff.toFixed(6) : '\u2014') + '</span>';
+    html += '</div>';
+    kffContent.innerHTML = html;
+  }
+
+  // ── Warmup card ──
+  const warmupContent = document.getElementById('ff-warmup-content');
+  const warmupGauge = document.getElementById('ff-warmup-gauge');
+  const warmupPct = document.getElementById('ff-warmup-pct');
+
+  if (warmupContent) {
+    // Compute scales client-side
+    const learnScale = (ffWarmupOk != null && ffWarmup != null && ffWarmup > 0) ? Math.min(1, ffWarmupOk / ffWarmup) : null;
+    const timeScale = (ffWarmup != null) ? Math.min(1, ffWarmup / (ffWarmup || 1)) : null;
+    const reliableCap = tauReliable === true ? 1.0 : (tauReliable === false ? 0.3 : null);
+    const scalePct = ffScale != null ? Math.round(ffScale * 100) : 0;
+
+    if (warmupGauge) warmupGauge.style.setProperty('--pct', scalePct);
+    if (warmupPct) warmupPct.textContent = ffScale != null ? (ffScale * 100).toFixed(0) + '%' : '\u2014';
+
+    let html = '';
+    html += '<div class="ff-param-row"><span class="ff-param-key">Cycles warmup</span><span class="ff-param-val">' + (ffWarmup != null ? ffWarmup : '\u2014') + '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">OK count</span><span class="ff-param-val">' + (ffWarmupOk != null ? ffWarmupOk : '\u2014') + '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">reliable_cap</span><span class="ff-param-val">';
+    if (reliableCap != null) {
+      html += '<span style="color:' + (reliableCap >= 1 ? 'var(--accent-green)' : 'var(--accent-yellow)') + '">' + reliableCap.toFixed(1) + '</span>';
+      html += ' <span class="ff-param-unit">' + (tauReliable ? '\u03c4 fiable' : '\u03c4 non fiable') + '</span>';
+    } else { html += '\u2014'; }
+    html += '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">warmup_scale</span><span class="ff-param-val" style="color:var(--accent-orange);font-size:13px">' + (ffScale != null ? ffScale.toFixed(3) : '\u2014') + '</span></div>';
+    warmupContent.innerHTML = html;
+  }
+
+  // ── Pipeline de calcul ──
+  const pipeline = document.getElementById('ff-pipeline');
+  if (pipeline) {
+    const deltaT = (sp != null && tExt != null) ? sp - tExt : null;
+    const kffEff = ffKff != null ? ffKff : ((aVal && bVal && aVal !== 0 && ffScale != null) ? (bVal / aVal) * ffScale : null);
+    const uffRaw = (kffEff != null && deltaT != null) ? kffEff * deltaT : null;
+    const uffClamped = uffRaw != null ? Math.max(0, Math.min(1, uffRaw)) : null;
+    const uffPctCalc = uffClamped != null ? uffClamped * 100 : null;
+
+    // Hard gate check
+    const gateThreshold = nbAbove != null ? -nbAbove : null;
+    const gatePass = ep != null && gateThreshold != null ? ep >= gateThreshold : null;
+    const uffFinal = (gatePass === false) ? 0 : uffPctCalc;
+
+    let steps = '';
+
+    // Step 1: Inputs
+    steps += '<div class="ff-step"><div class="ff-step-icon ff-step-calc">\u2460</div>';
+    steps += '<div class="ff-step-content">';
+    steps += '<span class="ff-dim">Entr\u00e9es</span><br>';
+    steps += 'SP = <span class="ff-val">' + (sp != null ? sp.toFixed(1) : '\u2014') + '\u00b0C</span>';
+    steps += ' &nbsp; T_ext = <span class="ff-val">' + (tExt != null ? tExt.toFixed(1) : '\u2014') + '\u00b0C</span>';
+    steps += ' &nbsp; \u0394T = <span class="ff-hl">' + (deltaT != null ? deltaT.toFixed(1) : '\u2014') + '\u00b0C</span>';
+    steps += '</div></div>';
+    steps += '<div class="ff-step-arrow">\u2193</div>';
+
+    // Step 2: K_ff × ΔT
+    steps += '<div class="ff-step"><div class="ff-step-icon ff-step-calc">\u2461</div>';
+    steps += '<div class="ff-step-content">';
+    steps += 'u_ff_raw = K_ff_eff \u00d7 \u0394T<br>';
+    steps += '= <span class="ff-val">' + (kffEff != null ? kffEff.toFixed(6) : '\u2014') + '</span>';
+    steps += ' \u00d7 <span class="ff-val">' + (deltaT != null ? deltaT.toFixed(1) : '\u2014') + '</span>';
+    steps += ' = <span class="ff-hl">' + (uffRaw != null ? (uffRaw * 100).toFixed(2) + '%' : '\u2014') + '</span>';
+    steps += '</div></div>';
+    steps += '<div class="ff-step-arrow">\u2193</div>';
+
+    // Step 3: Clamp
+    const wasClamped = uffRaw != null && (uffRaw < 0 || uffRaw > 1);
+    steps += '<div class="ff-step"><div class="ff-step-icon ' + (wasClamped ? 'ff-step-fail' : 'ff-step-pass') + '">' + (wasClamped ? '\u2702' : '\u2713') + '</div>';
+    steps += '<div class="ff-step-content">';
+    steps += 'Clamp [0%, 100%] \u2192 <span class="ff-val">' + (uffPctCalc != null ? uffPctCalc.toFixed(2) + '%' : '\u2014') + '</span>';
+    if (wasClamped) steps += ' <span class="ff-warn">(clamp\u00e9)</span>';
+    steps += '</div></div>';
+    steps += '<div class="ff-step-arrow">\u2193</div>';
+
+    // Step 4: Hard gate
+    const gateIcon = gatePass == null ? '\u2753' : (gatePass ? '\u2713' : '\u2717');
+    const gateCls = gatePass == null ? 'ff-step-calc' : (gatePass ? 'ff-step-pass' : 'ff-step-fail');
+    steps += '<div class="ff-step"><div class="ff-step-icon ' + gateCls + '">' + gateIcon + '</div>';
+    steps += '<div class="ff-step-content">';
+    steps += '<span class="ff-dim">Hard Gate</span> : error = <span class="ff-val">' + (ep != null ? ep.toFixed(3) : '\u2014') + '\u00b0C</span>';
+    if (gateThreshold != null) {
+      steps += ' &nbsp; seuil = <span class="ff-val">' + gateThreshold.toFixed(2) + '\u00b0C</span> (-NB_above)';
+    }
+    steps += '<br>';
+    if (gatePass === true) steps += '<span class="ff-ok">\u2192 PASS \u2713</span> (error \u2265 seuil)';
+    else if (gatePass === false) steps += '<span class="ff-err">\u2192 BLOCK \u2717 u_ff = 0</span> (T au-dessus du SP)';
+    else steps += '<span class="ff-dim">\u2192 gate: ' + (ffGate || '\u2014') + '</span>';
+    steps += '</div></div>';
+    steps += '<div class="ff-step-arrow">\u2193</div>';
+
+    // Step 5: Final
+    const finalPct = ffRaw != null ? dcPctNum(ffRaw) : uffFinal;
+    steps += '<div class="ff-step"><div class="ff-step-icon" style="border-color:var(--accent-orange);color:var(--accent-orange);font-weight:700">\u2605</div>';
+    steps += '<div class="ff-step-content">';
+    steps += '<span style="font-size:13px;font-weight:700">u_ff = <span class="ff-hl">' + (finalPct != null ? finalPct.toFixed(1) + '%' : '\u2014') + '</span></span>';
+    steps += '</div></div>';
+
+    pipeline.innerHTML = steps;
+  }
+}
+
+function initFfChart() {
+  if (charts.ff) return;
+  const el = document.getElementById('ff-chart');
+  if (!el || el.clientWidth === 0) return;
+  const ffSeries = [
+    { ...makeSeries('u_ff (%)', '#06b6d4', 2), fill: 'rgba(6,182,212,0.12)', paths: uPlot.paths.stepped({ align: -1 }) },
+  ];
+  charts.ff = new uPlot(
+    makeOpts(el, ffSeries, '%', [0, 105], 240),
+    [[], []],
+    el
+  );
+  const ro = new ResizeObserver(() => {
+    const w = el.clientWidth;
+    if (w > 0 && charts.ff) charts.ff.setSize({ width: w, height: 240 });
+  });
+  ro.observe(el);
+}
+
 // ─── Model Health Tab ────────────────────────────────────────
 const MH_LEARN_TARGET = 31;
 
@@ -1953,7 +2421,7 @@ function updateModelHealth(data) {
 // ─── Main polling loop ───────────────────────────────────────
 async function fetchState() {
   try {
-    const resp = await fetch('/api/state');
+    const resp = await fetch(`/api/state?${entityParam()}`);
     const data = await resp.json();
     if (!data.ok) return;
 
@@ -1963,6 +2431,7 @@ async function fetchState() {
     updateGroups(data.groups);
     updateRaw(data.raw_attributes);
     updateDebugChain(data);
+    updateFeedforward(data);
     updateModelHealth(data);
 
     if (data.last_update) {
@@ -1978,7 +2447,7 @@ async function fetchState() {
 async function fetchHistory() {
   try {
     // First try in-memory history
-    let resp = await fetch('/api/history');
+    let resp = await fetch(`/api/history?${entityParam()}`);
     let data = await resp.json();
     if (data.ok && data.count > 5) {
       historyData = data.data;
@@ -1988,7 +2457,7 @@ async function fetchHistory() {
 
     // Fallback to HA history API
     const hours = parseInt(document.getElementById('chart-range').value) || 12;
-    resp = await fetch(`/api/ha-history?hours=${hours}`);
+    resp = await fetch(`/api/ha-history?${entityParam()}&hours=${hours}`);
     data = await resp.json();
     if (data.ok) {
       historyData = data.data;
@@ -2000,12 +2469,51 @@ async function fetchHistory() {
 }
 
 // ─── Init ────────────────────────────────────────────────────
+async function loadEntitySelector() {
+  const select = document.getElementById('entity-select');
+  try {
+    const resp = await fetch('/api/entities');
+    const data = await resp.json();
+    if (!data.ok || !data.entities.length) return;
+
+    select.innerHTML = '';
+    data.entities.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.entity_id;
+      opt.textContent = e.friendly_name || e.entity_id;
+      select.appendChild(opt);
+    });
+
+    // Restore saved selection (or use default)
+    if (data.entities.some(e => e.entity_id === selectedEntity)) {
+      select.value = selectedEntity;
+    } else {
+      select.value = data.default || data.entities[0].entity_id;
+      selectedEntity = select.value;
+    }
+  } catch (e) {
+    console.error('Failed to load entities:', e);
+  }
+
+  select.addEventListener('change', () => {
+    selectedEntity = select.value;
+    localStorage.setItem('smartpi_selected_entity', selectedEntity);
+    // Reset state and re-fetch
+    currentState = null;
+    previousValues = {};
+    historyData = [];
+    fetchState();
+    fetchHistory();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof uPlot !== 'undefined') {
     initCharts();
   } else {
     console.warn('uPlot not loaded — charts disabled, data still available');
   }
+  loadEntitySelector();
   fetchState();
   fetchHistory();
 

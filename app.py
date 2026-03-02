@@ -42,12 +42,9 @@ app = Flask(__name__)
 
 # ─── Shared State (thread-safe via GIL for simple reads/writes) ──
 state_store = {
-    "climate": {},           # Full climate entity state
-    "attributes": {},        # Climate attributes (SmartPI data)
-    "sensors": {},           # Related sensor entities
-    "last_update": None,     # ISO timestamp of last state change
+    "entities": {},          # {entity_id: {climate, attributes, sensors, last_update, history}}
     "connected": False,      # WebSocket connected?
-    "history": [],           # Rolling history (last 500 data points)
+    "known_entities": [],    # [{entity_id, friendly_name}] — SmartPI climate entities
 }
 
 MAX_HISTORY = 500
@@ -342,7 +339,23 @@ def _snapshot_for_history(attrs: dict) -> dict:
         "near_band_above": attrs.get("smartpi_near_band_above_deg"),
         "near_band_below": attrs.get("smartpi_near_band_below_deg"),
         "in_deadband": attrs.get("smartpi_in_deadband"),
+        "ff_gate": attrs.get("smartpi_ff_gate"),
+        "ff_scale": attrs.get("smartpi_ff_scale"),
+        "ff_k_ff": attrs.get("smartpi_ff_k_ff"),
     }
+
+
+def _get_entity_store(entity_id: str) -> dict:
+    """Get or initialize the state store for a given entity."""
+    if entity_id not in state_store["entities"]:
+        state_store["entities"][entity_id] = {
+            "climate": {},
+            "attributes": {},
+            "sensors": {},
+            "last_update": None,
+            "history": [],
+        }
+    return state_store["entities"][entity_id]
 
 
 # ─── HA REST API helpers ─────────────────────────────────────────
@@ -391,6 +404,52 @@ def ha_get_history(entity_id: str, hours: int = 24) -> list:
         return []
 
 
+_entities_cache = {"data": [], "ts": 0}
+ENTITIES_CACHE_TTL = 60  # seconds
+
+
+def ha_discover_smartpi_entities() -> list[dict]:
+    """Discover all climate entities with SmartPI attributes from HA."""
+    now = time.time()
+    if _entities_cache["data"] and now - _entities_cache["ts"] < ENTITIES_CACHE_TTL:
+        return _entities_cache["data"]
+
+    try:
+        r = requests.get(
+            f"{HA_URL}/api/states",
+            headers=ha_headers(),
+            timeout=15,
+        )
+        r.raise_for_status()
+        all_states = r.json()
+    except Exception as e:
+        log.error("Failed to discover entities: %s", e)
+        return _entities_cache["data"]  # return stale cache on error
+
+    entities = []
+    for state in all_states:
+        eid = state.get("entity_id", "")
+        if not eid.startswith("climate."):
+            continue
+        attrs = state.get("attributes", {})
+        specific = attrs.get("specific_states", {})
+        if isinstance(specific, dict) and "smart_pi" in specific:
+            entities.append({
+                "entity_id": eid,
+                "friendly_name": attrs.get("friendly_name", eid),
+            })
+
+    # Sort: default entity first, then alphabetical
+    entities.sort(key=lambda e: (e["entity_id"] != CLIMATE_ENTITY, e["friendly_name"]))
+
+    _entities_cache["data"] = entities
+    _entities_cache["ts"] = now
+    state_store["known_entities"] = [e["entity_id"] for e in entities]
+    log.info("Discovered %d SmartPI entities: %s", len(entities),
+             [e["entity_id"] for e in entities])
+    return entities
+
+
 # ─── WebSocket listener (runs in background thread) ─────────────
 
 async def _ws_listener():
@@ -434,15 +493,24 @@ async def _ws_listener():
                     "event_type": "state_changed",
                 }))
 
-                # Also do an initial fetch via REST
-                initial = ha_get_state(CLIMATE_ENTITY)
-                if initial:
-                    raw_attrs = initial.get("attributes", {})
-                    attrs = _flatten_smartpi_attrs(raw_attrs)
-                    state_store["climate"] = initial
-                    state_store["attributes"] = attrs
-                    state_store["last_update"] = initial.get("last_changed")
-                    log.info("Initial state loaded for %s", CLIMATE_ENTITY)
+                # Discover SmartPI entities and do initial REST fetch
+                discovered = ha_discover_smartpi_entities()
+                known_ids = set(e["entity_id"] for e in discovered)
+
+                # Ensure the default entity is always tracked even if discovery fails
+                if CLIMATE_ENTITY not in known_ids:
+                    known_ids.add(CLIMATE_ENTITY)
+
+                for eid in known_ids:
+                    initial = ha_get_state(eid)
+                    if initial:
+                        estore = _get_entity_store(eid)
+                        raw_attrs = initial.get("attributes", {})
+                        attrs = _flatten_smartpi_attrs(raw_attrs)
+                        estore["climate"] = initial
+                        estore["attributes"] = attrs
+                        estore["last_update"] = initial.get("last_changed")
+                        log.info("Initial state loaded for %s", eid)
 
                 # Phase 4: Listen for events
                 async for raw in ws:
@@ -454,33 +522,42 @@ async def _ws_listener():
                     data = event.get("data", {})
                     entity_id = data.get("entity_id", "")
 
-                    # We care about our climate entity and related sensors
-                    if entity_id == CLIMATE_ENTITY:
+                    # Track all known SmartPI climate entities
+                    if entity_id in known_ids:
                         new_state = data.get("new_state", {})
                         raw_attrs = new_state.get("attributes", {})
                         attrs = _flatten_smartpi_attrs(raw_attrs)
-                        state_store["climate"] = new_state
-                        state_store["attributes"] = attrs
-                        state_store["last_update"] = new_state.get("last_changed")
+                        estore = _get_entity_store(entity_id)
+                        estore["climate"] = new_state
+                        estore["attributes"] = attrs
+                        estore["last_update"] = new_state.get("last_changed")
 
                         # Append to rolling history
                         snap = _snapshot_for_history(attrs)
-                        state_store["history"].append(snap)
-                        if len(state_store["history"]) > MAX_HISTORY:
-                            state_store["history"] = state_store["history"][-MAX_HISTORY:]
+                        estore["history"].append(snap)
+                        if len(estore["history"]) > MAX_HISTORY:
+                            estore["history"] = estore["history"][-MAX_HISTORY:]
 
-                        log.debug("State updated: T=%.1f, on_pct=%s",
+                        log.debug("[%s] State updated: T=%.1f, on_pct=%s",
+                                  entity_id,
                                   attrs.get("current_temperature", 0),
                                   attrs.get("on_percent", "?"))
 
-                    # Also capture related sensor entities
-                    elif entity_id.startswith(CLIMATE_ENTITY.replace("climate.", "sensor.")):
-                        new_state = data.get("new_state", {})
-                        state_store["sensors"][entity_id] = {
-                            "state": new_state.get("state"),
-                            "attributes": new_state.get("attributes", {}),
-                            "last_changed": new_state.get("last_changed"),
-                        }
+                    # Also capture related sensor entities for any known climate entity
+                    elif any(entity_id.startswith(eid.replace("climate.", "sensor."))
+                             for eid in known_ids):
+                        # Find which climate entity this sensor belongs to
+                        for eid in known_ids:
+                            prefix = eid.replace("climate.", "sensor.")
+                            if entity_id.startswith(prefix):
+                                new_state = data.get("new_state", {})
+                                estore = _get_entity_store(eid)
+                                estore["sensors"][entity_id] = {
+                                    "state": new_state.get("state"),
+                                    "attributes": new_state.get("attributes", {}),
+                                    "last_changed": new_state.get("last_changed"),
+                                }
+                                break
 
         except websockets.exceptions.ConnectionClosed:
             log.warning("WebSocket connection closed, reconnecting in 5s...")
@@ -506,6 +583,11 @@ def _start_ws_thread():
 
 # ─── Flask Routes ────────────────────────────────────────────────
 
+def _resolve_entity_id() -> str:
+    """Get entity_id from query param, falling back to CLIMATE_ENTITY."""
+    return request.args.get("entity_id", CLIMATE_ENTITY)
+
+
 @app.route("/")
 def index():
     """Serve the main dashboard."""
@@ -516,17 +598,30 @@ def index():
     )
 
 
+@app.route("/api/entities")
+def api_entities():
+    """Return the list of discovered SmartPI climate entities."""
+    entities = ha_discover_smartpi_entities()
+    return jsonify({
+        "ok": True,
+        "default": CLIMATE_ENTITY,
+        "entities": entities,
+    })
+
+
 @app.route("/api/state")
 def api_state():
     """Return the current SmartPI state grouped by category."""
-    attrs = state_store["attributes"]
-    climate = state_store["climate"]
+    entity_id = _resolve_entity_id()
+    estore = _get_entity_store(entity_id)
+    attrs = estore["attributes"]
+    climate = estore["climate"]
 
     return jsonify({
         "ok": True,
         "connected": state_store["connected"],
-        "entity_id": CLIMATE_ENTITY,
-        "last_update": state_store["last_update"],
+        "entity_id": entity_id,
+        "last_update": estore["last_update"],
         "hvac_mode": climate.get("state", "unknown"),
         "hvac_action": attrs.get("hvac_action", "unknown"),
         "groups": _extract_smartpi_data(attrs),
@@ -537,19 +632,22 @@ def api_state():
 @app.route("/api/history")
 def api_history():
     """Return the rolling in-memory history."""
+    entity_id = _resolve_entity_id()
+    estore = _get_entity_store(entity_id)
     return jsonify({
         "ok": True,
-        "count": len(state_store["history"]),
-        "data": state_store["history"],
+        "count": len(estore["history"]),
+        "data": estore["history"],
     })
 
 
 @app.route("/api/ha-history")
 def api_ha_history():
     """Fetch history from HA REST API (heavier, for initial load)."""
+    entity_id = _resolve_entity_id()
     hours = int(request.args.get("hours", 24))
     hours = min(hours, 168)  # Cap at 7 days
-    history = ha_get_history(CLIMATE_ENTITY, hours)
+    history = ha_get_history(entity_id, hours)
 
     # Transform HA history format to our format
     points = []
@@ -623,10 +721,11 @@ def api_block_diagram():
 if __name__ == "__main__":
     log.info("=" * 60)
     log.info("SmartPI Dashboard")
-    log.info("  HA URL:    %s", HA_URL)
-    log.info("  Entity:    %s", CLIMATE_ENTITY)
-    log.info("  WS URL:    %s", WS_URL)
-    log.info("  Port:      %s", FLASK_PORT)
+    log.info("  HA URL:         %s", HA_URL)
+    log.info("  Default Entity: %s", CLIMATE_ENTITY)
+    log.info("  WS URL:         %s", WS_URL)
+    log.info("  Port:           %s", FLASK_PORT)
+    log.info("  Multi-entity:   auto-discovery enabled")
     log.info("=" * 60)
 
     # Start WebSocket listener
