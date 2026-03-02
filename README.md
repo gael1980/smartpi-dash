@@ -101,3 +101,7 @@ Le dashboard regroupe automatiquement les attributs SmartPI en catégories :
 | ⏱️ Cycle PWM | Cycle min, état cycle, min_on/min_off |
 
 Les attributs SmartPI non mappés apparaissent automatiquement dans "Autres attributs".
+
+## Licence
+
+Ce projet est distribué sous licence **GNU General Public License v3.0** — voir le fichier [LICENSE](LICENSE) pour plus de détails.
