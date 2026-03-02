@@ -916,6 +916,201 @@
     text-align: center; padding: 48px 16px;
     color: var(--text-dim); font-size: 13px;
   }
+
+  /* ─── Alerts Tab ──────────────────────────────────────────────── */
+  .al-layout { display: flex; flex-direction: column; gap: 2px; }
+
+  .al-summary-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 20px; background: var(--bg-panel);
+    flex-wrap: wrap;
+  }
+  .al-summary-count {
+    font: 700 24px 'JetBrains Mono', monospace;
+    color: var(--text-white);
+  }
+  .al-summary-label {
+    font: 500 12px 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+  }
+  .al-summary-dots {
+    display: flex; gap: 6px; margin-left: 8px;
+  }
+  .al-summary-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .al-summary-dot.al-err { background: var(--accent-red); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+  .al-summary-dot.al-wrn { background: var(--accent-orange); box-shadow: 0 0 6px rgba(249,115,22,0.4); }
+  .al-summary-dot.al-ok  { background: var(--accent-green); box-shadow: 0 0 6px rgba(34,197,94,0.4); }
+
+  .al-body {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 2px;
+  }
+  @media (max-width: 900px) { .al-body { grid-template-columns: 1fr; } }
+
+  /* Thresholds card */
+  .al-thresholds {
+    background: var(--bg-panel); padding: 16px 20px;
+  }
+  .al-th-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .al-th-title {
+    font: 600 12px 'JetBrains Mono', monospace;
+    color: var(--text-bright);
+  }
+  .al-th-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+    font: 400 11px 'JetBrains Mono', monospace;
+  }
+  .al-th-row:last-child { border-bottom: none; }
+  .al-th-label { color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .al-th-input {
+    width: 60px; padding: 3px 6px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--accent-cyan);
+    font: 500 11px 'JetBrains Mono', monospace;
+    text-align: right;
+  }
+  .al-th-input:focus { outline: none; border-color: var(--accent-blue); }
+  .al-th-unit { color: var(--text-dim); font-size: 9px; min-width: 28px; }
+
+  /* Alert list */
+  .al-list { background: var(--bg-panel); padding: 16px 20px; }
+  .al-list-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .al-list-title {
+    font: 600 12px 'JetBrains Mono', monospace;
+    color: var(--text-bright);
+  }
+  .al-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; margin-bottom: 4px;
+    border-radius: 6px;
+    font: 400 11px 'JetBrains Mono', monospace;
+  }
+  .al-item.al-sev-error {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .al-item.al-sev-warning {
+    background: rgba(249,115,22,0.08);
+    border: 1px solid rgba(249,115,22,0.2);
+  }
+  .al-sev-badge {
+    font: 600 9px 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  .al-sev-error .al-sev-badge { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  .al-sev-warning .al-sev-badge { background: rgba(249,115,22,0.2); color: #fdba74; }
+  .al-msg { color: var(--text); flex: 1; }
+  .al-val { color: var(--text-dim); white-space: nowrap; font-size: 10px; }
+  .al-empty {
+    text-align: center; padding: 48px 16px;
+    color: var(--accent-green); font-size: 13px;
+  }
+
+  /* ─── Performance Tab ─────────────────────────────────────────── */
+  .pf-layout { display: flex; flex-direction: column; gap: 2px; }
+
+  .pf-kpi-bar {
+    display: flex; flex-wrap: wrap; gap: 2px;
+    background: var(--bg);
+  }
+  .pf-kpi {
+    flex: 1 1 160px;
+    background: var(--bg-panel);
+    padding: 16px 20px;
+    position: relative; overflow: hidden;
+  }
+  .pf-kpi .pf-kpi-label {
+    font: 500 9px 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-dim); margin-bottom: 6px;
+  }
+  .pf-kpi .pf-kpi-value {
+    font: 700 26px 'JetBrains Mono', monospace;
+    color: var(--text-white); line-height: 1;
+  }
+  .pf-kpi .pf-kpi-unit {
+    font-size: 13px; font-weight: 400; color: var(--text-dim);
+  }
+  .pf-kpi::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  }
+  .pf-kpi.pf-err-avg::after { background: var(--accent-blue); }
+  .pf-kpi.pf-err-max::after { background: var(--accent-red); }
+  .pf-kpi.pf-deadband::after { background: var(--accent-green); }
+  .pf-kpi.pf-nearband::after { background: var(--accent-yellow); }
+  .pf-kpi.pf-overshoot::after { background: var(--accent-orange); }
+  .pf-kpi.pf-iae::after { background: var(--accent-purple); }
+
+  /* Error chart */
+  .pf-chart-wrap {
+    background: var(--bg-panel); padding: 16px;
+  }
+  .pf-chart-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .pf-chart-header h3 {
+    font: 600 13px 'JetBrains Mono', monospace;
+    color: var(--text-bright);
+  }
+  .pf-chart-canvas {
+    position: relative; width: 100%; height: 280px;
+    background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden;
+  }
+
+  /* Sessions table */
+  .pf-sessions-wrap {
+    background: var(--bg-panel); padding: 16px 20px;
+  }
+  .pf-sessions-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pf-sessions-title {
+    font: 600 12px 'JetBrains Mono', monospace;
+    color: var(--text-bright);
+  }
+  .pf-table {
+    width: 100%; border-collapse: collapse;
+    font: 400 11px 'JetBrains Mono', monospace;
+  }
+  .pf-table th {
+    text-align: left; padding: 4px 8px;
+    color: var(--text-dim); font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .pf-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+    color: var(--text);
+  }
+  .pf-table td.pf-val {
+    color: var(--accent-cyan); font-weight: 600;
+    text-align: right; white-space: nowrap;
+  }
+  .pf-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .pf-empty {
+    text-align: center; padding: 32px 16px;
+    color: var(--text-dim); font-size: 12px;
+  }
 </style>
 </head>
 <body>
@@ -993,6 +1188,8 @@
   <button class="tab-btn" data-tab="tab-feedforward">🎯 Feedforward</button>
   <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
   <button class="tab-btn" data-tab="tab-events">📍 Événements</button>
+  <button class="tab-btn" data-tab="tab-alerts">🚨 Alertes</button>
+  <button class="tab-btn" data-tab="tab-perf">🧪 Consigne vs Réalisé</button>
   <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
 </nav>
 
@@ -1062,6 +1259,94 @@
     </div>
     <div class="ev-list" id="ev-list">
       <div class="ev-empty">En attente de données d'historique...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Alerts                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-alerts">
+  <div class="al-layout">
+    <!-- Summary bar -->
+    <div class="al-summary-bar">
+      <span class="al-summary-count" id="al-count">0</span>
+      <span class="al-summary-label">alertes actives</span>
+      <div class="al-summary-dots" id="al-dots"></div>
+    </div>
+
+    <div class="al-body">
+      <!-- Thresholds card -->
+      <div class="al-thresholds">
+        <div class="al-th-header">
+          <span>⚙️</span>
+          <span class="al-th-title">Seuils configurables</span>
+        </div>
+        <div id="al-thresholds-container"></div>
+      </div>
+
+      <!-- Active alerts list -->
+      <div class="al-list">
+        <div class="al-list-header">
+          <span>🔔</span>
+          <span class="al-list-title">Alertes actives</span>
+        </div>
+        <div id="al-alerts-container">
+          <div class="al-empty">Aucune alerte active</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Performance (Consigne vs Réalisé)                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-perf">
+  <div class="pf-layout">
+    <!-- KPI bar -->
+    <div class="pf-kpi-bar" id="pf-kpi-bar">
+      <div class="pf-kpi pf-err-avg">
+        <div class="pf-kpi-label">Erreur moyenne</div>
+        <div class="pf-kpi-value"><span id="pf-err-avg">—</span><span class="pf-kpi-unit"> °C</span></div>
+      </div>
+      <div class="pf-kpi pf-err-max">
+        <div class="pf-kpi-label">Erreur max</div>
+        <div class="pf-kpi-value"><span id="pf-err-max">—</span><span class="pf-kpi-unit"> °C</span></div>
+      </div>
+      <div class="pf-kpi pf-deadband">
+        <div class="pf-kpi-label">% en deadband</div>
+        <div class="pf-kpi-value"><span id="pf-deadband">—</span><span class="pf-kpi-unit"> %</span></div>
+      </div>
+      <div class="pf-kpi pf-nearband">
+        <div class="pf-kpi-label">% en near-band</div>
+        <div class="pf-kpi-value"><span id="pf-nearband">—</span><span class="pf-kpi-unit"> %</span></div>
+      </div>
+      <div class="pf-kpi pf-overshoot">
+        <div class="pf-kpi-label">Overshoot max</div>
+        <div class="pf-kpi-value"><span id="pf-overshoot">—</span><span class="pf-kpi-unit"> °C</span></div>
+      </div>
+      <div class="pf-kpi pf-iae">
+        <div class="pf-kpi-label">IAE cumulée</div>
+        <div class="pf-kpi-value"><span id="pf-iae">—</span><span class="pf-kpi-unit"> °C·min</span></div>
+      </div>
+    </div>
+
+    <!-- Error chart -->
+    <div class="pf-chart-wrap">
+      <div class="pf-chart-header"><h3>📉 Erreur (T_in - Consigne)</h3></div>
+      <div class="pf-chart-canvas" id="pf-error-chart"></div>
+    </div>
+
+    <!-- Sessions table -->
+    <div class="pf-sessions-wrap">
+      <div class="pf-sessions-header">
+        <span>📋</span>
+        <span class="pf-sessions-title">Sessions de consigne</span>
+      </div>
+      <div id="pf-sessions-container">
+        <div class="pf-empty">En attente de données d'historique...</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1422,6 +1707,22 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'tab-events') {
       setTimeout(() => {
         if (historyData && historyData.length) updateEvents(historyData);
+      }, 50);
+    }
+    // Lazy-init alerts tab
+    if (btn.dataset.tab === 'tab-alerts') {
+      initAlertThresholds();
+      if (currentState) updateAlerts(currentState);
+    }
+    // Lazy-init performance tab
+    if (btn.dataset.tab === 'tab-perf') {
+      setTimeout(() => {
+        if (!perfChartInitialized) initPerfChart();
+        else if (charts.perfErr) {
+          const el = document.getElementById('pf-error-chart');
+          if (el && el.clientWidth > 0) charts.perfErr.setSize({ width: el.clientWidth, height: 260 });
+        }
+        if (historyData && historyData.length) updatePerformance(historyData);
       }, 50);
     }
   });
@@ -2533,6 +2834,407 @@ function updateModelHealth(data) {
   }).join('');
 }
 
+// ─── Alerts / Anomalies ──────────────────────────────────────
+const ALERT_DEFAULTS = {
+  rmse:           { label: 'RMSE',               unit: '°C',  value: 0.7 },
+  innovation_n:   { label: 'Innovation (N pts)',  unit: 'pts', value: 5 },
+  innovation_thr: { label: 'Innovation seuil',   unit: '°C',  value: 0.3 },
+  cusum:          { label: 'CUSUM',               unit: '',    value: 5.0 },
+  error_p:        { label: 'Erreur |T|',          unit: '°C',  value: 2.0 },
+  snapshot_age:   { label: 'Snapshot age',        unit: 'h',   value: 48 },
+};
+
+function getAlertThresholds() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('smartpi_alert_thresholds') || '{}');
+    const merged = {};
+    for (const [k, def] of Object.entries(ALERT_DEFAULTS)) {
+      merged[k] = saved[k] != null ? Number(saved[k]) : def.value;
+    }
+    return merged;
+  } catch { return Object.fromEntries(Object.entries(ALERT_DEFAULTS).map(([k, d]) => [k, d.value])); }
+}
+
+function saveAlertThresholds(t) {
+  localStorage.setItem('smartpi_alert_thresholds', JSON.stringify(t));
+}
+
+let alertsInitialized = false;
+
+function initAlertThresholds() {
+  if (alertsInitialized) return;
+  alertsInitialized = true;
+  const container = document.getElementById('al-thresholds-container');
+  if (!container) return;
+  const t = getAlertThresholds();
+  let html = '';
+  for (const [k, def] of Object.entries(ALERT_DEFAULTS)) {
+    html += `<div class="al-th-row">
+      <span class="al-th-label">${def.label}</span>
+      <input class="al-th-input" type="number" step="any" data-key="${k}" value="${t[k]}">
+      <span class="al-th-unit">${def.unit}</span>
+    </div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.al-th-input').forEach(input => {
+    input.addEventListener('change', () => {
+      const th = getAlertThresholds();
+      th[input.dataset.key] = Number(input.value);
+      saveAlertThresholds(th);
+      if (currentState) updateAlerts(currentState);
+    });
+  });
+}
+
+function evaluateAlerts(attrs, history) {
+  const alerts = [];
+  const t = getAlertThresholds();
+
+  // 1. RMSE élevé
+  const rmse = attrs.smartpi_twin_rmse;
+  if (rmse != null && rmse > t.rmse) {
+    alerts.push({ id: 'rmse', severity: rmse > t.rmse * 1.5 ? 'error' : 'warning',
+      message: `RMSE élevé: ${rmse.toFixed(3)} °C`, current: rmse.toFixed(3), threshold: t.rmse });
+  }
+
+  // 2. Innovation persistante
+  if (history && history.length >= t.innovation_n) {
+    const lastN = history.slice(-Math.round(t.innovation_n));
+    const allHigh = lastN.every(p => p.twin_innovation != null && Math.abs(p.twin_innovation) > t.innovation_thr);
+    if (allHigh) {
+      const avgInnov = lastN.reduce((s, p) => s + Math.abs(p.twin_innovation), 0) / lastN.length;
+      alerts.push({ id: 'innovation', severity: 'warning',
+        message: `Innovation persistante > ${t.innovation_thr}°C sur ${Math.round(t.innovation_n)} pts`, current: avgInnov.toFixed(3), threshold: t.innovation_thr });
+    }
+  }
+
+  // 3. Deadtime non fiable
+  if (attrs.smartpi_deadtime_heat_reliable === false) {
+    alerts.push({ id: 'dt_heat', severity: 'error', message: 'Deadtime heat non fiable', current: 'false', threshold: 'true' });
+  }
+  if (attrs.smartpi_deadtime_cool_reliable === false) {
+    alerts.push({ id: 'dt_cool', severity: 'error', message: 'Deadtime cool non fiable', current: 'false', threshold: 'true' });
+  }
+
+  // 4. Tau non fiable
+  if (attrs.smartpi_tau_reliable === false) {
+    alerts.push({ id: 'tau', severity: 'error', message: 'Tau non fiable', current: 'false', threshold: 'true' });
+  }
+
+  // 5. Modèle dégradé
+  if (attrs.smartpi_autocalib_model_degraded === true) {
+    alerts.push({ id: 'degraded', severity: 'error', message: 'Modèle dégradé', current: 'true', threshold: 'false' });
+  }
+
+  // 6. Guard cut actif
+  if (attrs.smartpi_guard_cut_active === true) {
+    alerts.push({ id: 'guard', severity: 'error', message: 'Guard cut actif', current: 'true', threshold: 'false' });
+  }
+
+  // 7. CUSUM élevé
+  const cusum = attrs.smartpi_twin_cusum;
+  if (cusum != null && cusum > t.cusum) {
+    alerts.push({ id: 'cusum', severity: 'warning',
+      message: `CUSUM élevé: ${cusum.toFixed(2)}`, current: cusum.toFixed(2), threshold: t.cusum });
+  }
+
+  // 8. Erreur température
+  const tIn = attrs.current_temperature;
+  const tTarget = attrs.temperature || attrs.target_temperature;
+  if (tIn != null && tTarget != null) {
+    const errP = Math.abs(tIn - tTarget);
+    if (errP > t.error_p) {
+      alerts.push({ id: 'error_p', severity: 'warning',
+        message: `Erreur température: ${errP.toFixed(2)} °C`, current: errP.toFixed(2), threshold: t.error_p });
+    }
+  }
+
+  // 9. Snapshot ancien
+  const age = attrs.smartpi_autocalib_snapshot_age_h;
+  if (age != null && age > t.snapshot_age) {
+    alerts.push({ id: 'snapshot_age', severity: 'warning',
+      message: `Snapshot ancien: ${age.toFixed(1)} h`, current: age.toFixed(1), threshold: t.snapshot_age });
+  }
+
+  // Sort: errors first, then warnings
+  alerts.sort((a, b) => (a.severity === 'error' ? 0 : 1) - (b.severity === 'error' ? 0 : 1));
+  return alerts;
+}
+
+function renderAlerts(alerts) {
+  const container = document.getElementById('al-alerts-container');
+  const countEl = document.getElementById('al-count');
+  const dotsEl = document.getElementById('al-dots');
+  if (!container) return;
+
+  countEl.textContent = alerts.length;
+
+  // Summary dots
+  const errors = alerts.filter(a => a.severity === 'error').length;
+  const warnings = alerts.filter(a => a.severity === 'warning').length;
+  let dots = '';
+  for (let i = 0; i < errors; i++) dots += '<span class="al-summary-dot al-err"></span>';
+  for (let i = 0; i < warnings; i++) dots += '<span class="al-summary-dot al-wrn"></span>';
+  if (alerts.length === 0) dots = '<span class="al-summary-dot al-ok"></span>';
+  dotsEl.innerHTML = dots;
+
+  if (alerts.length === 0) {
+    container.innerHTML = '<div class="al-empty">Aucune alerte active — tous les indicateurs sont nominaux.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const a of alerts) {
+    html += `<div class="al-item al-sev-${a.severity}">
+      <span class="al-sev-badge">${a.severity === 'error' ? 'ERREUR' : 'ATTENTION'}</span>
+      <span class="al-msg">${escapeHtml(a.message)}</span>
+      <span class="al-val">${escapeHtml(String(a.current))} / seuil ${escapeHtml(String(a.threshold))}</span>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function updateAlerts(data) {
+  const attrs = data.raw_attributes || {};
+  const alerts = evaluateAlerts(attrs, historyData);
+  renderAlerts(alerts);
+}
+
+// ─── Performance (Consigne vs Réalisé) ──────────────────────
+let perfChartInitialized = false;
+
+function computePerformanceMetrics(history) {
+  if (!history || history.length < 2) return null;
+
+  const valid = history.filter(p => p.t_in != null && p.t_target != null);
+  if (valid.length < 2) return null;
+
+  const errors = valid.map(p => p.t_in - p.t_target);
+  const absErrors = errors.map(Math.abs);
+
+  const errAvg = absErrors.reduce((s, e) => s + e, 0) / absErrors.length;
+  const errMax = Math.max(...absErrors);
+
+  // % in deadband
+  const inDeadband = valid.filter(p => p.in_deadband === true || p.in_deadband === 'true').length;
+  const pctDeadband = (inDeadband / valid.length) * 100;
+
+  // % in near-band: |error| < near_band_above (or 0.5°C fallback)
+  const nbThreshold = valid[0].near_band_above || 0.5;
+  const inNearband = valid.filter((p, i) => absErrors[i] <= nbThreshold).length;
+  const pctNearband = (inNearband / valid.length) * 100;
+
+  // Overshoot (t_in above target when heating)
+  const overshoots = errors.filter(e => e > 0);
+  const overshoot = overshoots.length > 0 ? Math.max(...overshoots) : 0;
+
+  // IAE (Integral of Absolute Error in °C·min)
+  let iae = 0;
+  for (let i = 1; i < valid.length; i++) {
+    const dt = (new Date(valid[i].ts) - new Date(valid[i - 1].ts)) / 60000; // minutes
+    if (dt > 0 && dt < 30) { // skip gaps > 30min
+      iae += absErrors[i] * dt;
+    }
+  }
+
+  return { errAvg, errMax, pctDeadband, pctNearband, overshoot, iae, errors, valid };
+}
+
+function detectSetpointChanges(history) {
+  const changes = [];
+  if (!history || history.length < 2) return changes;
+
+  for (let i = 1; i < history.length; i++) {
+    const prev = history[i - 1];
+    const curr = history[i];
+    if (prev.t_target != null && curr.t_target != null && Math.abs(curr.t_target - prev.t_target) > 0.1) {
+      changes.push({ index: i, ts: curr.ts, prevSP: prev.t_target, newSP: curr.t_target });
+    }
+  }
+  return changes;
+}
+
+function computeSessionMetrics(history, startIdx, endIdx) {
+  const session = history.slice(startIdx, endIdx);
+  if (session.length < 2) return null;
+
+  const sp = session[0].t_target;
+  const valid = session.filter(p => p.t_in != null && p.t_target != null);
+  if (valid.length < 2) return null;
+
+  const absErrors = valid.map(p => Math.abs(p.t_in - p.t_target));
+  const errAvg = absErrors.reduce((s, e) => s + e, 0) / absErrors.length;
+  const overshoots = valid.map(p => p.t_in - p.t_target).filter(e => e > 0);
+  const overshoot = overshoots.length > 0 ? Math.max(...overshoots) : 0;
+
+  // Rise time: time from start to first |error| < 0.5°C
+  let riseTime = null;
+  const t0 = new Date(valid[0].ts).getTime();
+  for (let i = 1; i < valid.length; i++) {
+    if (Math.abs(valid[i].t_in - sp) < 0.5) {
+      riseTime = (new Date(valid[i].ts).getTime() - t0) / 60000;
+      break;
+    }
+  }
+
+  // Settling time: time from start to staying in near-band
+  let settlingTime = null;
+  const nbThr = valid[0].near_band_above || 0.5;
+  for (let i = valid.length - 1; i >= 1; i--) {
+    if (Math.abs(valid[i].t_in - sp) > nbThr) {
+      settlingTime = (new Date(valid[i].ts).getTime() - t0) / 60000;
+      break;
+    }
+  }
+
+  // IAE
+  let iae = 0;
+  for (let i = 1; i < valid.length; i++) {
+    const dt = (new Date(valid[i].ts) - new Date(valid[i - 1].ts)) / 60000;
+    if (dt > 0 && dt < 30) iae += absErrors[i] * dt;
+  }
+
+  return { sp, errAvg, overshoot, riseTime, settlingTime, iae, points: valid.length };
+}
+
+function initPerfChart() {
+  if (perfChartInitialized || !window.uPlot) return;
+  const el = document.getElementById('pf-error-chart');
+  if (!el || el.clientWidth === 0) return;
+  perfChartInitialized = true;
+
+  const errSeries = [
+    { ...makeSeries('Erreur (°C)', '#3b82f6', 2),
+      fill: (u, seriesIdx) => {
+        const ctx = u.ctx;
+        const grad = ctx.createLinearGradient(0, u.valToPos(2, 'y'), 0, u.valToPos(-2, 'y'));
+        grad.addColorStop(0, 'rgba(239,68,68,0.15)');
+        grad.addColorStop(0.3, 'rgba(249,115,22,0.10)');
+        grad.addColorStop(0.5, 'rgba(34,197,94,0.08)');
+        grad.addColorStop(0.7, 'rgba(249,115,22,0.10)');
+        grad.addColorStop(1, 'rgba(239,68,68,0.15)');
+        return grad;
+      }
+    },
+  ];
+  const opts = makeOpts(el, errSeries, '°C', null, 260);
+
+  // Add horizontal band lines
+  opts.hooks = {
+    draw: [
+      (u) => {
+        const ctx = u.ctx;
+        const l = u.bbox.left;
+        const w = u.bbox.width;
+        const bands = [
+          { val: 0.3, color: 'rgba(34,197,94,0.4)' },
+          { val: -0.3, color: 'rgba(34,197,94,0.4)' },
+          { val: 1.0, color: 'rgba(249,115,22,0.4)' },
+          { val: -1.0, color: 'rgba(249,115,22,0.4)' },
+        ];
+        ctx.save();
+        for (const b of bands) {
+          const y = u.valToPos(b.val, 'y', true);
+          if (y >= u.bbox.top && y <= u.bbox.top + u.bbox.height) {
+            ctx.strokeStyle = b.color;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(l, y);
+            ctx.lineTo(l + w, y);
+            ctx.stroke();
+          }
+        }
+        // Zero line
+        const y0 = u.valToPos(0, 'y', true);
+        ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(l, y0);
+        ctx.lineTo(l + w, y0);
+        ctx.stroke();
+        ctx.restore();
+      }
+    ]
+  };
+
+  charts.perfErr = new uPlot(opts, [[], []], el);
+
+  const ro = new ResizeObserver(() => {
+    const w = el.clientWidth;
+    if (w > 0 && charts.perfErr) charts.perfErr.setSize({ width: w, height: 260 });
+  });
+  ro.observe(el);
+}
+
+function updatePerformance(history) {
+  const metrics = computePerformanceMetrics(history);
+  if (!metrics) return;
+
+  // Update KPI cards
+  document.getElementById('pf-err-avg').textContent = metrics.errAvg.toFixed(2);
+  document.getElementById('pf-err-max').textContent = metrics.errMax.toFixed(2);
+  document.getElementById('pf-deadband').textContent = metrics.pctDeadband.toFixed(1);
+  document.getElementById('pf-nearband').textContent = metrics.pctNearband.toFixed(1);
+  document.getElementById('pf-overshoot').textContent = metrics.overshoot.toFixed(2);
+  document.getElementById('pf-iae').textContent = metrics.iae.toFixed(1);
+
+  // Update error chart
+  if (charts.perfErr && metrics.valid.length > 1) {
+    const ts = metrics.valid.map(p => new Date(p.ts).getTime() / 1000);
+    charts.perfErr.setData([ts, metrics.errors]);
+  }
+
+  // Update sessions table
+  const changes = detectSetpointChanges(history);
+  const container = document.getElementById('pf-sessions-container');
+
+  if (changes.length === 0) {
+    container.innerHTML = '<div class="pf-empty">Aucun changement de consigne détecté dans l\'historique.</div>';
+    return;
+  }
+
+  // Build sessions
+  const sessions = [];
+  for (let i = 0; i < changes.length; i++) {
+    const start = changes[i].index;
+    const end = i + 1 < changes.length ? changes[i + 1].index : history.length;
+    const m = computeSessionMetrics(history, start, end);
+    if (m) {
+      sessions.push({ ts: changes[i].ts, prevSP: changes[i].prevSP, ...m });
+    }
+  }
+
+  if (sessions.length === 0) {
+    container.innerHTML = '<div class="pf-empty">Pas assez de données par session.</div>';
+    return;
+  }
+
+  let html = `<table class="pf-table">
+    <thead><tr>
+      <th>Heure</th><th>Consigne</th><th>Err moy</th><th>Overshoot</th>
+      <th>Rise time</th><th>Settling</th><th>IAE</th><th>Points</th>
+    </tr></thead><tbody>`;
+
+  for (const s of sessions) {
+    const time = fmtEvTime(s.ts);
+    html += `<tr>
+      <td>${escapeHtml(time)}</td>
+      <td class="pf-val">${s.prevSP.toFixed(1)} → ${s.sp.toFixed(1)} °C</td>
+      <td class="pf-val">${s.errAvg.toFixed(2)} °C</td>
+      <td class="pf-val">${s.overshoot.toFixed(2)} °C</td>
+      <td class="pf-val">${s.riseTime != null ? s.riseTime.toFixed(0) + ' min' : '—'}</td>
+      <td class="pf-val">${s.settlingTime != null ? s.settlingTime.toFixed(0) + ' min' : '—'}</td>
+      <td class="pf-val">${s.iae.toFixed(1)}</td>
+      <td>${s.points}</td>
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
 // ─── Main polling loop ───────────────────────────────────────
 async function fetchState() {
   try {
@@ -2548,6 +3250,7 @@ async function fetchState() {
     updateDebugChain(data);
     updateFeedforward(data);
     updateModelHealth(data);
+    updateAlerts(data);
 
     if (data.last_update) {
       const d = new Date(data.last_update);
@@ -2678,6 +3381,7 @@ async function fetchHistory() {
       historyData = data.data;
       updateCharts(historyData);
       updateEvents(historyData);
+      updatePerformance(historyData);
       return;
     }
 
@@ -2689,6 +3393,7 @@ async function fetchHistory() {
       historyData = data.data;
       updateCharts(historyData);
       updateEvents(historyData);
+      updatePerformance(historyData);
     }
   } catch (e) {
     console.error('Fetch history error:', e);
