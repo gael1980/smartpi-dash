@@ -1,0 +1,298 @@
+"""SmartPI domain constants and pure data transforms."""
+
+from datetime import datetime, timezone
+
+# ─── Mapping: SmartPI attributes → dashboard groups ──────────────
+SMARTPI_GROUPS = {
+    "regulation": {
+        "label": "Régulation PI",
+        "icon": "⚡",
+        "keys": [
+            "current_temperature", "target_temperature", "on_percent",
+            "smartpi_error_p", "smartpi_error_i",
+            "smartpi_kp", "smartpi_ki", "smartpi_u_p", "smartpi_u_i", "smartpi_u_ff",
+            "smartpi_u_pi", "smartpi_u_cmd", "smartpi_u_applied", "smartpi_u_limited",
+            "smartpi_aw_du",
+        ],
+    },
+    "model": {
+        "label": "Modèle Thermique",
+        "icon": "🏠",
+        "keys": [
+            "smartpi_a", "smartpi_b", "smartpi_tau_min",
+            "smartpi_deadtime_heat_s", "smartpi_deadtime_cool_s",
+            "smartpi_deadtime_heat_reliable", "smartpi_deadtime_cool_reliable",
+            "smartpi_tau_reliable",
+            "smartpi_learn_ok_count_a", "smartpi_learn_ok_count_b",
+        ],
+    },
+    "twin": {
+        "label": "Thermal Twin",
+        "icon": "🔬",
+        "keys": [
+            "smartpi_twin_t_hat", "smartpi_twin_innovation",
+            "smartpi_twin_d_hat_ema", "smartpi_twin_rmse",
+            "smartpi_twin_cusum", "smartpi_twin_t_steady",
+            "smartpi_twin_eta_s", "smartpi_twin_eta_reason",
+        ],
+    },
+    "governance": {
+        "label": "Gouvernance & Sécurité",
+        "icon": "🛡️",
+        "keys": [
+            "smartpi_regime", "smartpi_phase",
+            "smartpi_governance_action", "smartpi_governance_diag_code",
+            "smartpi_integral_state",
+            "smartpi_thermal_guard_active", "smartpi_guard_cut_active",
+        ],
+    },
+    "feedforward": {
+        "label": "Feedforward",
+        "icon": "🎯",
+        "keys": [
+            "smartpi_ff_enabled", "smartpi_ff_k_ff",
+            "smartpi_ff_u_ff", "smartpi_ff_warmup",
+            "smartpi_ff_gate", "smartpi_ff_scale",
+        ],
+    },
+    "calibration": {
+        "label": "Calibration & AutoCalib",
+        "icon": "🔧",
+        "keys": [
+            "smartpi_calibration_state",
+            "smartpi_autocalib_state", "smartpi_autocalib_model_degraded",
+            "smartpi_autocalib_triggered_params",
+            "smartpi_autocalib_retry_count",
+            "smartpi_autocalib_snapshot_age_h",
+        ],
+    },
+    "setpoint_filter": {
+        "label": "Filtre de Consigne",
+        "icon": "📐",
+        "keys": [
+            "smartpi_sp_brut", "smartpi_sp_for_p",
+            "smartpi_filter_mode", "smartpi_filter_tau_f",
+        ],
+    },
+    "cycle": {
+        "label": "Cycle PWM",
+        "icon": "⏱️",
+        "keys": [
+            "smartpi_cycle_min", "smartpi_cycle_state",
+            "smartpi_min_on_s", "smartpi_min_off_s",
+            "smartpi_rate_limit",
+        ],
+    },
+}
+
+# Flattened set of all known SmartPI attribute keys
+ALL_SMARTPI_KEYS = set()
+for _grp in SMARTPI_GROUPS.values():
+    ALL_SMARTPI_KEYS.update(_grp["keys"])
+
+
+def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
+    """Flatten the nested HA attributes so that SmartPI data is at the top level.
+
+    HA stores SmartPI data under raw_attrs["specific_states"]["smart_pi"]
+    with keys like 'Kp', 'governance_regime', 'pred.twin_T_hat', etc.
+    We flatten them to 'smartpi_kp', 'smartpi_regime', 'smartpi_twin_t_hat', etc.
+    """
+    flat = dict(raw_attrs)  # start with top-level attrs (current_temperature, etc.)
+
+    specific = raw_attrs.get("specific_states", {})
+    if not isinstance(specific, dict):
+        return flat
+
+    # ext_current_temperature lives directly in specific_states
+    ext_temp = specific.get("ext_current_temperature")
+    if ext_temp is not None:
+        flat["smartpi_t_ext"] = ext_temp
+
+    spi = specific.get("smart_pi", {})
+    if not isinstance(spi, dict):
+        return flat
+
+    # Explicit mapping from nested smart_pi keys → flat smartpi_ keys
+    MAPPING = {
+        # Regulation
+        "Kp": "smartpi_kp",
+        "Ki": "smartpi_ki",
+        "error_p": "smartpi_error_p",
+        "integral_error": "smartpi_error_i",
+        "u_pi": "smartpi_u_pi",
+        "u_cmd": "smartpi_u_cmd",
+        "u_applied": "smartpi_u_applied",
+        "u_limited": "smartpi_u_limited",
+        "u_ff": "smartpi_u_ff",
+        "u_p": "smartpi_u_p",
+        "u_i": "smartpi_u_i",
+        "aw_du": "smartpi_aw_du",
+        "on_percent": "smartpi_on_percent",
+        # We also keep the top-level target from filtered_setpoint
+        "filtered_setpoint": "smartpi_sp_for_p",
+        # Setpoint filter
+        "near_band_deg": "smartpi_near_band_deg",
+        "near_band_above_deg": "smartpi_near_band_above_deg",
+        "near_band_below_deg": "smartpi_near_band_below_deg",
+        "in_near_band": "smartpi_in_near_band",
+        "in_deadband": "smartpi_in_deadband",
+        # Thermal model
+        "a": "smartpi_a",
+        "b": "smartpi_b",
+        "tau_min": "smartpi_tau_min",
+        "tau_reliable": "smartpi_tau_reliable",
+        "deadtime_heat_s": "smartpi_deadtime_heat_s",
+        "deadtime_cool_s": "smartpi_deadtime_cool_s",
+        "deadtime_heat_reliable": "smartpi_deadtime_heat_reliable",
+        "deadtime_cool_reliable": "smartpi_deadtime_cool_reliable",
+        "learn_ok_count_a": "smartpi_learn_ok_count_a",
+        "learn_ok_count_b": "smartpi_learn_ok_count_b",
+        # Governance
+        "governance_regime": "smartpi_regime",
+        "phase": "smartpi_phase",
+        "i_mode": "smartpi_integral_state",
+        "last_decision_gains": "smartpi_governance_action",
+        "last_decision_thermal": "smartpi_governance_diag_code",
+        "guard_cut_active": "smartpi_guard_cut_active",
+        "hysteresis_thermal_guard": "smartpi_thermal_guard_active",
+        # Feedforward
+        "ff_raw": "smartpi_ff_u_ff",
+        "ff_reason": "smartpi_ff_gate",
+        "ff_warmup_cycles": "smartpi_ff_warmup",
+        "ff_warmup_ok_count": "smartpi_ff_warmup_ok_count",
+        "ff_warmup_scale": "smartpi_ff_scale",
+        # Note: ff_enabled is derived from ff_reason != "ff_none"
+        # Calibration
+        "calibration_state": "smartpi_calibration_state",
+        "autocalib_state": "smartpi_autocalib_state",
+        "autocalib_model_degraded": "smartpi_autocalib_model_degraded",
+        "autocalib_triggered_params": "smartpi_autocalib_triggered_params",
+        "autocalib_retry_count": "smartpi_autocalib_retry_count",
+        "autocalib_snapshot_age_h": "smartpi_autocalib_snapshot_age_h",
+        # Setpoint filter
+        "regulation_mode": "smartpi_filter_mode",
+        # Cycle PWM
+        "cycle_min": "smartpi_cycle_min",
+        "sat": "smartpi_cycle_state",
+        "forced_by_timing": "smartpi_rate_limit",
+    }
+
+    for src, dst in MAPPING.items():
+        val = spi.get(src)
+        if val is not None:
+            flat[dst] = val
+
+    # ff_enabled is derived
+    flat["smartpi_ff_enabled"] = spi.get("ff_reason", "ff_none") != "ff_none"
+    # ff_k_ff: b/a if both known
+    a_val = spi.get("a")
+    b_val = spi.get("b")
+    if a_val and b_val and a_val != 0:
+        flat["smartpi_ff_k_ff"] = b_val / a_val
+
+    # sp_brut from top-level temperature
+    if "temperature" in raw_attrs:
+        flat["smartpi_sp_brut"] = raw_attrs["temperature"]
+
+    # Pred / twin data is nested one more level
+    pred = spi.get("pred", {})
+    if isinstance(pred, dict):
+        PRED_MAPPING = {
+            "twin_T_hat": "smartpi_twin_t_hat",
+            "twin_innovation": "smartpi_twin_innovation",
+            "twin_d_hat": "smartpi_twin_d_hat_ema",
+            "twin_rmse_30": "smartpi_twin_rmse",
+            "twin_T_steady": "smartpi_twin_t_steady",
+            "twin_cusum_pos": "smartpi_twin_cusum",
+            "eta_reason": "smartpi_twin_eta_reason",
+        }
+        for src, dst in PRED_MAPPING.items():
+            val = pred.get(src)
+            if val is not None:
+                flat[dst] = val
+
+        # ETA: use whichever is available
+        eta = pred.get("eta_heat_100_s") or pred.get("eta_cool_0_s")
+        if eta is not None:
+            flat["smartpi_twin_eta_s"] = eta
+
+    # Also bring target_temperature to top level if missing
+    if flat.get("target_temperature") is None:
+        cs = specific.get("current_state", {})
+        if isinstance(cs, dict) and cs.get("target_temperature") is not None:
+            flat["target_temperature"] = cs["target_temperature"]
+
+    # min_on / min_off from configuration
+    cfg = raw_attrs.get("configuration", {})
+    if isinstance(cfg, dict):
+        if cfg.get("minimal_activation_delay_sec") is not None:
+            flat["smartpi_min_on_s"] = cfg["minimal_activation_delay_sec"]
+        if cfg.get("minimal_deactivation_delay_sec") is not None:
+            flat["smartpi_min_off_s"] = cfg["minimal_deactivation_delay_sec"]
+
+    return flat
+
+
+def extract_smartpi_data(attrs: dict) -> dict:
+    """Extract and group SmartPI-relevant attributes."""
+    grouped = {}
+    for gid, gdef in SMARTPI_GROUPS.items():
+        grouped[gid] = {
+            "label": gdef["label"],
+            "icon": gdef["icon"],
+            "values": {},
+        }
+        for key in gdef["keys"]:
+            val = attrs.get(key)
+            if val is None:
+                # Try without smartpi_ prefix for standard HA attributes
+                short = key.replace("smartpi_", "")
+                val = attrs.get(short)
+            grouped[gid]["values"][key] = val
+
+    # Also collect any extra smartpi_ attributes not in our mapping
+    extras = {}
+    for k, v in attrs.items():
+        if k.startswith("smartpi_") and k not in ALL_SMARTPI_KEYS:
+            extras[k] = v
+    if extras:
+        grouped["extras"] = {
+            "label": "Autres attributs SmartPI",
+            "icon": "📋",
+            "values": extras,
+        }
+
+    return grouped
+
+
+def snapshot_for_history(attrs: dict) -> dict:
+    """Create a compact snapshot for the rolling history."""
+    return {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "t_in": attrs.get("current_temperature"),
+        "t_target": attrs.get("temperature") or attrs.get("target_temperature"),
+        "t_ext": attrs.get("smartpi_t_ext") or attrs.get("current_external_temperature"),
+        "on_percent": attrs.get("on_percent"),
+        "u_applied": attrs.get("smartpi_u_applied"),
+        "u_ff": attrs.get("smartpi_ff_u_ff") or attrs.get("smartpi_u_ff"),
+        "u_pi": attrs.get("smartpi_u_pi"),
+        "u_cmd": attrs.get("smartpi_u_cmd"),
+        "u_limited": attrs.get("smartpi_u_limited"),
+        "u_p": attrs.get("smartpi_u_p"),
+        "u_i": attrs.get("smartpi_u_i"),
+        "twin_t_hat": attrs.get("smartpi_twin_t_hat"),
+        "twin_innovation": attrs.get("smartpi_twin_innovation"),
+        "twin_d_hat": attrs.get("smartpi_twin_d_hat_ema"),
+        "error_p": attrs.get("smartpi_error_p"),
+        "kp": attrs.get("smartpi_kp"),
+        "ki": attrs.get("smartpi_ki"),
+        "regime": attrs.get("smartpi_regime"),
+        "phase": attrs.get("smartpi_phase"),
+        "near_band_above": attrs.get("smartpi_near_band_above_deg"),
+        "near_band_below": attrs.get("smartpi_near_band_below_deg"),
+        "in_deadband": attrs.get("smartpi_in_deadband"),
+        "ff_gate": attrs.get("smartpi_ff_gate"),
+        "ff_scale": attrs.get("smartpi_ff_scale"),
+        "ff_k_ff": attrs.get("smartpi_ff_k_ff"),
+    }
