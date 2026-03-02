@@ -6,13 +6,17 @@ Tableau de bord temps réel pour le régulateur SmartPI (Versatile Thermostat / 
 
 ```
 smartpi-dash/
-├── app.py                    # Backend Flask + WebSocket relay vers HA
+├── app.py                    # Routes Flask, sécurité, point d'entrée
+├── config.py                 # Variables d'env, logging, state_store, validation
+├── transforms.py             # Transformations de données (flatten, extract, snapshot)
+├── ha_client.py              # Client REST Home Assistant + découverte d'entités
+├── ws_listener.py            # Listener WebSocket HA + thread
 ├── setup_diagram.py          # Extraction SVG du schéma de bloc
 ├── .env.example              # Template de configuration
 ├── .gitignore                # Fichiers exclus du dépôt
 ├── pyproject.toml            # Dépendances Python (uv)
 ├── templates/
-│   └── dashboard.html        # Frontend (HTML + uPlot + JS)
+│   └── dashboard.html        # Frontend (HTML + CSS + uPlot + JS)
 └── static/
     ├── block_diagram.svg     # Schéma de bloc interactif (généré)
     ├── uPlot.iife.min.js     # Librairie de graphiques (bundlée)
@@ -33,12 +37,16 @@ smartpi-dash/
 ### Frontend
 - **Sélecteur d'entité** : choix du thermostat SmartPI à superviser (persisté en localStorage)
 - **Barre héro** : T°, consigne, puissance, T_ext, régime, phase, RMSE twin, ETA
-- **Onglet Données** : tous les attributs SmartPI groupés (régulation, modèle, twin, governance, feedforward, calibration, filtre, cycle) + score de santé du modèle
-- **Onglet Historique** : graphiques uPlot temps réel (température, puissance, twin diagnostics) avec sélecteur de plage (1-24h)
-- **Onglet Chaîne U** : décomposition de la commande (waterfall u_applied / u_ff / u_pi) + time-series
+- **Onglet Données** : tous les attributs SmartPI groupés (régulation, modèle, twin, governance, feedforward, calibration, filtre, cycle)
+- **Onglet Historique** : graphiques uPlot temps réel (température, puissance, twin diagnostics) avec sélecteur de plage (1–48h)
 - **Onglet Schéma Bloc** : SVG interactif du schéma de régulation avec valeurs live
+- **Onglet Chaîne U** : décomposition de la commande (waterfall u_applied / u_ff / u_pi) + time-series
+- **Onglet Feedforward** : état FF, pipeline de calcul, warmup, K_ff, graphiques
+- **Onglet Santé Modèle** : score de santé global, drapeaux de fiabilité, autocalib, twin quality, progression apprentissage, paramètres du modèle
+- **Onglet Événements** : timeline chronologique des transitions d'état (régime, phase, FF gate, saturation, deadband, autocalib, guard) avec filtres
+- **Onglet Alertes** : 9 règles d'alerte (RMSE, innovation, deadtime, tau, modèle dégradé, guard cut, CUSUM, erreur T°, snapshot age) avec seuils configurables (persistés en localStorage)
+- **Onglet Consigne vs Réalisé** : métriques de performance (erreur moy/max, % deadband/near-band, overshoot, IAE), graphique d'erreur avec bandes colorées, tableau de sessions par changement de consigne
 - **Onglet Attributs bruts** : dump JSON complet
-- **Onglet Debug** : machine de régime, phase, guards, état intégrateur, score de santé, décomposition feedforward
 
 ## Installation
 
