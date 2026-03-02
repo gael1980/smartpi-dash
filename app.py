@@ -6,6 +6,7 @@ SmartPI thermostat data to the browser dashboard.
 """
 
 import os
+import re
 import json
 import asyncio
 import threading
@@ -15,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 import websockets
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, abort
 from dotenv import load_dotenv
 
 # ─── Configuration ───────────────────────────────────────────────
@@ -39,6 +40,10 @@ log = logging.getLogger("smartpi-dash")
 
 # ─── Application ─────────────────────────────────────────────────
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
+
+# Strict regex for HA entity IDs (e.g. climate.thermostat_cuisine)
+_ENTITY_ID_RE = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 
 # ─── Shared State (thread-safe via GIL for simple reads/writes) ──
 state_store = {
@@ -581,11 +586,34 @@ def _start_ws_thread():
     log.info("WebSocket listener thread started")
 
 
+# ─── Security Headers ────────────────────────────────────────────
+
+@app.after_request
+def set_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self'"
+    )
+    return response
+
+
 # ─── Flask Routes ────────────────────────────────────────────────
 
 def _resolve_entity_id() -> str:
-    """Get entity_id from query param, falling back to CLIMATE_ENTITY."""
-    return request.args.get("entity_id", CLIMATE_ENTITY)
+    """Get entity_id from query param, falling back to CLIMATE_ENTITY.
+    Validates the format to prevent SSRF / path traversal."""
+    eid = request.args.get("entity_id", CLIMATE_ENTITY)
+    if not _ENTITY_ID_RE.match(eid):
+        abort(400, description="Invalid entity_id format")
+    return eid
 
 
 @app.route("/")
@@ -594,7 +622,6 @@ def index():
     return render_template(
         "dashboard.html",
         climate_entity=CLIMATE_ENTITY,
-        ha_url=HA_URL,
     )
 
 
@@ -613,7 +640,9 @@ def api_entities():
 def api_state():
     """Return the current SmartPI state grouped by category."""
     entity_id = _resolve_entity_id()
-    estore = _get_entity_store(entity_id)
+    if entity_id not in state_store["entities"]:
+        abort(404, description="Unknown entity")
+    estore = state_store["entities"][entity_id]
     attrs = estore["attributes"]
     climate = estore["climate"]
 
@@ -633,7 +662,9 @@ def api_state():
 def api_history():
     """Return the rolling in-memory history."""
     entity_id = _resolve_entity_id()
-    estore = _get_entity_store(entity_id)
+    if entity_id not in state_store["entities"]:
+        abort(404, description="Unknown entity")
+    estore = state_store["entities"][entity_id]
     return jsonify({
         "ok": True,
         "count": len(estore["history"]),
@@ -645,8 +676,15 @@ def api_history():
 def api_ha_history():
     """Fetch history from HA REST API (heavier, for initial load)."""
     entity_id = _resolve_entity_id()
-    hours = int(request.args.get("hours", 24))
-    hours = min(hours, 168)  # Cap at 7 days
+    # Only allow querying known entities to prevent SSRF
+    known = state_store.get("known_entities", [])
+    if entity_id not in known and entity_id != CLIMATE_ENTITY:
+        abort(404, description="Unknown entity")
+    try:
+        hours = int(request.args.get("hours", 24))
+    except (ValueError, TypeError):
+        hours = 24
+    hours = max(1, min(hours, 168))  # Clamp between 1 and 7 days
     history = ha_get_history(entity_id, hours)
 
     # Transform HA history format to our format
@@ -671,7 +709,6 @@ def api_config():
     return jsonify({
         "ok": True,
         "entity_id": CLIMATE_ENTITY,
-        "ha_url": HA_URL,
         "groups": {
             gid: {"label": g["label"], "icon": g["icon"], "keys": g["keys"]}
             for gid, g in SMARTPI_GROUPS.items()
