@@ -3105,16 +3105,7 @@ function initPerfChart() {
 
   const errSeries = [
     { ...makeSeries('Erreur (°C)', '#3b82f6', 2),
-      fill: (u, seriesIdx) => {
-        const ctx = u.ctx;
-        const grad = ctx.createLinearGradient(0, u.valToPos(2, 'y'), 0, u.valToPos(-2, 'y'));
-        grad.addColorStop(0, 'rgba(239,68,68,0.15)');
-        grad.addColorStop(0.3, 'rgba(249,115,22,0.10)');
-        grad.addColorStop(0.5, 'rgba(34,197,94,0.08)');
-        grad.addColorStop(0.7, 'rgba(249,115,22,0.10)');
-        grad.addColorStop(1, 'rgba(239,68,68,0.15)');
-        return grad;
-      }
+      fill: 'rgba(59,130,246,0.10)',
     },
   ];
   const opts = makeOpts(el, errSeries, '°C', null, 260);
@@ -3123,6 +3114,7 @@ function initPerfChart() {
   opts.hooks = {
     draw: [
       (u) => {
+        if (!u.data || !u.data[0] || u.data[0].length === 0) return;
         const ctx = u.ctx;
         const l = u.bbox.left;
         const w = u.bbox.width;
@@ -3134,7 +3126,7 @@ function initPerfChart() {
         ];
         ctx.save();
         for (const b of bands) {
-          const y = u.valToPos(b.val, 'y', true);
+          const y = Math.round(u.valToPos(b.val, 'y', true));
           if (y >= u.bbox.top && y <= u.bbox.top + u.bbox.height) {
             ctx.strokeStyle = b.color;
             ctx.lineWidth = 1;
@@ -3146,14 +3138,16 @@ function initPerfChart() {
           }
         }
         // Zero line
-        const y0 = u.valToPos(0, 'y', true);
-        ctx.strokeStyle = 'rgba(148,163,184,0.3)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(l, y0);
-        ctx.lineTo(l + w, y0);
-        ctx.stroke();
+        const y0 = Math.round(u.valToPos(0, 'y', true));
+        if (y0 >= u.bbox.top && y0 <= u.bbox.top + u.bbox.height) {
+          ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(l, y0);
+          ctx.lineTo(l + w, y0);
+          ctx.stroke();
+        }
         ctx.restore();
       }
     ]
