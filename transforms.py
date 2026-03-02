@@ -295,4 +295,7 @@ def snapshot_for_history(attrs: dict) -> dict:
         "ff_gate": attrs.get("smartpi_ff_gate"),
         "ff_scale": attrs.get("smartpi_ff_scale"),
         "ff_k_ff": attrs.get("smartpi_ff_k_ff"),
+        "autocalib_state": attrs.get("smartpi_autocalib_state"),
+        "cycle_state": attrs.get("smartpi_cycle_state"),
+        "guard_cut": attrs.get("smartpi_guard_cut_active"),
     }

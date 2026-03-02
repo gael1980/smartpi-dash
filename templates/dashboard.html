@@ -829,6 +829,93 @@
   }
   .mh-param-status.mh-ok { background: var(--accent-green); }
   .mh-param-status.mh-error { background: var(--accent-red); }
+
+  /* ─── Events & Timeline Tab ───────────────────────────────── */
+  .ev-layout { display: flex; flex-direction: column; gap: 16px; }
+
+  .ev-filters {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px 16px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .ev-filter-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-dim); cursor: pointer; transition: all 0.15s;
+  }
+  .ev-filter-btn.active { color: #fff; border-color: transparent; }
+  .ev-filter-btn .ev-count {
+    font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(255,255,255,0.15); margin-left: 2px;
+  }
+  .ev-filter-btn[data-type="regime"].active  { background: #a855f7; }
+  .ev-filter-btn[data-type="phase"].active   { background: #3b82f6; }
+  .ev-filter-btn[data-type="ff_gate"].active { background: #06b6d4; }
+  .ev-filter-btn[data-type="saturation"].active { background: #f97316; }
+  .ev-filter-btn[data-type="deadband"].active { background: #22c55e; }
+  .ev-filter-btn[data-type="autocalib"].active { background: #eab308; }
+  .ev-filter-btn[data-type="guard"].active   { background: #ef4444; }
+
+  .ev-summary {
+    display: flex; align-items: center; gap: 12px;
+    margin-left: auto; font-size: 11px; color: var(--text-dim);
+  }
+
+  .ev-list {
+    display: flex; flex-direction: column;
+    border-left: 2px solid var(--border);
+    margin-left: 18px; padding-left: 0;
+    max-height: 70vh; overflow-y: auto;
+  }
+
+  .ev-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 16px 10px 20px;
+    position: relative; transition: background 0.15s;
+  }
+  .ev-item:hover { background: rgba(255,255,255,0.03); }
+  .ev-item::before {
+    content: '';
+    position: absolute; left: -7px; top: 16px;
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--bg); box-sizing: border-box;
+  }
+  .ev-item[data-type="regime"]::before     { background: #a855f7; }
+  .ev-item[data-type="phase"]::before      { background: #3b82f6; }
+  .ev-item[data-type="ff_gate"]::before    { background: #06b6d4; }
+  .ev-item[data-type="saturation"]::before { background: #f97316; }
+  .ev-item[data-type="deadband"]::before   { background: #22c55e; }
+  .ev-item[data-type="autocalib"]::before  { background: #eab308; }
+  .ev-item[data-type="guard"]::before      { background: #ef4444; }
+
+  .ev-time {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-dim); white-space: nowrap; min-width: 70px;
+  }
+  .ev-badge {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+    letter-spacing: 0.5px;
+  }
+  .ev-badge[data-type="regime"]     { background: rgba(168,85,247,0.2); color: #c084fc; }
+  .ev-badge[data-type="phase"]      { background: rgba(59,130,246,0.2); color: #93c5fd; }
+  .ev-badge[data-type="ff_gate"]    { background: rgba(6,182,212,0.2); color: #67e8f9; }
+  .ev-badge[data-type="saturation"] { background: rgba(249,115,22,0.2); color: #fdba74; }
+  .ev-badge[data-type="deadband"]   { background: rgba(34,197,94,0.2); color: #86efac; }
+  .ev-badge[data-type="autocalib"]  { background: rgba(234,179,8,0.2); color: #fde047; }
+  .ev-badge[data-type="guard"]      { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+  .ev-desc { font-size: 12px; color: var(--text); flex: 1; }
+  .ev-desc .ev-arrow { color: var(--text-dim); margin: 0 6px; }
+  .ev-desc .ev-val-old { color: var(--text-dim); text-decoration: line-through; opacity: 0.7; }
+  .ev-desc .ev-val-new { font-weight: 600; }
+
+  .ev-empty {
+    text-align: center; padding: 48px 16px;
+    color: var(--text-dim); font-size: 13px;
+  }
 </style>
 </head>
 <body>
@@ -905,6 +992,7 @@
   <button class="tab-btn" data-tab="tab-debug-chain">🔗 Chaîne U</button>
   <button class="tab-btn" data-tab="tab-feedforward">🎯 Feedforward</button>
   <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
+  <button class="tab-btn" data-tab="tab-events">📍 Événements</button>
   <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
 </nav>
 
@@ -956,6 +1044,27 @@
   </div>
 </div>
 <div id="svg-tooltip" class="svg-tooltip"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Events & Timeline                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-events">
+  <div class="ev-layout">
+    <div class="ev-filters" id="ev-filters">
+      <button class="ev-filter-btn active" data-type="regime">Régime <span class="ev-count" id="ev-cnt-regime">0</span></button>
+      <button class="ev-filter-btn active" data-type="phase">Phase <span class="ev-count" id="ev-cnt-phase">0</span></button>
+      <button class="ev-filter-btn active" data-type="ff_gate">FF Gate <span class="ev-count" id="ev-cnt-ff_gate">0</span></button>
+      <button class="ev-filter-btn active" data-type="saturation">Saturation <span class="ev-count" id="ev-cnt-saturation">0</span></button>
+      <button class="ev-filter-btn active" data-type="deadband">Deadband <span class="ev-count" id="ev-cnt-deadband">0</span></button>
+      <button class="ev-filter-btn active" data-type="autocalib">AutoCalib <span class="ev-count" id="ev-cnt-autocalib">0</span></button>
+      <button class="ev-filter-btn active" data-type="guard">Guard <span class="ev-count" id="ev-cnt-guard">0</span></button>
+      <div class="ev-summary"><span id="ev-total">0 événements</span></div>
+    </div>
+    <div class="ev-list" id="ev-list">
+      <div class="ev-empty">En attente de données d'historique...</div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- TAB: Raw Attributes                                            -->
@@ -1307,6 +1416,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
         if (historyData && historyData.length) updateCharts(historyData);
         if (currentState) updateFeedforward(currentState);
+      }, 50);
+    }
+    // Render events timeline when Events tab opens
+    if (btn.dataset.tab === 'tab-events') {
+      setTimeout(() => {
+        if (historyData && historyData.length) updateEvents(historyData);
       }, 50);
     }
   });
@@ -2444,6 +2559,116 @@ async function fetchState() {
   }
 }
 
+// ─── Events & Timeline ──────────────────────────────────────
+const EV_TYPES = {
+  regime:     { label: 'Régime',     field: 'regime' },
+  phase:      { label: 'Phase',      field: 'phase' },
+  ff_gate:    { label: 'FF Gate',    field: 'ff_gate' },
+  deadband:   { label: 'Deadband',   field: 'in_deadband' },
+  autocalib:  { label: 'AutoCalib',  field: 'autocalib_state' },
+  guard:      { label: 'Guard',      field: 'guard_cut' },
+};
+let lastEvents = [];
+let evActiveFilters = new Set(Object.keys(EV_TYPES).concat(['saturation']));
+
+function detectEvents(history) {
+  const events = [];
+  if (!history || history.length < 2) return events;
+
+  for (let i = 1; i < history.length; i++) {
+    const prev = history[i - 1];
+    const curr = history[i];
+    const ts = curr.ts;
+
+    // Simple field transitions
+    for (const [type, def] of Object.entries(EV_TYPES)) {
+      const pv = prev[def.field];
+      const cv = curr[def.field];
+      if (pv != null && cv != null && pv !== cv) {
+        events.push({ ts, type, prev: String(pv), value: String(cv) });
+      }
+    }
+
+    // Saturation: detect when u_cmd != u_limited (entering) or equality restored (exiting)
+    const prevSat = prev.u_cmd != null && prev.u_limited != null && Math.abs(prev.u_cmd - prev.u_limited) > 0.001;
+    const currSat = curr.u_cmd != null && curr.u_limited != null && Math.abs(curr.u_cmd - curr.u_limited) > 0.001;
+    if (!prevSat && currSat) {
+      events.push({ ts, type: 'saturation', prev: 'non', value: `u_cmd=${fmtN(curr.u_cmd)} u_lim=${fmtN(curr.u_limited)}` });
+    } else if (prevSat && !currSat) {
+      events.push({ ts, type: 'saturation', prev: 'saturé', value: 'non' });
+    }
+  }
+
+  return events;
+}
+
+function fmtN(v) { return v != null ? v.toFixed(3) : '—'; }
+
+function fmtEvTime(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch { return '??:??:??'; }
+}
+
+function renderEvents() {
+  const container = document.getElementById('ev-list');
+  if (!container) return;
+
+  const filtered = lastEvents.filter(e => evActiveFilters.has(e.type));
+
+  // Update counters
+  const counts = {};
+  for (const e of lastEvents) counts[e.type] = (counts[e.type] || 0) + 1;
+  for (const type of Object.keys(EV_TYPES).concat(['saturation'])) {
+    const el = document.getElementById('ev-cnt-' + type);
+    if (el) el.textContent = counts[type] || 0;
+  }
+  const totalEl = document.getElementById('ev-total');
+  if (totalEl) totalEl.textContent = `${filtered.length} / ${lastEvents.length} événements`;
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="ev-empty">Aucun événement détecté dans l\'historique actuel.</div>';
+    return;
+  }
+
+  // Render most recent first
+  const typeLabels = { ...Object.fromEntries(Object.entries(EV_TYPES).map(([k, v]) => [k, v.label])), saturation: 'Saturation' };
+  let html = '';
+  for (let i = filtered.length - 1; i >= 0; i--) {
+    const e = filtered[i];
+    html += `<div class="ev-item" data-type="${escapeHtml(e.type)}">`;
+    html += `  <span class="ev-time">${escapeHtml(fmtEvTime(e.ts))}</span>`;
+    html += `  <span class="ev-badge" data-type="${escapeHtml(e.type)}">${escapeHtml(typeLabels[e.type] || e.type)}</span>`;
+    html += `  <span class="ev-desc">`;
+    html += `    <span class="ev-val-old">${escapeHtml(e.prev)}</span>`;
+    html += `    <span class="ev-arrow">→</span>`;
+    html += `    <span class="ev-val-new">${escapeHtml(e.value)}</span>`;
+    html += `  </span>`;
+    html += `</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function updateEvents(history) {
+  lastEvents = detectEvents(history);
+  renderEvents();
+}
+
+// Filter toggle buttons
+document.querySelectorAll('.ev-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.type;
+    btn.classList.toggle('active');
+    if (btn.classList.contains('active')) {
+      evActiveFilters.add(type);
+    } else {
+      evActiveFilters.delete(type);
+    }
+    renderEvents();
+  });
+});
+
 async function fetchHistory() {
   try {
     // First try in-memory history
@@ -2452,6 +2677,7 @@ async function fetchHistory() {
     if (data.ok && data.count > 5) {
       historyData = data.data;
       updateCharts(historyData);
+      updateEvents(historyData);
       return;
     }
 
@@ -2462,6 +2688,7 @@ async function fetchHistory() {
     if (data.ok) {
       historyData = data.data;
       updateCharts(historyData);
+      updateEvents(historyData);
     }
   } catch (e) {
     console.error('Fetch history error:', e);
