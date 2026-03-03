@@ -317,4 +317,6 @@ def snapshot_for_history(attrs: dict) -> dict:
         "autocalib_state": attrs.get("smartpi_autocalib_state"),
         "cycle_state": attrs.get("smartpi_cycle_state"),
         "guard_cut": attrs.get("smartpi_guard_cut_active"),
+        "twin_rmse": attrs.get("smartpi_twin_rmse"),
+        "twin_cusum": attrs.get("smartpi_twin_cusum"),
     }

@@ -1142,7 +1142,7 @@
   }
   .ta-row:last-child { border-bottom: none; }
   .ta-key { color: var(--text-dim); }
-  .ta-val { color: var(--accent-cyan); font-weight: 600; }
+  .ta-val { color: var(--accent-cyan); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .ta-badge {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 4px 8px; border-radius: 4px;
@@ -1175,7 +1175,102 @@
     font: 400 13px 'JetBrains Mono', monospace;
     padding: 12px 0;
   }
-  @media (max-width: 900px) { .ta-layout { grid-template-columns: 1fr; } }
+  /* Tuning readiness gauge */
+  .ta-readiness {
+    grid-column: 1 / -1;
+    background: var(--bg-panel);
+    padding: 20px 24px;
+    display: flex; align-items: center; gap: 24px;
+    border-bottom: 2px solid var(--border);
+  }
+  .ta-gauge {
+    width: 80px; height: 80px; border-radius: 50%;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ta-gauge::before {
+    content: ''; position: absolute;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--bg-panel);
+  }
+  .ta-gauge.ta-gauge-good { background: conic-gradient(var(--accent-green) var(--pct), var(--border) var(--pct)); }
+  .ta-gauge.ta-gauge-warn { background: conic-gradient(var(--accent-orange) var(--pct), var(--border) var(--pct)); }
+  .ta-gauge.ta-gauge-bad  { background: conic-gradient(var(--accent-red) var(--pct), var(--border) var(--pct)); }
+  .ta-gauge-value {
+    font: 700 26px 'JetBrains Mono', monospace;
+    color: var(--text-white); position: relative; z-index: 1;
+  }
+  .ta-readiness-title {
+    font: 600 16px 'JetBrains Mono', monospace;
+    color: var(--text-white); margin-bottom: 4px;
+  }
+  .ta-readiness-summary {
+    font: 500 13px 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+  /* Sparklines */
+  .ta-spark { vertical-align: middle; flex-shrink: 0; }
+  /* Progress bars */
+  .ta-progress {
+    width: 100%; height: 6px; border-radius: 3px;
+    background: var(--border); overflow: hidden;
+    margin-top: 4px;
+  }
+  .ta-progress-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .ta-progress-fill.ta-fill-good { background: var(--accent-green); }
+  .ta-progress-fill.ta-fill-warn { background: var(--accent-orange); }
+  .ta-progress-fill.ta-fill-bad  { background: var(--accent-red); }
+  .ta-progress-label {
+    font: 400 11px 'JetBrains Mono', monospace;
+    color: var(--text-dim); margin-top: 2px;
+  }
+  /* Reference table */
+  .ta-ref-table {
+    width: 100%; border-collapse: collapse;
+    font: 400 12px 'JetBrains Mono', monospace;
+  }
+  .ta-ref-table th {
+    text-align: left; padding: 6px 8px;
+    color: var(--text-dim); font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+  .ta-ref-table td {
+    padding: 6px 8px;
+    color: var(--text); border-bottom: 1px solid rgba(30,41,59,0.3);
+  }
+  .ta-ref-current td {
+    color: var(--accent-cyan); font-weight: 600;
+    background: rgba(6,182,212,0.06);
+  }
+  .ta-ref-note {
+    font: 400 11px 'JetBrains Mono', monospace;
+    color: var(--text-dim); margin-top: 8px; padding: 0 8px;
+  }
+  /* Verdict */
+  .ta-verdict {
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; margin-top: 8px;
+    font: 500 12px 'JetBrains Mono', monospace;
+  }
+  .ta-verdict.ta-ok    { border-color: rgba(34,197,94,0.35); color: var(--accent-green); }
+  .ta-verdict.ta-warn  { border-color: rgba(249,115,22,0.35); color: var(--accent-orange); }
+  .ta-verdict.ta-error { border-color: rgba(239,68,68,0.35); color: var(--accent-red); }
+  /* Stability duration highlight */
+  .ta-duration {
+    font: 600 13px 'JetBrains Mono', monospace;
+    color: var(--accent-cyan);
+  }
+  @media (max-width: 900px) {
+    .ta-layout { grid-template-columns: 1fr; }
+    .ta-readiness { flex-direction: column; text-align: center; }
+    .ta-gauge { width: 64px; height: 64px; }
+    .ta-gauge::before { width: 48px; height: 48px; }
+    .ta-gauge-value { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -1687,6 +1782,17 @@
 <!-- TAB: Tuning Assistant (read-only)                               -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-tuning">
+  <!-- Tuning Readiness Gauge -->
+  <div class="ta-readiness" id="ta-readiness-card">
+    <div class="ta-gauge ta-gauge-good" id="ta-readiness-gauge" style="--pct: 0%">
+      <span class="ta-gauge-value" id="ta-readiness-val">--</span>
+    </div>
+    <div>
+      <div class="ta-readiness-title" id="ta-readiness-title">Aptitude au Tuning</div>
+      <div class="ta-readiness-summary" id="ta-readiness-summary">Chargement...</div>
+    </div>
+  </div>
+
   <div class="ta-layout">
     <div class="ta-card">
       <div class="ta-card-header">
@@ -1708,10 +1814,50 @@
       </div>
     </div>
 
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>📊</span>
+        <span class="ta-card-title">Références théoriques PI</span>
+      </div>
+      <div id="ta-references">
+        <div class="ta-empty">En attente des paramètres modèle...</div>
+      </div>
+    </div>
+
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>🎓</span>
+        <span class="ta-card-title">Maturité du modèle</span>
+      </div>
+      <div class="ta-grid" id="ta-maturity">
+        <div class="ta-empty">En attente d'état courant...</div>
+      </div>
+    </div>
+
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>🕐</span>
+        <span class="ta-card-title">Fenêtre de stabilité</span>
+      </div>
+      <div class="ta-grid" id="ta-stability">
+        <div class="ta-empty">En attente d'historique...</div>
+      </div>
+    </div>
+
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>📈</span>
+        <span class="ta-card-title">Analyse de la réponse récente</span>
+      </div>
+      <div class="ta-grid" id="ta-response">
+        <div class="ta-empty">En attente d'historique...</div>
+      </div>
+    </div>
+
     <div class="ta-card ta-full">
       <div class="ta-card-header">
         <span>🧭</span>
-        <span class="ta-card-title">Recommandations prudentes (lecture seule)</span>
+        <span class="ta-card-title">Recommandations (lecture seule)</span>
       </div>
       <div class="ta-rec-list" id="ta-recommendations">
         <div class="ta-empty">Aucune recommandation disponible pour le moment.</div>
@@ -2957,13 +3103,224 @@ function renderTaRow(label, value, badgeHtml = '') {
   return `<div class="ta-row"><span class="ta-key">${escapeHtml(label)}</span><span class="ta-val">${escapeHtml(value)}${badgeHtml}</span></div>`;
 }
 
+function renderTaRowRaw(label, valueHtml) {
+  return `<div class="ta-row"><span class="ta-key">${escapeHtml(label)}</span><span class="ta-val">${valueHtml}</span></div>`;
+}
+
+// ── Tuning Readiness Score ──
+function computeTuningReadiness(a) {
+  let score = 100;
+  const issues = [];
+  const positives = [];
+
+  // Model reliability (45 pts)
+  if (a.smartpi_tau_reliable === false) { score -= 15; issues.push('tau non fiable'); }
+  else if (a.smartpi_tau_reliable === true) positives.push('tau fiable');
+  if (a.smartpi_deadtime_heat_reliable === false) { score -= 15; issues.push('deadtime heat non fiable'); }
+  else if (a.smartpi_deadtime_heat_reliable === true) positives.push('deadtime heat fiable');
+  if (a.smartpi_deadtime_cool_reliable === false) { score -= 15; issues.push('deadtime cool non fiable'); }
+  else if (a.smartpi_deadtime_cool_reliable === true) positives.push('deadtime cool fiable');
+
+  // Model degradation (15 pts)
+  if (a.smartpi_autocalib_model_degraded === true) { score -= 15; issues.push('modèle dégradé'); }
+
+  // Observability quality (20 pts)
+  const rmse = a.smartpi_twin_rmse;
+  if (rmse != null) {
+    if (rmse > 0.7) { score -= 15; issues.push('RMSE > 0.7°C'); }
+    else if (rmse > 0.3) { score -= 5; issues.push('RMSE modérée'); }
+    else positives.push('RMSE nominale');
+  }
+  const cusum = a.smartpi_twin_cusum;
+  if (cusum != null) {
+    if (cusum > 5) { score -= 10; issues.push('CUSUM élevé'); }
+    else positives.push('CUSUM normal');
+  }
+
+  // Operating point (15 pts)
+  const regime = a.smartpi_regime;
+  if (regime && regime !== 'cruise') { score -= 10; issues.push('régime ' + regime); }
+  else if (regime === 'cruise') positives.push('régime cruise');
+  if (a.smartpi_guard_cut_active === true || a.smartpi_thermal_guard_active === true) {
+    score -= 10; issues.push('guard actif');
+  }
+
+  // Learning maturity (10 pts)
+  const learnA = a.smartpi_learn_ok_count_a;
+  const learnB = a.smartpi_learn_ok_count_b;
+  const LEARN_TARGET = 100;
+  if (learnA != null && learnB != null) {
+    const maturity = Math.min(learnA, learnB) / LEARN_TARGET;
+    if (maturity < 0.5) { score -= 10; issues.push('apprentissage ' + Math.round(maturity * 100) + '%'); }
+    else positives.push('apprentissage ' + Math.round(Math.min(maturity, 1) * 100) + '%');
+  }
+
+  return { score: Math.max(0, Math.min(100, score)), issues, positives };
+}
+
+// ── SVG Sparkline ──
+function renderSparklineSvg(values, color, w, h) {
+  w = w || 60; h = h || 20;
+  if (!values || values.length < 2) return '';
+  const nums = values.filter(v => v != null && isFinite(v));
+  if (nums.length < 2) return '';
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const range = max - min || 1;
+  const pts = nums.map((v, i) => {
+    const x = (i / (nums.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 2) - 1;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  return '<svg class="ta-spark" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+// ── Stability Window ──
+function computeStabilityWindow(history) {
+  if (!history || history.length < 2) return null;
+  const last = history[history.length - 1];
+  const now = new Date(last.ts).getTime();
+  let lastRegimeChange = null;
+  let lastPhaseChange = null;
+
+  for (let i = history.length - 1; i >= 1; i--) {
+    if (!lastRegimeChange && history[i].regime !== history[i - 1].regime) {
+      lastRegimeChange = new Date(history[i].ts).getTime();
+    }
+    if (!lastPhaseChange && history[i].phase !== history[i - 1].phase) {
+      lastPhaseChange = new Date(history[i].ts).getTime();
+    }
+    if (lastRegimeChange && lastPhaseChange) break;
+  }
+
+  return {
+    regime: last.regime,
+    phase: last.phase,
+    regimeDurationMin: lastRegimeChange ? (now - lastRegimeChange) / 60000 : null,
+    phaseDurationMin: lastPhaseChange ? (now - lastPhaseChange) / 60000 : null,
+    regimeStable: !lastRegimeChange,
+    phaseStable: !lastPhaseChange,
+  };
+}
+
+function fmtDuration(minutes) {
+  if (minutes == null) return '—';
+  if (minutes < 1) return '< 1 min';
+  if (minutes < 60) return Math.round(minutes) + ' min';
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  return h + 'h' + (m > 0 ? String(m).padStart(2, '0') : '00');
+}
+
+// ── Theoretical PI References ──
+function computeTheoreticalPI(a_param, b_param, tau_min, deadtime_s) {
+  if (a_param == null || b_param == null || tau_min == null || deadtime_s == null) return null;
+  if (a_param >= 1 || a_param <= 0 || b_param === 0 || tau_min <= 0) return null;
+
+  const K = b_param / (1 - a_param);
+  const tau = tau_min;
+  const L = deadtime_s / 60;
+
+  if (K === 0) return null;
+
+  // SIMC conservative: lambda = tau
+  const lam1 = tau;
+  const Kp_simc = (1 / K) * tau / (lam1 + L);
+  const Ti_simc = Math.min(tau, 4 * (lam1 + L));
+  const Ki_simc = Ti_simc > 0 ? Kp_simc / Ti_simc : 0;
+
+  // IMC moderate: lambda = max(0.5*tau, 3*L)
+  const lam2 = Math.max(0.5 * tau, 3 * L);
+  const Kp_imc = (1 / K) * tau / (lam2 + L);
+  const Ti_imc = Math.min(tau, 4 * (lam2 + L));
+  const Ki_imc = Ti_imc > 0 ? Kp_imc / Ti_imc : 0;
+
+  return {
+    K: K, tau: tau, L: L,
+    simc: { Kp: Kp_simc, Ki: Ki_simc, Ti: Ti_simc, lambda: lam1 },
+    imc:  { Kp: Kp_imc,  Ki: Ki_imc,  Ti: Ti_imc,  lambda: lam2 },
+  };
+}
+
+// ── Recent Response Analysis ──
+function analyzeRecentResponse(history) {
+  if (!history || history.length < 5) return null;
+
+  const changes = detectSetpointChanges(history);
+  if (changes.length === 0) return null;
+
+  const lastChange = changes[changes.length - 1];
+  const session = history.slice(lastChange.index);
+  if (session.length < 3) return null;
+
+  const metrics = computeSessionMetrics(history, lastChange.index, history.length);
+  if (!metrics) return null;
+
+  let verdict, verdictLevel;
+  if (metrics.overshoot > 1.0) {
+    verdict = 'Dépassement important (' + metrics.overshoot.toFixed(2) + '°C) — Kp potentiellement trop agressif';
+    verdictLevel = 'error';
+  } else if (metrics.overshoot > 0.3) {
+    verdict = 'Léger dépassement (' + metrics.overshoot.toFixed(2) + '°C) — réponse légèrement oscillante';
+    verdictLevel = 'warn';
+  } else if (metrics.riseTime != null && metrics.riseTime > 120) {
+    verdict = 'Réponse très lente (montée ' + Math.round(metrics.riseTime) + ' min) — Kp potentiellement trop faible';
+    verdictLevel = 'warn';
+  } else if (metrics.settlingTime != null && metrics.settlingTime > 90) {
+    verdict = 'Stabilisation lente (' + Math.round(metrics.settlingTime) + ' min) — possible oscillation résiduelle';
+    verdictLevel = 'warn';
+  } else {
+    verdict = 'Réponse bien amortie — pas d\'action nécessaire';
+    verdictLevel = 'ok';
+  }
+
+  return {
+    sp: metrics.sp,
+    errAvg: metrics.errAvg,
+    overshoot: metrics.overshoot,
+    riseTime: metrics.riseTime,
+    settlingTime: metrics.settlingTime,
+    iae: metrics.iae,
+    points: metrics.points,
+    ts: lastChange.ts,
+    prevSP: lastChange.prevSP,
+    newSP: lastChange.newSP,
+    verdict: verdict,
+    verdictLevel: verdictLevel,
+  };
+}
+
+// ── Main Tuning Assistant Update ──
 function updateTuningAssistant(data) {
   const a = data.raw_attributes || {};
   const paramsEl = document.getElementById('ta-params');
   const obsEl = document.getElementById('ta-observability');
   const recEl = document.getElementById('ta-recommendations');
-  if (!paramsEl || !obsEl || !recEl) return;
+  const refEl = document.getElementById('ta-references');
+  const matEl = document.getElementById('ta-maturity');
+  const stabEl = document.getElementById('ta-stability');
+  const respEl = document.getElementById('ta-response');
+  if (!paramsEl) return;
 
+  const fmtNum = (v, d) => (v == null ? '—' : Number(v).toFixed(d != null ? d : 3));
+  const boolText = (v) => (v == null ? '—' : (v ? 'true' : 'false'));
+
+  // ── 1. Tuning Readiness Gauge ──
+  const readiness = computeTuningReadiness(a);
+  const gaugeEl = document.getElementById('ta-readiness-gauge');
+  if (gaugeEl) {
+    document.getElementById('ta-readiness-val').textContent = readiness.score;
+    gaugeEl.style.setProperty('--pct', readiness.score + '%');
+    gaugeEl.className = 'ta-gauge ' + (readiness.score >= 75 ? 'ta-gauge-good' : readiness.score >= 40 ? 'ta-gauge-warn' : 'ta-gauge-bad');
+    document.getElementById('ta-readiness-title').textContent =
+      readiness.score >= 75 ? 'Fenêtre favorable au tuning' : readiness.score >= 40 ? 'Conditions partiellement réunies' : 'Tuning déconseillé';
+    const parts = [];
+    if (readiness.issues.length) parts.push(readiness.issues.join(' · '));
+    if (readiness.positives.length) parts.push(readiness.positives.join(' · '));
+    document.getElementById('ta-readiness-summary').textContent = parts.join(' — ') || 'Chargement...';
+  }
+
+  // ── 2. Paramètres PI & Modèle ──
   const kp = a.smartpi_kp;
   const ki = a.smartpi_ki;
   const tau = a.smartpi_tau_min;
@@ -2973,6 +3330,15 @@ function updateTuningAssistant(data) {
   const dtHeatReliable = a.smartpi_deadtime_heat_reliable;
   const dtCoolReliable = a.smartpi_deadtime_cool_reliable;
 
+  paramsEl.innerHTML = [
+    renderTaRow('Kp', fmtNum(kp, 4)),
+    renderTaRow('Ki', fmtNum(ki, 4)),
+    renderTaRow('tau_min', tau == null ? '—' : fmtNum(tau, 1) + ' min', tuningBadge(tauReliable === false ? 'error' : 'ok', tauReliable === false ? 'non fiable' : 'fiable')),
+    renderTaRow('deadtime heat', dtHeat == null ? '—' : fmtNum(dtHeat, 1) + ' s', tuningBadge(dtHeatReliable === false ? 'error' : 'ok', dtHeatReliable === false ? 'non fiable' : 'fiable')),
+    renderTaRow('deadtime cool', dtCool == null ? '—' : fmtNum(dtCool, 1) + ' s', tuningBadge(dtCoolReliable === false ? 'error' : 'ok', dtCoolReliable === false ? 'non fiable' : 'fiable')),
+  ].join('');
+
+  // ── 3. Contexte d'observabilité (with sparklines) ──
   const rmse = a.smartpi_twin_rmse;
   const innovation = a.smartpi_twin_innovation;
   const cusum = a.smartpi_twin_cusum;
@@ -2981,48 +3347,207 @@ function updateTuningAssistant(data) {
   const guardCut = a.smartpi_guard_cut_active;
   const thermalGuard = a.smartpi_thermal_guard_active;
 
-  const fmtNum = (v, d = 3) => (v == null ? '—' : Number(v).toFixed(d));
-  const boolText = (v) => (v == null ? '—' : (v ? 'true' : 'false'));
-
-  paramsEl.innerHTML = [
-    renderTaRow('Kp', fmtNum(kp, 4)),
-    renderTaRow('Ki', fmtNum(ki, 4)),
-    renderTaRow('tau_min', tau == null ? '—' : `${fmtNum(tau, 1)} min`, tuningBadge(tauReliable === false ? 'error' : 'ok', tauReliable === false ? 'non fiable' : 'fiable')),
-    renderTaRow('deadtime heat', dtHeat == null ? '—' : `${fmtNum(dtHeat, 1)} s`, tuningBadge(dtHeatReliable === false ? 'error' : 'ok', dtHeatReliable === false ? 'non fiable' : 'fiable')),
-    renderTaRow('deadtime cool', dtCool == null ? '—' : `${fmtNum(dtCool, 1)} s`, tuningBadge(dtCoolReliable === false ? 'error' : 'ok', dtCoolReliable === false ? 'non fiable' : 'fiable')),
-  ].join('');
-
   const rmseBadge = tuningBadge(rmse == null ? 'warn' : (rmse <= 0.3 ? 'ok' : rmse <= 0.7 ? 'warn' : 'error'), rmse == null ? 'n/a' : (rmse <= 0.3 ? 'bon' : rmse <= 0.7 ? 'moyen' : 'dégradé'));
   const innovAbs = innovation == null ? null : Math.abs(innovation);
   const innovBadge = tuningBadge(innovAbs == null ? 'warn' : (innovAbs <= 0.2 ? 'ok' : innovAbs <= 0.5 ? 'warn' : 'error'), innovAbs == null ? 'n/a' : (innovAbs <= 0.2 ? 'stable' : innovAbs <= 0.5 ? 'à surveiller' : 'instable'));
   const cusumBadge = tuningBadge(cusum == null ? 'warn' : (cusum <= 3 ? 'ok' : cusum <= 5 ? 'warn' : 'error'), cusum == null ? 'n/a' : (cusum <= 3 ? 'normal' : cusum <= 5 ? 'haut' : 'critique'));
 
-  obsEl.innerHTML = [
-    renderTaRow('RMSE twin', rmse == null ? '—' : `${fmtNum(rmse, 3)} °C`, rmseBadge),
-    renderTaRow('Innovation', innovation == null ? '—' : `${fmtNum(innovation, 3)} °C`, innovBadge),
-    renderTaRow('CUSUM', cusum == null ? '—' : fmtNum(cusum, 2), cusumBadge),
-    renderTaRow('Régime / Phase', `${regime || '—'} / ${phase || '—'}`),
-    renderTaRow('Guards actifs', `guard_cut=${boolText(guardCut)} · thermal=${boolText(thermalGuard)}`),
-  ].join('');
+  // Extract sparkline data from history
+  const hist = historyData || [];
+  const rmseVals = hist.map(h => h.twin_rmse).slice(-60);
+  const innovVals = hist.map(h => h.twin_innovation).slice(-60);
+  const cusumVals = hist.map(h => h.twin_cusum).slice(-60);
+  const rmseSpark = renderSparklineSvg(rmseVals, '#06b6d4', 60, 20);
+  const innovSpark = renderSparklineSvg(innovVals, '#a78bfa', 60, 20);
+  const cusumSpark = renderSparklineSvg(cusumVals, '#f59e0b', 60, 20);
 
-  const recs = [];
-  if (tauReliable === false || dtHeatReliable === false || dtCoolReliable === false) {
-    recs.push({ level: 'error', msg: 'Le modèle (tau/deadtimes) est partiellement non fiable: éviter toute retouche PI tant que la fiabilité n\'est pas restaurée.' });
-  }
-  if (rmse != null && rmse > 0.7) {
-    recs.push({ level: 'warn', msg: `RMSE twin élevée (${rmse.toFixed(3)} °C): vérifier la qualité capteur et les conditions d\'apprentissage avant tuning.` });
-  }
-  if (innovAbs != null && innovAbs > 0.5) {
-    recs.push({ level: 'warn', msg: `Innovation instantanée élevée (${innovation.toFixed(3)} °C): attendre un régime plus stable pour analyser Kp/Ki.` });
-  }
-  if (guardCut === true || thermalGuard === true) {
-    recs.push({ level: 'error', msg: 'Un guard de sécurité est actif: priorité au diagnostic sécurité, pas au tuning PI.' });
-  }
-  if (recs.length === 0) {
-    recs.push({ level: 'ok', msg: 'Contexte nominal: fenêtre favorable pour revue tuning (toujours en lecture seule sur cet onglet).' });
+  if (obsEl) {
+    obsEl.innerHTML = [
+      renderTaRowRaw('RMSE twin', escapeHtml(rmse == null ? '—' : fmtNum(rmse, 3) + ' °C') + rmseBadge + rmseSpark),
+      renderTaRowRaw('Innovation', escapeHtml(innovation == null ? '—' : fmtNum(innovation, 3) + ' °C') + innovBadge + innovSpark),
+      renderTaRowRaw('CUSUM', escapeHtml(cusum == null ? '—' : fmtNum(cusum, 2)) + cusumBadge + cusumSpark),
+      renderTaRow('Régime / Phase', (regime || '—') + ' / ' + (phase || '—')),
+      renderTaRow('Guards actifs', 'guard_cut=' + boolText(guardCut) + ' · thermal=' + boolText(thermalGuard)),
+    ].join('');
   }
 
-  recEl.innerHTML = recs.map(r => `<div class="ta-rec ta-${r.level}"><span class="ta-rec-level">${r.level === 'ok' ? 'OK' : r.level === 'warn' ? 'ATTENTION' : 'CRITIQUE'}</span>${escapeHtml(r.msg)}</div>`).join('');
+  // ── 4. Références théoriques PI ──
+  if (refEl) {
+    const aParam = a.smartpi_a;
+    const bParam = a.smartpi_b;
+    const dtRef = dtHeat != null ? dtHeat : dtCool;
+    const ref = computeTheoreticalPI(aParam, bParam, tau, dtRef);
+    if (ref) {
+      refEl.innerHTML = '<table class="ta-ref-table">' +
+        '<tr><th>Méthode</th><th>Kp</th><th>Ki</th><th>Ti (min)</th><th>&lambda;</th></tr>' +
+        '<tr class="ta-ref-current"><td>SmartPI actuel</td><td>' + fmtNum(kp, 4) + '</td><td>' + fmtNum(ki, 4) + '</td><td>' + (kp && ki && ki > 0 ? fmtNum(kp / ki, 1) : '—') + '</td><td>—</td></tr>' +
+        '<tr><td>SIMC conservateur</td><td>' + fmtNum(ref.simc.Kp, 4) + '</td><td>' + fmtNum(ref.simc.Ki, 4) + '</td><td>' + fmtNum(ref.simc.Ti, 1) + '</td><td>' + fmtNum(ref.simc.lambda, 1) + '</td></tr>' +
+        '<tr><td>IMC modéré</td><td>' + fmtNum(ref.imc.Kp, 4) + '</td><td>' + fmtNum(ref.imc.Ki, 4) + '</td><td>' + fmtNum(ref.imc.Ti, 1) + '</td><td>' + fmtNum(ref.imc.lambda, 1) + '</td></tr>' +
+        '</table>' +
+        '<div class="ta-ref-note">K_proc=' + fmtNum(ref.K, 3) + ' · &tau;=' + fmtNum(ref.tau, 1) + ' min · L=' + fmtNum(ref.L, 1) + ' min — Référence indicative, non prescriptive.</div>';
+    } else {
+      refEl.innerHTML = '<div class="ta-empty">Paramètres modèle insuffisants (a, b, tau, deadtime requis).</div>';
+    }
+  }
+
+  // ── 5. Maturité du modèle ──
+  if (matEl) {
+    const learnA = a.smartpi_learn_ok_count_a;
+    const learnB = a.smartpi_learn_ok_count_b;
+    const LEARN_TARGET = 100;
+    const autocalibState = a.smartpi_autocalib_state;
+    const snapshotAge = a.smartpi_autocalib_snapshot_age_h;
+    const modelDegraded = a.smartpi_autocalib_model_degraded;
+    const retryCount = a.smartpi_autocalib_retry_count;
+
+    const pctA = learnA != null ? Math.min(100, Math.round(learnA / LEARN_TARGET * 100)) : null;
+    const pctB = learnB != null ? Math.min(100, Math.round(learnB / LEARN_TARGET * 100)) : null;
+    const fillClass = (pct) => pct >= 75 ? 'ta-fill-good' : pct >= 40 ? 'ta-fill-warn' : 'ta-fill-bad';
+
+    const maturityBadge = (pctA != null && pctB != null)
+      ? (Math.min(pctA, pctB) >= 75 ? tuningBadge('ok', 'mature')
+        : Math.min(pctA, pctB) >= 40 ? tuningBadge('warn', 'en cours')
+        : tuningBadge('error', 'immature'))
+      : '';
+
+    let rows = [];
+    rows.push(renderTaRowRaw('Statut', (modelDegraded === true ? tuningBadge('error', 'dégradé') : tuningBadge('ok', 'nominal')) + maturityBadge));
+
+    if (pctA != null) {
+      rows.push(renderTaRowRaw('Apprentissage a',
+        escapeHtml(learnA + '/' + LEARN_TARGET + ' (' + pctA + '%)') +
+        '<div class="ta-progress" style="width:100px"><div class="ta-progress-fill ' + fillClass(pctA) + '" style="width:' + pctA + '%"></div></div>'));
+    }
+    if (pctB != null) {
+      rows.push(renderTaRowRaw('Apprentissage b',
+        escapeHtml(learnB + '/' + LEARN_TARGET + ' (' + pctB + '%)') +
+        '<div class="ta-progress" style="width:100px"><div class="ta-progress-fill ' + fillClass(pctB) + '" style="width:' + pctB + '%"></div></div>'));
+    }
+
+    rows.push(renderTaRow('AutoCalib FSM', autocalibState || '—'));
+    rows.push(renderTaRow('Retries calibration', retryCount != null ? String(retryCount) : '—',
+      retryCount != null && retryCount > 2 ? tuningBadge('warn', retryCount + ' retries') : ''));
+    rows.push(renderTaRow('Age snapshot', snapshotAge != null ? fmtNum(snapshotAge, 1) + ' h' : '—',
+      snapshotAge != null && snapshotAge > 48 ? tuningBadge('warn', '> 48h') : snapshotAge != null ? tuningBadge('ok', 'récent') : ''));
+
+    matEl.innerHTML = rows.join('');
+  }
+
+  // ── 6. Fenêtre de stabilité ──
+  if (stabEl) {
+    const stab = computeStabilityWindow(hist);
+    if (stab) {
+      const regimeDur = stab.regimeStable
+        ? '<span class="ta-duration">stable sur toute la fenêtre</span>'
+        : '<span class="ta-duration">' + escapeHtml(fmtDuration(stab.regimeDurationMin)) + '</span>';
+      const phaseDur = stab.phaseStable
+        ? '<span class="ta-duration">stable sur toute la fenêtre</span>'
+        : '<span class="ta-duration">' + escapeHtml(fmtDuration(stab.phaseDurationMin)) + '</span>';
+
+      const regimeBadge = (stab.regimeStable || (stab.regimeDurationMin != null && stab.regimeDurationMin > 30))
+        ? tuningBadge('ok', 'stable') : tuningBadge('warn', 'récent');
+      const phaseBadge = (stab.phaseStable || (stab.phaseDurationMin != null && stab.phaseDurationMin > 30))
+        ? tuningBadge('ok', 'stable') : tuningBadge('warn', 'récent');
+
+      stabEl.innerHTML = [
+        renderTaRowRaw('Régime', escapeHtml(stab.regime || '—') + ' depuis ' + regimeDur + regimeBadge),
+        renderTaRowRaw('Phase', escapeHtml(stab.phase || '—') + ' depuis ' + phaseDur + phaseBadge),
+        renderTaRow('Points historique', String(hist.length)),
+      ].join('');
+    } else {
+      stabEl.innerHTML = '<div class="ta-empty">En attente d\'historique (min. 2 points)...</div>';
+    }
+  }
+
+  // ── 7. Analyse de la réponse récente ──
+  if (respEl) {
+    const resp = analyzeRecentResponse(hist);
+    if (resp) {
+      const t = new Date(resp.ts);
+      const timeStr = t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      respEl.innerHTML = [
+        renderTaRow('Consigne', fmtNum(resp.prevSP, 1) + ' → ' + fmtNum(resp.newSP, 1) + ' °C (' + timeStr + ')'),
+        renderTaRow('Erreur moyenne', fmtNum(resp.errAvg, 2) + ' °C'),
+        renderTaRow('Dépassement', fmtNum(resp.overshoot, 2) + ' °C',
+          resp.overshoot > 0.3 ? tuningBadge('warn', 'overshoot') : tuningBadge('ok', 'ok')),
+        renderTaRow('Temps de montée', resp.riseTime != null ? fmtDuration(resp.riseTime) : '—'),
+        renderTaRow('Temps de stabilisation', resp.settlingTime != null ? fmtDuration(resp.settlingTime) : '—'),
+        renderTaRow('IAE', fmtNum(resp.iae, 1) + ' °C·min'),
+        renderTaRow('Points', String(resp.points)),
+      ].join('') + '<div class="ta-verdict ta-' + resp.verdictLevel + '">' + escapeHtml(resp.verdict) + '</div>';
+    } else {
+      respEl.innerHTML = '<div class="ta-empty">Aucun changement de consigne détecté dans l\'historique.</div>';
+    }
+  }
+
+  // ── 8. Recommandations enrichies ──
+  if (recEl) {
+    const recs = [];
+    const autocalibState = a.smartpi_autocalib_state;
+    const snapshotAge = a.smartpi_autocalib_snapshot_age_h;
+    const learnA = a.smartpi_learn_ok_count_a;
+    const learnB = a.smartpi_learn_ok_count_b;
+
+    // Critical
+    if (tauReliable === false || dtHeatReliable === false || dtCoolReliable === false) {
+      recs.push({ level: 'error', msg: 'Le modèle (tau/deadtimes) est partiellement non fiable : éviter toute retouche PI tant que la fiabilité n\'est pas restaurée.' });
+    }
+    if (guardCut === true || thermalGuard === true) {
+      recs.push({ level: 'error', msg: 'Un guard de sécurité est actif : priorité au diagnostic sécurité, pas au tuning PI.' });
+    }
+
+    // Warnings
+    if (autocalibState && autocalibState !== 'idle' && autocalibState !== 'monitoring') {
+      recs.push({ level: 'warn', msg: 'AutoCalibration en cours (état: ' + autocalibState + ') : attendre la fin avant d\'analyser les paramètres.' });
+    }
+    if (rmse != null && rmse > 0.7) {
+      recs.push({ level: 'warn', msg: 'RMSE twin élevée (' + rmse.toFixed(3) + ' °C) : vérifier la qualité capteur et les conditions d\'apprentissage.' });
+    }
+    if (innovAbs != null && innovAbs > 0.5) {
+      recs.push({ level: 'warn', msg: 'Innovation instantanée élevée (' + innovation.toFixed(3) + ' °C) : attendre un régime plus stable pour analyser Kp/Ki.' });
+    }
+    if (cusum != null && cusum > 5 && rmse != null && rmse <= 0.5) {
+      recs.push({ level: 'warn', msg: 'CUSUM élevé (' + cusum.toFixed(1) + ') mais RMSE correcte : possible dérive lente du modèle thermique.' });
+    } else if (cusum != null && cusum > 5) {
+      recs.push({ level: 'warn', msg: 'CUSUM élevé (' + cusum.toFixed(1) + ') : le modèle Twin montre des signes de dérive.' });
+    }
+    if (regime && regime !== 'cruise') {
+      recs.push({ level: 'warn', msg: 'Régime « ' + regime + ' » : le système n\'est pas en régime nominal, les observations de tuning ne sont pas représentatives.' });
+    }
+    if (phase && phase === 'warmup') {
+      recs.push({ level: 'warn', msg: 'Phase de chauffe (warmup) : les gains sont bridés par le guard, l\'analyse PI n\'est pas pertinente.' });
+    }
+    if (snapshotAge != null && snapshotAge > 48) {
+      recs.push({ level: 'warn', msg: 'Snapshot autocalib ancien (' + snapshotAge.toFixed(0) + 'h) : les paramètres du modèle pourraient ne plus être à jour.' });
+    }
+    if (learnA != null && learnB != null) {
+      const matPct = Math.min(learnA, learnB) / 100;
+      if (matPct < 0.5) {
+        recs.push({ level: 'warn', msg: 'Modèle immature (' + Math.round(matPct * 100) + '% d\'apprentissage) : les gains seront probablement ré-ajustés au fil de l\'apprentissage.' });
+      }
+    }
+
+    // Response-based recommendations
+    const resp = analyzeRecentResponse(hist);
+    if (resp) {
+      if (resp.overshoot > 1.0 && kp != null) {
+        recs.push({ level: 'warn', msg: 'Dépassement de ' + resp.overshoot.toFixed(2) + '°C lors du dernier changement de consigne : Kp (' + kp.toFixed(4) + ') potentiellement trop agressif.' });
+      }
+      if (resp.riseTime != null && resp.riseTime > 120 && kp != null) {
+        recs.push({ level: 'warn', msg: 'Réponse lente (montée en ' + Math.round(resp.riseTime) + ' min) : Kp potentiellement trop faible.' });
+      }
+    }
+
+    if (recs.length === 0) {
+      recs.push({ level: 'ok', msg: 'Contexte nominal : fenêtre favorable pour revue tuning (toujours en lecture seule sur cet onglet).' });
+    }
+
+    recEl.innerHTML = recs.map(r =>
+      '<div class="ta-rec ta-' + r.level + '"><span class="ta-rec-level">' +
+      (r.level === 'ok' ? 'OK' : r.level === 'warn' ? 'ATTENTION' : 'CRITIQUE') +
+      '</span>' + escapeHtml(r.msg) + '</div>'
+    ).join('');
+  }
 }
 
 // ─── Alerts / Anomalies ──────────────────────────────────────
@@ -3568,6 +4093,7 @@ async function fetchHistory() {
       updateCharts(historyData);
       updateEvents(historyData);
       updatePerformance(historyData);
+      if (currentState) updateTuningAssistant(currentState);
       return;
     }
 
@@ -3580,6 +4106,7 @@ async function fetchHistory() {
       updateCharts(historyData);
       updateEvents(historyData);
       updatePerformance(historyData);
+      if (currentState) updateTuningAssistant(currentState);
     }
   } catch (e) {
     console.error('Fetch history error:', e);
