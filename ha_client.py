@@ -27,8 +27,17 @@ def ha_get_state(entity_id: str) -> dict | None:
         )
         r.raise_for_status()
         return r.json()
-    except Exception as e:
-        log.error("REST fetch failed for %s: %s", entity_id, e)
+    except requests.exceptions.Timeout:
+        log.warning("Timeout fetching state for %s", entity_id)
+        return None
+    except requests.exceptions.ConnectionError:
+        log.warning("Connection error fetching state for %s", entity_id)
+        return None
+    except requests.exceptions.HTTPError as e:
+        log.warning("HTTP %d fetching state for %s", e.response.status_code, entity_id)
+        return None
+    except Exception:
+        log.exception("Unexpected error fetching state for %s", entity_id)
         return None
 
 
@@ -49,8 +58,17 @@ def ha_get_history(entity_id: str, hours: int = 24) -> list:
         r.raise_for_status()
         data = r.json()
         return data[0] if data else []
-    except Exception as e:
-        log.error("History fetch failed: %s", e)
+    except requests.exceptions.Timeout:
+        log.warning("Timeout fetching history for %s", entity_id)
+        return []
+    except requests.exceptions.ConnectionError:
+        log.warning("Connection error fetching history for %s", entity_id)
+        return []
+    except requests.exceptions.HTTPError as e:
+        log.warning("HTTP %d fetching history for %s", e.response.status_code, entity_id)
+        return []
+    except Exception:
+        log.exception("Unexpected error fetching history for %s", entity_id)
         return []
 
 
@@ -74,9 +92,15 @@ def ha_discover_smartpi_entities() -> list[dict]:
         )
         r.raise_for_status()
         all_states = r.json()
-    except Exception as e:
-        log.error("Failed to discover entities: %s", e)
-        return _entities_cache["data"]  # return stale cache on error
+    except requests.exceptions.Timeout:
+        log.warning("Timeout discovering entities")
+        return _entities_cache["data"]
+    except requests.exceptions.ConnectionError:
+        log.warning("Connection error discovering entities")
+        return _entities_cache["data"]
+    except Exception:
+        log.exception("Unexpected error discovering entities")
+        return _entities_cache["data"]
 
     entities = []
     for state in all_states:

@@ -8,6 +8,8 @@ SmartPI thermostat data to the browser dashboard.
 import os
 
 from flask import Flask, render_template, jsonify, request, abort
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from config import (
     CLIMATE_ENTITY, FLASK_PORT, HA_URL, WS_URL,
@@ -23,6 +25,14 @@ from ws_listener import start_ws_thread
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
 
+# ─── Rate Limiting ───────────────────────────────────────────────
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per hour"],
+    storage_uri="memory://",
+)
+
 
 # ─── Security Headers ────────────────────────────────────────────
 
@@ -32,6 +42,8 @@ def set_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
@@ -40,7 +52,17 @@ def set_security_headers(response):
         "img-src 'self' data:; "
         "connect-src 'self'"
     )
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, private"
     return response
+
+
+# ─── Request Logging ─────────────────────────────────────────────
+
+@app.before_request
+def log_request():
+    if request.path.startswith("/api/"):
+        log.info("%s %s from %s", request.method, request.path, request.remote_addr)
 
 
 # ─── Flask Routes ────────────────────────────────────────────────
@@ -64,6 +86,7 @@ def index():
 
 
 @app.route("/api/entities")
+@limiter.limit("10/minute")
 def api_entities():
     """Return the list of discovered SmartPI climate entities."""
     entities = ha_discover_smartpi_entities()
@@ -75,6 +98,7 @@ def api_entities():
 
 
 @app.route("/api/state")
+@limiter.limit("60/minute")
 def api_state():
     """Return the current SmartPI state grouped by category."""
     entity_id = _resolve_entity_id()
@@ -106,21 +130,24 @@ def api_history():
     return jsonify({
         "ok": True,
         "count": len(estore["history"]),
-        "data": estore["history"],
+        "data": list(estore["history"]),
     })
 
 
 @app.route("/api/ha-history")
+@limiter.limit("10/minute")
 def api_ha_history():
     """Fetch history from HA REST API (heavier, for initial load)."""
     entity_id = _resolve_entity_id()
     # Only allow querying known entities to prevent SSRF
     known = state_store.get("known_entities", [])
-    if entity_id not in known and entity_id != CLIMATE_ENTITY:
+    if entity_id not in known and entity_id not in state_store["entities"]:
         abort(404, description="Unknown entity")
+    hours_raw = request.args.get("hours", "24")
     try:
-        hours = int(request.args.get("hours", 24))
+        hours = int(hours_raw)
     except (ValueError, TypeError):
+        log.warning("Invalid 'hours' param: %r from %s", hours_raw, request.remote_addr)
         hours = 24
     hours = max(1, min(hours, 168))  # Clamp between 1 and 7 days
     history = ha_get_history(entity_id, hours)
@@ -190,9 +217,21 @@ def api_block_diagram():
     })
 
 
+@app.route("/health")
+@limiter.exempt
+def health():
+    """Health check endpoint for monitoring / load balancers."""
+    return jsonify({"ok": True, "connected": state_store["connected"]})
+
+
 # ─── Main ────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Prevent accidental debug mode activation (Werkzeug debugger = RCE risk)
+    if os.getenv("FLASK_DEBUG", "").lower() in ("1", "true"):
+        log.critical("FLASK_DEBUG is forbidden (Werkzeug interactive debugger = RCE risk). Exiting.")
+        raise SystemExit(1)
+
     check_ha_token()
 
     log.info("=" * 60)
@@ -208,8 +247,9 @@ if __name__ == "__main__":
     start_ws_thread()
 
     # Start Flask
+    FLASK_HOST = os.getenv("FLASK_HOST", "127.0.0.1")
     app.run(
-        host="0.0.0.0",
+        host=FLASK_HOST,
         port=FLASK_PORT,
         debug=False,  # Don't use debug mode with background threads
         threaded=True,

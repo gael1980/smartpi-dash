@@ -5,8 +5,9 @@ description = "Tableau de bord temps réel pour le régulateur SmartPI (Versatil
 license = "GPL-3.0-only"
 requires-python = ">=3.10"
 dependencies = [
-    "flask>=3.0",
-    "python-dotenv>=1.0",
-    "websockets>=12.0",
-    "requests>=2.31",
+    "flask>=3.0,<4.0",
+    "flask-limiter>=3.5,<4.0",
+    "python-dotenv>=1.0,<2.0",
+    "websockets>=12.0,<14.0",
+    "requests>=2.31,<3.0",
 ]

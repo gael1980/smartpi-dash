@@ -20,7 +20,6 @@ async def _ws_listener():
             log.info("Connecting to HA WebSocket: %s", WS_URL)
             async with websockets.connect(
                 WS_URL,
-                additional_headers={"Authorization": f"Bearer {HA_TOKEN}"},
                 ping_interval=30,
                 ping_timeout=10,
             ) as ws:
@@ -91,11 +90,9 @@ async def _ws_listener():
                         estore["attributes"] = attrs
                         estore["last_update"] = new_state.get("last_changed")
 
-                        # Append to rolling history
+                        # Append to rolling history (deque auto-evicts oldest)
                         snap = snapshot_for_history(attrs)
                         estore["history"].append(snap)
-                        if len(estore["history"]) > MAX_HISTORY:
-                            estore["history"] = estore["history"][-MAX_HISTORY:]
 
                         log.debug("[%s] State updated: T=%.1f, on_pct=%s",
                                   entity_id,
