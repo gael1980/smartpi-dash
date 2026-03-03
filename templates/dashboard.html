@@ -1111,6 +1111,70 @@
     text-align: center; padding: 32px 16px;
     color: var(--text-dim); font-size: 14px;
   }
+
+  /* ─── Tuning Assistant Tab ────────────────────────────────────── */
+  .ta-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 2px;
+    padding: 2px;
+  }
+  .ta-card {
+    background: var(--bg-panel);
+    padding: 16px 20px;
+  }
+  .ta-card.ta-full { grid-column: 1 / -1; }
+  .ta-card-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ta-card-title {
+    font: 600 14px 'JetBrains Mono', monospace;
+    color: var(--text-bright);
+  }
+  .ta-grid { display: grid; gap: 6px; }
+  .ta-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font: 400 12px 'JetBrains Mono', monospace;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+  }
+  .ta-row:last-child { border-bottom: none; }
+  .ta-key { color: var(--text-dim); }
+  .ta-val { color: var(--accent-cyan); font-weight: 600; }
+  .ta-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; border-radius: 4px;
+    border: 1px solid var(--border);
+    font: 500 10px 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-left: 10px;
+  }
+  .ta-badge.ta-ok { color: var(--accent-green); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
+  .ta-badge.ta-warn { color: var(--accent-orange); border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.06); }
+  .ta-badge.ta-error { color: var(--accent-red); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+  .ta-rec-list { display: flex; flex-direction: column; gap: 6px; }
+  .ta-rec {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font: 400 12px 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+  .ta-rec.ta-ok { border-color: rgba(34,197,94,0.35); }
+  .ta-rec.ta-warn { border-color: rgba(249,115,22,0.35); }
+  .ta-rec.ta-error { border-color: rgba(239,68,68,0.35); }
+  .ta-rec-level {
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  .ta-empty {
+    color: var(--text-dim);
+    font: 400 13px 'JetBrains Mono', monospace;
+    padding: 12px 0;
+  }
 </style>
 </head>
 <body>
@@ -1187,6 +1251,7 @@
   <button class="tab-btn" data-tab="tab-debug-chain">🔗 Chaîne U</button>
   <button class="tab-btn" data-tab="tab-feedforward">🎯 Feedforward</button>
   <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
+  <button class="tab-btn" data-tab="tab-tuning">🎛️ Tuning Assistant</button>
   <button class="tab-btn" data-tab="tab-events">📍 Événements</button>
   <button class="tab-btn" data-tab="tab-alerts">🚨 Alertes</button>
   <button class="tab-btn" data-tab="tab-perf">🧪 Consigne vs Réalisé</button>
@@ -1346,6 +1411,43 @@
       </div>
       <div id="pf-sessions-container">
         <div class="pf-empty">En attente de données d'historique...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Tuning Assistant (read-only)                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-tuning">
+  <div class="ta-layout">
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>⚙️</span>
+        <span class="ta-card-title">Paramètres PI & Modèle</span>
+      </div>
+      <div class="ta-grid" id="ta-params">
+        <div class="ta-empty">En attente d'état courant...</div>
+      </div>
+    </div>
+
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>🧪</span>
+        <span class="ta-card-title">Contexte d'observabilité</span>
+      </div>
+      <div class="ta-grid" id="ta-observability">
+        <div class="ta-empty">En attente d'état courant...</div>
+      </div>
+    </div>
+
+    <div class="ta-card ta-full">
+      <div class="ta-card-header">
+        <span>🧭</span>
+        <span class="ta-card-title">Recommandations prudentes (lecture seule)</span>
+      </div>
+      <div class="ta-rec-list" id="ta-recommendations">
+        <div class="ta-empty">Aucune recommandation disponible pour le moment.</div>
       </div>
     </div>
   </div>
@@ -1724,6 +1826,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
         if (historyData && historyData.length) updatePerformance(historyData);
       }, 50);
+    }
+    // Render tuning assistant on demand
+    if (btn.dataset.tab === 'tab-tuning' && currentState) {
+      updateTuningAssistant(currentState);
     }
   });
 });
@@ -2841,6 +2947,83 @@ function updateModelHealth(data) {
   }).join('');
 }
 
+
+function tuningBadge(level, label) {
+  return `<span class="ta-badge ta-${level}">${escapeHtml(label)}</span>`;
+}
+
+function renderTaRow(label, value, badgeHtml = '') {
+  return `<div class="ta-row"><span class="ta-key">${escapeHtml(label)}</span><span class="ta-val">${escapeHtml(value)}${badgeHtml}</span></div>`;
+}
+
+function updateTuningAssistant(data) {
+  const a = data.raw_attributes || {};
+  const paramsEl = document.getElementById('ta-params');
+  const obsEl = document.getElementById('ta-observability');
+  const recEl = document.getElementById('ta-recommendations');
+  if (!paramsEl || !obsEl || !recEl) return;
+
+  const kp = a.smartpi_kp;
+  const ki = a.smartpi_ki;
+  const tau = a.smartpi_tau_min;
+  const tauReliable = a.smartpi_tau_reliable;
+  const dtHeat = a.smartpi_deadtime_heat_s;
+  const dtCool = a.smartpi_deadtime_cool_s;
+  const dtHeatReliable = a.smartpi_deadtime_heat_reliable;
+  const dtCoolReliable = a.smartpi_deadtime_cool_reliable;
+
+  const rmse = a.smartpi_twin_rmse;
+  const innovation = a.smartpi_twin_innovation;
+  const cusum = a.smartpi_twin_cusum;
+  const regime = a.smartpi_regime;
+  const phase = a.smartpi_phase;
+  const guardCut = a.smartpi_guard_cut_active;
+  const thermalGuard = a.smartpi_thermal_guard_active;
+
+  const fmtNum = (v, d = 3) => (v == null ? '—' : Number(v).toFixed(d));
+  const boolText = (v) => (v == null ? '—' : (v ? 'true' : 'false'));
+
+  paramsEl.innerHTML = [
+    renderTaRow('Kp', fmtNum(kp, 4)),
+    renderTaRow('Ki', fmtNum(ki, 4)),
+    renderTaRow('tau_min', tau == null ? '—' : `${fmtNum(tau, 1)} min`, tuningBadge(tauReliable === false ? 'error' : 'ok', tauReliable === false ? 'non fiable' : 'fiable')),
+    renderTaRow('deadtime heat', dtHeat == null ? '—' : `${fmtNum(dtHeat, 1)} s`, tuningBadge(dtHeatReliable === false ? 'error' : 'ok', dtHeatReliable === false ? 'non fiable' : 'fiable')),
+    renderTaRow('deadtime cool', dtCool == null ? '—' : `${fmtNum(dtCool, 1)} s`, tuningBadge(dtCoolReliable === false ? 'error' : 'ok', dtCoolReliable === false ? 'non fiable' : 'fiable')),
+  ].join('');
+
+  const rmseBadge = tuningBadge(rmse == null ? 'warn' : (rmse <= 0.3 ? 'ok' : rmse <= 0.7 ? 'warn' : 'error'), rmse == null ? 'n/a' : (rmse <= 0.3 ? 'bon' : rmse <= 0.7 ? 'moyen' : 'dégradé'));
+  const innovAbs = innovation == null ? null : Math.abs(innovation);
+  const innovBadge = tuningBadge(innovAbs == null ? 'warn' : (innovAbs <= 0.2 ? 'ok' : innovAbs <= 0.5 ? 'warn' : 'error'), innovAbs == null ? 'n/a' : (innovAbs <= 0.2 ? 'stable' : innovAbs <= 0.5 ? 'à surveiller' : 'instable'));
+  const cusumBadge = tuningBadge(cusum == null ? 'warn' : (cusum <= 3 ? 'ok' : cusum <= 5 ? 'warn' : 'error'), cusum == null ? 'n/a' : (cusum <= 3 ? 'normal' : cusum <= 5 ? 'haut' : 'critique'));
+
+  obsEl.innerHTML = [
+    renderTaRow('RMSE twin', rmse == null ? '—' : `${fmtNum(rmse, 3)} °C`, rmseBadge),
+    renderTaRow('Innovation', innovation == null ? '—' : `${fmtNum(innovation, 3)} °C`, innovBadge),
+    renderTaRow('CUSUM', cusum == null ? '—' : fmtNum(cusum, 2), cusumBadge),
+    renderTaRow('Régime / Phase', `${regime || '—'} / ${phase || '—'}`),
+    renderTaRow('Guards actifs', `guard_cut=${boolText(guardCut)} · thermal=${boolText(thermalGuard)}`),
+  ].join('');
+
+  const recs = [];
+  if (tauReliable === false || dtHeatReliable === false || dtCoolReliable === false) {
+    recs.push({ level: 'error', msg: 'Le modèle (tau/deadtimes) est partiellement non fiable: éviter toute retouche PI tant que la fiabilité n\'est pas restaurée.' });
+  }
+  if (rmse != null && rmse > 0.7) {
+    recs.push({ level: 'warn', msg: `RMSE twin élevée (${rmse.toFixed(3)} °C): vérifier la qualité capteur et les conditions d\'apprentissage avant tuning.` });
+  }
+  if (innovAbs != null && innovAbs > 0.5) {
+    recs.push({ level: 'warn', msg: `Innovation instantanée élevée (${innovation.toFixed(3)} °C): attendre un régime plus stable pour analyser Kp/Ki.` });
+  }
+  if (guardCut === true || thermalGuard === true) {
+    recs.push({ level: 'error', msg: 'Un guard de sécurité est actif: priorité au diagnostic sécurité, pas au tuning PI.' });
+  }
+  if (recs.length === 0) {
+    recs.push({ level: 'ok', msg: 'Contexte nominal: fenêtre favorable pour revue tuning (toujours en lecture seule sur cet onglet).' });
+  }
+
+  recEl.innerHTML = recs.map(r => `<div class="ta-rec ta-${r.level}"><span class="ta-rec-level">${r.level === 'ok' ? 'OK' : r.level === 'warn' ? 'ATTENTION' : 'CRITIQUE'}</span>${escapeHtml(r.msg)}</div>`).join('');
+}
+
 // ─── Alerts / Anomalies ──────────────────────────────────────
 const ALERT_DEFAULTS = {
   rmse:           { label: 'RMSE',               unit: '°C',  value: 0.7 },
@@ -3251,6 +3434,7 @@ async function fetchState() {
     updateDebugChain(data);
     updateFeedforward(data);
     updateModelHealth(data);
+    updateTuningAssistant(data);
     updateAlerts(data);
 
     if (data.last_update) {
