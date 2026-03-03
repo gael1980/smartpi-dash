@@ -7,7 +7,7 @@ import threading
 import websockets
 
 from config import WS_URL, HA_TOKEN, CLIMATE_ENTITY, state_store, MAX_HISTORY, get_entity_store, log
-from transforms import flatten_smartpi_attrs, snapshot_for_history
+from transforms import flatten_smartpi_attrs, snapshot_for_history, ensure_utc_iso
 from ha_client import ha_discover_smartpi_entities, ha_get_state
 
 
@@ -67,7 +67,7 @@ async def _ws_listener():
                         attrs = flatten_smartpi_attrs(raw_attrs)
                         estore["climate"] = initial
                         estore["attributes"] = attrs
-                        estore["last_update"] = initial.get("last_changed")
+                        estore["last_update"] = ensure_utc_iso(initial.get("last_changed"))
                         log.info("Initial state loaded for %s", eid)
 
                 # Phase 4: Listen for events
@@ -88,7 +88,7 @@ async def _ws_listener():
                         estore = get_entity_store(entity_id)
                         estore["climate"] = new_state
                         estore["attributes"] = attrs
-                        estore["last_update"] = new_state.get("last_changed")
+                        estore["last_update"] = ensure_utc_iso(new_state.get("last_changed"))
 
                         # Append to rolling history (deque auto-evicts oldest)
                         snap = snapshot_for_history(attrs)

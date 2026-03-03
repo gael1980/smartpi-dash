@@ -266,6 +266,25 @@ def extract_smartpi_data(attrs: dict) -> dict:
     return grouped
 
 
+def ensure_utc_iso(ts_str: str | None) -> str | None:
+    """Ensure an ISO timestamp has explicit UTC offset for correct JS parsing.
+
+    Home Assistant may send naive ISO strings (no timezone offset).
+    JavaScript new Date() treats these as local time, causing display errors.
+    """
+    if not ts_str:
+        return ts_str
+    # Python 3.10 fromisoformat() doesn't support 'Z', normalize first
+    normalized = ts_str.replace("Z", "+00:00") if ts_str.endswith("Z") else ts_str
+    try:
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+    except (ValueError, TypeError):
+        return ts_str
+
+
 def snapshot_for_history(attrs: dict) -> dict:
     """Create a compact snapshot for the rolling history."""
     return {
