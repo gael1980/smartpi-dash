@@ -43,6 +43,7 @@ smartpi-dash/
 - **Onglet Chaîne U** : décomposition de la commande (waterfall u_applied / u_ff / u_pi) + time-series
 - **Onglet Feedforward** : état FF, pipeline de calcul, warmup, K_ff, graphiques
 - **Onglet Santé Modèle** : score de santé global, drapeaux de fiabilité, autocalib, twin quality, progression apprentissage, paramètres du modèle
+- **Onglet Tuning Assistant** : paramètres PI & modèle (Kp, Ki, tau, deadtimes avec badges fiabilité), contexte d'observabilité (RMSE, innovation, CUSUM avec seuils), recommandations prudentes en lecture seule
 - **Onglet Événements** : timeline chronologique des transitions d'état (régime, phase, FF gate, saturation, deadband, autocalib, guard) avec filtres
 - **Onglet Alertes** : 9 règles d'alerte (RMSE, innovation, deadtime, tau, modèle dégradé, guard cut, CUSUM, erreur T°, snapshot age) avec seuils configurables (persistés en localStorage)
 - **Onglet Consigne vs Réalisé** : métriques de performance (erreur moy/max, % deadband/near-band, overshoot, IAE), graphique d'erreur avec bandes colorées, tableau de sessions par changement de consigne

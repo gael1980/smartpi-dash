@@ -220,11 +220,11 @@ The entire frontend is a single ~3,500-line HTML file with embedded CSS and Java
 
 ### Structure
 
-1. **HTML** (~400 lines) — Topbar, hero metrics bar, 10-tab navigation, tab panels
+1. **HTML** (~400 lines) — Topbar, hero metrics bar, 11-tab navigation, tab panels
 2. **CSS** (~500 lines) — CSS variables (dark theme), component styles, animations, responsive 768px breakpoint
 3. **JavaScript** (~2,500 lines) — State management, API polling, chart rendering, SVG interaction
 
-### 10 Dashboard Tabs
+### 11 Dashboard Tabs
 
 | Tab | `id` | Content |
 |-----|------|---------|
@@ -234,6 +234,7 @@ The entire frontend is a single ~3,500-line HTML file with embedded CSS and Java
 | Chaîne U | `tab-chain` | Waterfall + breakdown + time-series for control output |
 | Feedforward | `tab-ff` | FF pipeline steps, K_ff calculation, charts |
 | Santé modèle | `tab-health` | Model reliability scores and learning progress |
+| Tuning Assistant | `tab-tuning` | PI params & model reliability badges, observability context (RMSE, innovation, CUSUM), read-only recommendations |
 | Événements | `tab-events` | Filtered timeline of state transitions |
 | Alertes | `tab-alerts` | 9 configurable threshold rules (LocalStorage) |
 | Performance | `tab-perf` | Error metrics, overshoot, deadband analysis |
