@@ -17,6 +17,7 @@ from config import (
 )
 from transforms import (
     SMARTPI_GROUPS, flatten_smartpi_attrs, extract_smartpi_data, snapshot_for_history,
+    ensure_utc_iso,
 )
 from ha_client import ha_discover_smartpi_entities, ha_get_history
 from ws_listener import start_ws_thread
@@ -159,7 +160,7 @@ def api_ha_history():
         attrs = flatten_smartpi_attrs(raw_attrs)
         points.append(snapshot_for_history(attrs))
         # Override timestamp with HA's last_changed
-        points[-1]["ts"] = entry.get("last_changed")
+        points[-1]["ts"] = ensure_utc_iso(entry.get("last_changed"))
 
     return jsonify({
         "ok": True,
