@@ -67,7 +67,7 @@ async def _ws_listener():
                         attrs = flatten_smartpi_attrs(raw_attrs)
                         estore["climate"] = initial
                         estore["attributes"] = attrs
-                        estore["last_update"] = ensure_utc_iso(initial.get("last_changed"))
+                        estore["last_update"] = ensure_utc_iso(initial.get("last_updated"))
                         log.info("Initial state loaded for %s", eid)
 
                 # Phase 4: Listen for events
@@ -88,7 +88,7 @@ async def _ws_listener():
                         estore = get_entity_store(entity_id)
                         estore["climate"] = new_state
                         estore["attributes"] = attrs
-                        estore["last_update"] = ensure_utc_iso(new_state.get("last_changed"))
+                        estore["last_update"] = ensure_utc_iso(new_state.get("last_updated"))
 
                         # Append to rolling history (deque auto-evicts oldest)
                         snap = snapshot_for_history(attrs)
