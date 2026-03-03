@@ -1175,6 +1175,7 @@
     font: 400 13px 'JetBrains Mono', monospace;
     padding: 12px 0;
   }
+  @media (max-width: 900px) { .ta-layout { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -1411,43 +1412,6 @@
       </div>
       <div id="pf-sessions-container">
         <div class="pf-empty">En attente de données d'historique...</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- TAB: Tuning Assistant (read-only)                               -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="tab-panel" id="tab-tuning">
-  <div class="ta-layout">
-    <div class="ta-card">
-      <div class="ta-card-header">
-        <span>⚙️</span>
-        <span class="ta-card-title">Paramètres PI & Modèle</span>
-      </div>
-      <div class="ta-grid" id="ta-params">
-        <div class="ta-empty">En attente d'état courant...</div>
-      </div>
-    </div>
-
-    <div class="ta-card">
-      <div class="ta-card-header">
-        <span>🧪</span>
-        <span class="ta-card-title">Contexte d'observabilité</span>
-      </div>
-      <div class="ta-grid" id="ta-observability">
-        <div class="ta-empty">En attente d'état courant...</div>
-      </div>
-    </div>
-
-    <div class="ta-card ta-full">
-      <div class="ta-card-header">
-        <span>🧭</span>
-        <span class="ta-card-title">Recommandations prudentes (lecture seule)</span>
-      </div>
-      <div class="ta-rec-list" id="ta-recommendations">
-        <div class="ta-empty">Aucune recommandation disponible pour le moment.</div>
       </div>
     </div>
   </div>
@@ -1716,6 +1680,43 @@
       <div id="mh-params-container"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: Tuning Assistant (read-only)                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-tuning">
+  <div class="ta-layout">
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>⚙️</span>
+        <span class="ta-card-title">Paramètres PI & Modèle</span>
+      </div>
+      <div class="ta-grid" id="ta-params">
+        <div class="ta-empty">En attente d'état courant...</div>
+      </div>
+    </div>
+
+    <div class="ta-card">
+      <div class="ta-card-header">
+        <span>🧪</span>
+        <span class="ta-card-title">Contexte d'observabilité</span>
+      </div>
+      <div class="ta-grid" id="ta-observability">
+        <div class="ta-empty">En attente d'état courant...</div>
+      </div>
+    </div>
+
+    <div class="ta-card ta-full">
+      <div class="ta-card-header">
+        <span>🧭</span>
+        <span class="ta-card-title">Recommandations prudentes (lecture seule)</span>
+      </div>
+      <div class="ta-rec-list" id="ta-recommendations">
+        <div class="ta-empty">Aucune recommandation disponible pour le moment.</div>
+      </div>
+    </div>
   </div>
 </div>
 
