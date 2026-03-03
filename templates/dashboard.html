@@ -1268,12 +1268,19 @@
   .ta-chart-wrap {
     position: relative;
     width: 100%;
-    min-height: 280px;
+    min-height: 360px;
   }
   .ta-chart-wrap .u-wrap { border-radius: 6px; }
+  .ta-chart-wrap .u-legend {
+    font: 500 14px 'JetBrains Mono', monospace;
+    padding: 6px 8px;
+  }
+  .ta-chart-wrap .u-legend .u-series { padding: 0 8px; }
+  .ta-chart-wrap .u-legend .u-label { color: #9fb3d4; }
+  .ta-chart-wrap .u-legend .u-value { color: #e2e8f0; font-weight: 700; }
   .ta-regime-legend {
     display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;
-    font: 400 11px 'JetBrains Mono', monospace; color: var(--text-dim);
+    font: 500 13px 'JetBrains Mono', monospace; color: var(--text-dim);
   }
   .ta-regime-legend span {
     display: inline-flex; align-items: center; gap: 4px;
@@ -1287,6 +1294,9 @@
     .ta-gauge { width: 64px; height: 64px; }
     .ta-gauge::before { width: 48px; height: 48px; }
     .ta-gauge-value { font-size: 20px; }
+    .ta-chart-wrap { min-height: 320px; }
+    .ta-chart-wrap .u-legend { font-size: 12px; }
+    .ta-regime-legend { font-size: 12px; }
   }
 </style>
 </head>
@@ -1879,10 +1889,10 @@
       </div>
       <div class="ta-chart-wrap" id="ta-chart"></div>
       <div class="ta-regime-legend" id="ta-regime-legend">
-        <span><span class="ta-regime-swatch" style="background:rgba(59,130,246,0.15)"></span> comfort</span>
-        <span><span class="ta-regime-swatch" style="background:rgba(249,115,22,0.15)"></span> boost</span>
-        <span><span class="ta-regime-swatch" style="background:rgba(139,92,246,0.15)"></span> frost</span>
-        <span><span class="ta-regime-swatch" style="background:rgba(34,197,94,0.15)"></span> eco / cruise</span>
+        <span><span class="ta-regime-swatch" style="background:rgba(34,197,94,0.15)"></span> regime nominal/cruise</span>
+        <span><span class="ta-regime-swatch" style="background:rgba(234,179,8,0.18)"></span> phase warmup</span>
+        <span><span class="ta-regime-swatch" style="background:rgba(239,68,68,0.15)"></span> guard / saturated</span>
+        <span><span class="ta-regime-swatch" style="background:rgba(249,115,22,0.18)"></span> deadtime window</span>
       </div>
     </div>
 
@@ -2014,7 +2024,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         } else {
           const taEl = document.getElementById('ta-chart');
           if (taEl && taEl.clientWidth > 0) {
-            charts.tuning.setSize({ width: taEl.clientWidth, height: 280 });
+            charts.tuning.setSize({ width: taEl.clientWidth, height: TUNING_CHART_HEIGHT });
           }
         }
         if (historyData && historyData.length) updateTuningChart(historyData);
@@ -3595,7 +3605,13 @@ function updateTuningAssistant(data) {
 
 // ─── Tuning Annotated Chart ──────────────────────────────────
 let tuningChartInitialized = false;
-let _tuningRegimeData = []; // kept in sync for draw hook
+const TUNING_CHART_HEIGHT = 360;
+let _tuningRegimeData = [];   // [{ ts, regime }]
+let _tuningPhaseData = [];    // [{ ts, phase }]
+let _tuningNearBandData = []; // [{ ts, target, nearAbove, nearBelow }]
+let _tuningSetpointChanges = []; // [{ idx, ts, prevSP, newSP, dir, deadtimeSec }]
+let _tuningOvershootMarks = [];  // [{ ts, val, dir }]
+let _tuningRiseWindows = [];     // [{ x0, x1, y, dir }]
 
 const REGIME_COLORS = {
   comfort: 'rgba(59,130,246,0.12)',
@@ -3603,7 +3619,283 @@ const REGIME_COLORS = {
   frost:   'rgba(139,92,246,0.12)',
   eco:     'rgba(34,197,94,0.12)',
   cruise:  'rgba(34,197,94,0.12)',
+  nominal: 'rgba(34,197,94,0.12)',
+  perturbed: 'rgba(249,115,22,0.12)',
+  transition: 'rgba(59,130,246,0.12)',
+  init: 'rgba(139,92,246,0.12)',
+  saturated: 'rgba(239,68,68,0.12)',
 };
+
+const PHASE_COLORS = {
+  warmup: 'rgba(234,179,8,0.18)',
+  guard: 'rgba(239,68,68,0.16)',
+  hold: 'rgba(148,163,184,0.12)',
+  run: 'rgba(34,197,94,0.12)',
+};
+
+function normalizeRegimeKey(regime) {
+  if (regime == null) return null;
+  const r = String(regime).trim().toLowerCase();
+  const aliases = {
+    normal: 'nominal',
+    nominal: 'nominal',
+    perturbed: 'perturbed',
+    transition: 'transition',
+    init: 'init',
+    saturated: 'saturated',
+    comfort: 'comfort',
+    boost: 'boost',
+    frost: 'frost',
+    eco: 'eco',
+    cruise: 'cruise',
+  };
+  return aliases[r] || r;
+}
+
+function normalizePhaseKey(phase) {
+  if (phase == null) return null;
+  const p = String(phase).trim().toLowerCase();
+  if (p.includes('warmup') || p.includes('startup') || p === 'init') return 'warmup';
+  if (p.includes('guard') || p.includes('freeze') || p.includes('cut')) return 'guard';
+  if (p.includes('hold')) return 'hold';
+  if (p.includes('cruise') || p.includes('run') || p.includes('nominal')) return 'run';
+  return p;
+}
+
+function numOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function sanitizeTuneTemp(v, target) {
+  const n = numOrNull(v);
+  if (n == null) return null;
+  if (n < -20 || n > 60) return null;
+  if (target != null && Math.abs(n - target) > 12) return null;
+  return n;
+}
+
+function boolish(v) {
+  return v === true || v === 'true' || v === 1 || v === '1';
+}
+
+function currentSetpointFallback() {
+  const a = currentState && currentState.raw_attributes ? currentState.raw_attributes : null;
+  if (!a) return null;
+  const raw = (
+    a.temperature ??
+    a.target_temperature ??
+    a.smartpi_sp_brut ??
+    a.smartpi_sp_for_p
+  );
+  const v = Number(raw);
+  return Number.isFinite(v) ? v : null;
+}
+
+function currentRegimeFallback() {
+  const a = currentState && currentState.raw_attributes ? currentState.raw_attributes : null;
+  if (!a) return null;
+  return normalizeRegimeKey(a.smartpi_regime ?? a.governance_regime ?? a.regime);
+}
+
+function currentNearBandFallback() {
+  const a = currentState && currentState.raw_attributes ? currentState.raw_attributes : null;
+  if (!a) return { above: null, below: null };
+  const sym = numOrNull(a.smartpi_near_band_deg);
+  return {
+    above: numOrNull(a.smartpi_near_band_above_deg) ?? sym,
+    below: numOrNull(a.smartpi_near_band_below_deg) ?? sym,
+  };
+}
+
+function currentDeadtimeFallback(dir) {
+  const a = currentState && currentState.raw_attributes ? currentState.raw_attributes : null;
+  if (!a) return null;
+  const heat = numOrNull(a.smartpi_deadtime_heat_s);
+  const cool = numOrNull(a.smartpi_deadtime_cool_s);
+  return dir >= 0 ? (heat ?? cool) : (cool ?? heat);
+}
+
+function drawTuningBackground(u) {
+  if (!u.data || !u.data[0] || u.data[0].length === 0) return;
+  const ctx = u.ctx;
+  const top = u.bbox.top;
+  const h = u.bbox.height;
+  const left = u.bbox.left;
+  const right = left + u.bbox.width;
+  const regimeRibbonH = Math.min(8, h * 0.2);
+  const phaseRibbonH = Math.min(8, h * 0.2);
+
+  const drawTimeBand = (x0, x1, color, y, height) => {
+    if (!color) return;
+    const bandLeft = Math.max(left, Math.min(x0, x1));
+    const bandRight = Math.min(right, Math.max(x0, x1));
+    if (bandRight <= bandLeft) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(bandLeft, y, bandRight - bandLeft, height);
+  };
+
+  ctx.save();
+
+  // 1) Regime ribbon (bottom strip for readability)
+  if (_tuningRegimeData.length > 0) {
+    for (let i = 0; i < _tuningRegimeData.length; i++) {
+      const cur = _tuningRegimeData[i];
+      const next = _tuningRegimeData[i + 1];
+      const color = REGIME_COLORS[normalizeRegimeKey(cur.regime)];
+      const x0 = Math.round(u.valToPos(cur.ts, 'x', true));
+      const x1 = next ? Math.round(u.valToPos(next.ts, 'x', true)) : right;
+      drawTimeBand(x0, x1, color, top + h - regimeRibbonH, regimeRibbonH);
+    }
+  } else {
+    const color = REGIME_COLORS[currentRegimeFallback()];
+    if (color) ctx.fillRect(left, top + h - regimeRibbonH, right - left, regimeRibbonH);
+  }
+
+  // 2) Phase ribbon (top strip)
+  for (let i = 0; i < _tuningPhaseData.length; i++) {
+    const cur = _tuningPhaseData[i];
+    const next = _tuningPhaseData[i + 1];
+    const x0 = Math.round(u.valToPos(cur.ts, 'x', true));
+    const x1 = next ? Math.round(u.valToPos(next.ts, 'x', true)) : right;
+    const phaseColor = PHASE_COLORS[cur.phase];
+    drawTimeBand(x0, x1, phaseColor, top, phaseRibbonH);
+  }
+
+  // 3) Near-band horizontal fill around setpoint (very subtle)
+  for (let i = 0; i < _tuningNearBandData.length; i++) {
+    const cur = _tuningNearBandData[i];
+    const next = _tuningNearBandData[i + 1];
+    const x0 = Math.round(u.valToPos(cur.ts, 'x', true));
+    const x1 = next ? Math.round(u.valToPos(next.ts, 'x', true)) : right;
+    const yUp = Math.round(u.valToPos(cur.target + cur.nearAbove, 'y', true));
+    const yDown = Math.round(u.valToPos(cur.target - cur.nearBelow, 'y', true));
+    drawTimeBand(x0, x1, 'rgba(34,197,94,0.06)', Math.min(yUp, yDown), Math.abs(yDown - yUp));
+  }
+
+  // 4) Deadtime windows (light vertical shade)
+  for (const ch of _tuningSetpointChanges) {
+    if (!(ch.deadtimeSec > 0)) continue;
+    const x0 = Math.round(u.valToPos(ch.ts, 'x', true));
+    const x1 = Math.round(u.valToPos(ch.ts + ch.deadtimeSec, 'x', true));
+    if (Math.abs(x1 - x0) < 2) continue;
+    drawTimeBand(x0, x1, 'rgba(249,115,22,0.09)', top, h);
+  }
+
+  ctx.restore();
+}
+
+function drawTuningOverlays(u) {
+  if (!u.data || !u.data[0] || u.data[0].length === 0) return;
+  const ctx = u.ctx;
+  const top = u.bbox.top;
+  const h = u.bbox.height;
+  const left = u.bbox.left;
+  const right = left + u.bbox.width;
+
+  ctx.save();
+
+  // 1) Setpoint-change markers + labels (latest few labels to avoid clutter)
+  ctx.font = '12px JetBrains Mono';
+  for (const ch of _tuningSetpointChanges) {
+    const x = Math.round(u.valToPos(ch.ts, 'x', true));
+    if (x < left || x > right) continue;
+    ctx.strokeStyle = 'rgba(6,182,212,0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, top + h);
+    ctx.stroke();
+  }
+  const labeled = _tuningSetpointChanges.slice(-2);
+  let lastLabelX = -Infinity;
+  for (const ch of labeled) {
+    const x = Math.round(u.valToPos(ch.ts, 'x', true));
+    if (x < left || x > right || x - lastLabelX < 64) continue;
+    const txt = `${ch.prevSP.toFixed(1)}→${ch.newSP.toFixed(1)}°C`;
+    const tw = ctx.measureText(txt).width;
+    const tx = Math.max(left + 4, Math.min(x + 6, right - tw - 6));
+    const ty = top + h - 14;
+    ctx.fillStyle = 'rgba(15,23,42,0.86)';
+    ctx.fillRect(tx - 3, ty - 12, tw + 6, 14);
+    ctx.fillStyle = 'rgba(186,230,253,0.95)';
+    ctx.fillText(txt, tx, ty);
+    lastLabelX = x;
+  }
+
+  // 2) Rise-time arrows
+  for (const rw of _tuningRiseWindows.slice(-3)) {
+    const x0 = Math.round(u.valToPos(rw.x0, 'x', true));
+    const x1 = Math.round(u.valToPos(rw.x1, 'x', true));
+    if (x1 <= left || x0 >= right || Math.abs(x1 - x0) < 14) continue;
+    const yRaw = Math.round(u.valToPos(rw.y, 'y', true)) - 8;
+    const y = Math.max(top + 14, Math.min(top + h - 6, yRaw));
+    ctx.strokeStyle = 'rgba(59,130,246,0.9)';
+    ctx.fillStyle = 'rgba(59,130,246,0.9)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x1, y);
+    ctx.lineTo(x1 - 6, y - 3);
+    ctx.lineTo(x1 - 6, y + 3);
+    ctx.closePath();
+    ctx.fill();
+    const mins = Math.round((rw.x1 - rw.x0) / 60);
+    if (mins > 0) {
+      ctx.fillStyle = 'rgba(148,163,184,0.95)';
+      ctx.fillText(`${mins}m`, Math.min(right - 24, (x0 + x1) / 2 + 4), y - 5);
+    }
+  }
+
+  // 3) Overshoot markers (triangles)
+  for (const mark of _tuningOvershootMarks) {
+    const x = Math.round(u.valToPos(mark.ts, 'x', true));
+    const y = Math.round(u.valToPos(mark.val, 'y', true));
+    if (x < left || x > right || y < top || y > top + h) continue;
+    const up = mark.dir >= 0;
+    ctx.fillStyle = 'rgba(239,68,68,0.92)';
+    ctx.beginPath();
+    if (up) {
+      ctx.moveTo(x, y - 6);
+      ctx.lineTo(x - 5, y + 3);
+      ctx.lineTo(x + 5, y + 3);
+    } else {
+      ctx.moveTo(x, y + 6);
+      ctx.lineTo(x - 5, y - 3);
+      ctx.lineTo(x + 5, y - 3);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 4) Deadband dashed lines around last setpoint
+  const lastTargetFromSeries = (u.data[2] && u.data[2].length)
+    ? u.data[2][u.data[2].length - 1]
+    : null;
+  const seriesTarget = numOrNull(lastTargetFromSeries);
+  const lastTarget = seriesTarget != null ? seriesTarget : currentSetpointFallback();
+  if (lastTarget != null) {
+    for (const offset of [0.3, -0.3]) {
+      const y = Math.round(u.valToPos(lastTarget + offset, 'y', true));
+      if (y >= top && y <= top + h) {
+        ctx.strokeStyle = 'rgba(34,197,94,0.42)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  ctx.restore();
+}
 
 function initTuningChart() {
   if (tuningChartInitialized || !window.uPlot) return;
@@ -3614,56 +3906,19 @@ function initTuningChart() {
   const taSeries = [
     makeSeries('T_in (\u00b0C)', '#3b82f6', 2),
     makeSeries('Consigne (\u00b0C)', '#06b6d4', 1.5, [6, 3]),
-    makeSeries('T\u0302 twin (\u00b0C)', '#a855f7', 1.5, [3, 2]),
+    makeSeries('T\u0302 twin (\u00b0C)', '#94a3b8', 1.5, [3, 2]),
   ];
-  const opts = makeOpts(el, taSeries, '\u00b0C', null, 280);
+  const opts = makeOpts(el, taSeries, '\u00b0C', null, TUNING_CHART_HEIGHT);
+  if (opts.axes && opts.axes.length >= 2) {
+    opts.axes[0].font = '13px JetBrains Mono';
+    opts.axes[1].font = '13px JetBrains Mono';
+  }
 
-  // Draw hook: regime background bands + deadband lines
+  // drawClear: backgrounds, draw: overlays on top of series
   opts.hooks = {
+    drawClear: [drawTuningBackground],
     draw: [
-      (u) => {
-        if (!u.data || !u.data[0] || u.data[0].length === 0) return;
-        const ctx = u.ctx;
-        const rd = _tuningRegimeData;
-        if (!rd.length) return;
-
-        ctx.save();
-        const top = u.bbox.top;
-        const h = u.bbox.height;
-        const left = u.bbox.left;
-        const right = left + u.bbox.width;
-
-        // Regime color bands
-        for (let i = 0; i < rd.length - 1; i++) {
-          const color = REGIME_COLORS[rd[i].regime];
-          if (!color) continue;
-          const x0 = Math.round(u.valToPos(rd[i].ts, 'x', true));
-          const x1 = Math.round(u.valToPos(rd[i + 1].ts, 'x', true));
-          if (x1 <= left || x0 >= right) continue;
-          ctx.fillStyle = color;
-          ctx.fillRect(Math.max(x0, left), top, Math.min(x1, right) - Math.max(x0, left), h);
-        }
-
-        // Deadband dashed lines around last consigne value
-        if (u.data[2] && u.data[2].length) {
-          const lastTarget = u.data[2][u.data[2].length - 1];
-          if (lastTarget != null) {
-            for (const offset of [0.3, -0.3]) {
-              const y = Math.round(u.valToPos(lastTarget + offset, 'y', true));
-              if (y >= top && y <= top + h) {
-                ctx.strokeStyle = 'rgba(34,197,94,0.35)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([3, 3]);
-                ctx.beginPath();
-                ctx.moveTo(left, y);
-                ctx.lineTo(right, y);
-                ctx.stroke();
-              }
-            }
-          }
-        }
-        ctx.restore();
-      }
+      drawTuningOverlays,
     ]
   };
 
@@ -3671,35 +3926,138 @@ function initTuningChart() {
 
   const ro = new ResizeObserver(() => {
     const w = el.clientWidth;
-    if (w > 0 && charts.tuning) charts.tuning.setSize({ width: w, height: 280 });
+    if (w > 0 && charts.tuning) charts.tuning.setSize({ width: w, height: TUNING_CHART_HEIGHT });
   });
   ro.observe(el);
 }
 
 function updateTuningChart(history) {
   if (!charts.tuning) return;
-  if (!history || history.length < 2) return;
+  if (!history || history.length < 1) return;
 
   // Use last 6 hours for tuning context
   const cutoff = Date.now() - 6 * 3600 * 1000;
   const filtered = history.filter(p => p.ts && new Date(p.ts).getTime() > cutoff);
   filtered.sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  if (filtered.length < 2) return;
+  if (filtered.length < 1) return;
 
   const ts = filtered.map(p => new Date(p.ts).getTime() / 1000);
-  const tIn = filtered.map(p => p.t_in != null ? p.t_in : null);
-  const tTarget = filtered.map(p => p.t_target != null ? p.t_target : null);
-  const tHat = filtered.map(p => p.twin_t_hat != null ? p.twin_t_hat : null);
+  const fallbackSP = currentSetpointFallback();
+  const tTarget = filtered.map(p => numOrNull(p.t_target) ?? fallbackSP);
+  const tIn = filtered.map((p, i) => sanitizeTuneTemp(p.t_in, tTarget[i]));
+  const tHat = filtered.map((p, i) => sanitizeTuneTemp(p.twin_t_hat, tTarget[i]));
 
-  // Build regime segment data for draw hook
+  const nbFallback = currentNearBandFallback();
+  const nearUp = filtered.map(p => numOrNull(p.near_band_above) ?? nbFallback.above);
+  const nearDown = filtered.map(p => numOrNull(p.near_band_below) ?? nbFallback.below);
+
+  // Regime transitions
   _tuningRegimeData = [];
+  let lastRegime = null;
   for (let i = 0; i < filtered.length; i++) {
-    if (filtered[i].regime != null) {
-      _tuningRegimeData.push({ ts: ts[i], regime: filtered[i].regime });
+    const reg = normalizeRegimeKey(filtered[i].regime);
+    if (!reg || reg === lastRegime) continue;
+    _tuningRegimeData.push({ ts: ts[i], regime: reg });
+    lastRegime = reg;
+  }
+
+  // Phase transitions (+ guard override)
+  _tuningPhaseData = [];
+  let lastPhase = null;
+  for (let i = 0; i < filtered.length; i++) {
+    const phaseRaw = filtered[i].phase;
+    const guard = boolish(filtered[i].guard_cut);
+    const phase = guard ? 'guard' : normalizePhaseKey(phaseRaw);
+    if (!phase || phase === lastPhase) continue;
+    _tuningPhaseData.push({ ts: ts[i], phase });
+    lastPhase = phase;
+  }
+
+  // Near-band segments
+  _tuningNearBandData = [];
+  for (let i = 0; i < filtered.length; i++) {
+    const target = tTarget[i];
+    let up = nearUp[i];
+    let down = nearDown[i];
+    if (target == null) continue;
+    if (up == null && down == null) continue;
+    if (up == null) up = down;
+    if (down == null) down = up;
+    _tuningNearBandData.push({ ts: ts[i], target, nearAbove: up, nearBelow: down });
+  }
+
+  // Setpoint changes + deadtime windows
+  _tuningSetpointChanges = [];
+  for (let i = 1; i < filtered.length; i++) {
+    const prevSP = tTarget[i - 1];
+    const newSP = tTarget[i];
+    if (prevSP == null || newSP == null) continue;
+    if (Math.abs(newSP - prevSP) <= 0.1) continue;
+    const dir = newSP - prevSP;
+    const dtHeat = numOrNull(filtered[i].deadtime_heat_s);
+    const dtCool = numOrNull(filtered[i].deadtime_cool_s);
+    const dt = dir >= 0 ? (dtHeat ?? dtCool ?? currentDeadtimeFallback(dir))
+      : (dtCool ?? dtHeat ?? currentDeadtimeFallback(dir));
+    _tuningSetpointChanges.push({
+      idx: i,
+      ts: ts[i],
+      prevSP,
+      newSP,
+      dir,
+      deadtimeSec: dt != null ? Math.max(0, dt) : null,
+    });
+  }
+
+  // Overshoot markers + rise-time windows per setpoint step
+  _tuningOvershootMarks = [];
+  _tuningRiseWindows = [];
+  for (let c = 0; c < _tuningSetpointChanges.length; c++) {
+    const ch = _tuningSetpointChanges[c];
+    const start = ch.idx;
+    const end = (c + 1 < _tuningSetpointChanges.length) ? _tuningSetpointChanges[c + 1].idx : filtered.length;
+
+    let peakIdx = -1;
+    let peakVal = null;
+    let peakDelta = 0;
+    for (let i = start; i < end; i++) {
+      const v = tIn[i];
+      if (v == null) continue;
+      const delta = ch.dir >= 0 ? (v - ch.newSP) : (ch.newSP - v);
+      if (delta > peakDelta) {
+        peakDelta = delta;
+        peakIdx = i;
+        peakVal = v;
+      }
+    }
+    if (peakIdx >= 0 && peakDelta > 0.20) {
+      _tuningOvershootMarks.push({ ts: ts[peakIdx], val: peakVal, dir: ch.dir });
+    }
+
+    let hitIdx = -1;
+    for (let i = start; i < end; i++) {
+      const v = tIn[i];
+      if (v == null) continue;
+      if ((ch.dir >= 0 && v >= ch.newSP) || (ch.dir < 0 && v <= ch.newSP)) {
+        hitIdx = i;
+        break;
+      }
+    }
+    if (hitIdx > start) {
+      _tuningRiseWindows.push({ x0: ch.ts, x1: ts[hitIdx], y: ch.newSP, dir: ch.dir });
     }
   }
 
   charts.tuning.setData([ts, tIn, tTarget, tHat]);
+
+  // Keep Y scale readable by ignoring extreme outliers.
+  const yVals = [...tIn, ...tTarget, ...tHat].filter(v => v != null);
+  if (yVals.length >= 2) {
+    const yMin = Math.min(...yVals);
+    const yMax = Math.max(...yVals);
+    const span = Math.max(0.8, yMax - yMin);
+    const pad = Math.min(2.5, span * 0.18);
+    charts.tuning.setScale('y', { min: yMin - pad, max: yMax + pad });
+  }
 }
 
 // ─── Alerts / Anomalies ──────────────────────────────────────

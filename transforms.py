@@ -91,6 +91,14 @@ for _grp in SMARTPI_GROUPS.values():
     ALL_SMARTPI_KEYS.update(_grp["keys"])
 
 
+def _first_not_none(*values):
+    """Return the first value that is not None."""
+    for v in values:
+        if v is not None:
+            return v
+    return None
+
+
 def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     """Flatten the nested HA attributes so that SmartPI data is at the top level.
 
@@ -182,6 +190,19 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
         val = spi.get(src)
         if val is not None:
             flat[dst] = val
+
+    # Compatibility fallbacks for SmartPI variants
+    if flat.get("smartpi_regime") is None:
+        flat["smartpi_regime"] = _first_not_none(
+            spi.get("regime"),
+            spi.get("governance_mode"),
+            spi.get("mode"),
+        )
+    if flat.get("smartpi_phase") is None:
+        flat["smartpi_phase"] = _first_not_none(
+            spi.get("governance_phase"),
+            spi.get("state_phase"),
+        )
 
     # ff_enabled is derived
     flat["smartpi_ff_enabled"] = spi.get("ff_reason", "ff_none") != "ff_none"
@@ -290,11 +311,16 @@ def snapshot_for_history(attrs: dict) -> dict:
     return {
         "ts": datetime.now(timezone.utc).isoformat(),
         "t_in": attrs.get("current_temperature"),
-        "t_target": attrs.get("temperature") or attrs.get("target_temperature"),
-        "t_ext": attrs.get("smartpi_t_ext") or attrs.get("current_external_temperature"),
+        "t_target": _first_not_none(
+            attrs.get("temperature"),
+            attrs.get("target_temperature"),
+            attrs.get("smartpi_sp_brut"),
+            attrs.get("smartpi_sp_for_p"),
+        ),
+        "t_ext": _first_not_none(attrs.get("smartpi_t_ext"), attrs.get("current_external_temperature")),
         "on_percent": attrs.get("on_percent"),
         "u_applied": attrs.get("smartpi_u_applied"),
-        "u_ff": attrs.get("smartpi_ff_u_ff") or attrs.get("smartpi_u_ff"),
+        "u_ff": _first_not_none(attrs.get("smartpi_ff_u_ff"), attrs.get("smartpi_u_ff")),
         "u_pi": attrs.get("smartpi_u_pi"),
         "u_cmd": attrs.get("smartpi_u_cmd"),
         "u_limited": attrs.get("smartpi_u_limited"),
@@ -306,8 +332,10 @@ def snapshot_for_history(attrs: dict) -> dict:
         "error_p": attrs.get("smartpi_error_p"),
         "kp": attrs.get("smartpi_kp"),
         "ki": attrs.get("smartpi_ki"),
-        "regime": attrs.get("smartpi_regime"),
-        "phase": attrs.get("smartpi_phase"),
+        "regime": _first_not_none(attrs.get("smartpi_regime"), attrs.get("governance_regime"), attrs.get("regime")),
+        "phase": _first_not_none(attrs.get("smartpi_phase"), attrs.get("phase")),
+        "deadtime_heat_s": attrs.get("smartpi_deadtime_heat_s"),
+        "deadtime_cool_s": attrs.get("smartpi_deadtime_cool_s"),
         "near_band_above": attrs.get("smartpi_near_band_above_deg"),
         "near_band_below": attrs.get("smartpi_near_band_below_deg"),
         "in_deadband": attrs.get("smartpi_in_deadband"),
