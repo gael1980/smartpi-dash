@@ -3697,11 +3697,11 @@ function updateTuningChart(history) {
   const tTarget = filtered.map(p => p.t_target != null ? p.t_target : null);
   const tHat = filtered.map(p => p.twin_t_hat != null ? p.twin_t_hat : null);
 
-  // Build regime segment data for draw hook
+  // Build regime segment data for draw hook (lowercase to match REGIME_COLORS keys)
   _tuningRegimeData = [];
   for (let i = 0; i < filtered.length; i++) {
     if (filtered[i].regime != null) {
-      _tuningRegimeData.push({ ts: ts[i], regime: filtered[i].regime });
+      _tuningRegimeData.push({ ts: ts[i], regime: String(filtered[i].regime).toLowerCase() });
     }
   }
 
