@@ -76,11 +76,14 @@ Le dashboard est accessible sur `http://localhost:5000`.
 
 | Variable | Description | Exemple |
 |---|---|---|
-| `HA_URL` | URL du serveur Home Assistant | `http://192.168.1.10:8123` |
+| `HA_URL` | URL du serveur Home Assistant | `https://192.168.1.10:8123` |
 | `HA_TOKEN` | Long-Lived Access Token HA | `eyJhbGciOi...` |
 | `CLIMATE_ENTITY` | Entité climate par défaut | `climate.salon` |
 | `FLASK_PORT` | Port du serveur Flask | `5000` |
+| `FLASK_HOST` | Adresse d'écoute (`127.0.0.1` = local, `0.0.0.0` = réseau) | `127.0.0.1` |
 | `FLASK_SECRET_KEY` | Clé secrète Flask (auto-générée si absente) | `a1b2c3d4...` |
+
+> **Accès distant (Pangolin, Cloudflare Tunnel, etc.) :** Par défaut le serveur n'écoute que sur localhost. Pour un accès via un reverse proxy ou tunnel, ajoutez `FLASK_HOST=0.0.0.0` dans votre `.env`.
 
 ### Créer un token HA
 Profil → Sécurité → Jetons d'accès à longue durée de vie → Créer un jeton
