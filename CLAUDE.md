@@ -234,7 +234,7 @@ The entire frontend is a single ~3,500-line HTML file with embedded CSS and Java
 | Chaîne U | `tab-chain` | Waterfall + breakdown + time-series for control output |
 | Feedforward | `tab-ff` | FF pipeline steps, K_ff calculation, charts |
 | Santé modèle | `tab-health` | Model reliability scores and learning progress |
-| Tuning Assistant | `tab-tuning` | PI params & model reliability badges, observability context (RMSE, innovation, CUSUM), read-only recommendations |
+| Tuning Assistant | `tab-tuning` | Tuning readiness gauge, PI params with reliability badges, observability sparklines (RMSE, innovation, CUSUM), theoretical PI references (SIMC/IMC), model maturity, stability window, recent response analysis, enriched recommendations |
 | Événements | `tab-events` | Filtered timeline of state transitions |
 | Alertes | `tab-alerts` | 9 configurable threshold rules (LocalStorage) |
 | Performance | `tab-perf` | Error metrics, overshoot, deadband analysis |
