@@ -1877,7 +1877,9 @@
         <span>📉</span>
         <span class="ta-card-title">Contexte thermique annoté</span>
       </div>
-      <div class="ta-chart-wrap" id="ta-chart"></div>
+      <div class="ta-chart-wrap" id="ta-chart">
+        <div class="ta-empty" id="ta-chart-placeholder">En attente d'historique pour le graphique...</div>
+      </div>
       <div class="ta-regime-legend" id="ta-regime-legend">
         <span><span class="ta-regime-swatch" style="background:rgba(59,130,246,0.15)"></span> comfort</span>
         <span><span class="ta-regime-swatch" style="background:rgba(249,115,22,0.15)"></span> boost</span>
@@ -3666,6 +3668,10 @@ function initTuningChart() {
       }
     ]
   };
+
+  // Remove placeholder text
+  const placeholder = document.getElementById('ta-chart-placeholder');
+  if (placeholder) placeholder.remove();
 
   charts.tuning = new uPlot(opts, [[], [], [], []], el);
 
