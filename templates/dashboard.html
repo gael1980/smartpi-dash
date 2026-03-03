@@ -1126,7 +1126,7 @@
     <span id="conn-text">Connexion...</span>
   </span>
   <select class="entity-select" id="entity-select">
-    <option value="{{ climate_entity }}">{{ climate_entity }}</option>
+    <option value="{{ climate_entity | e }}">{{ climate_entity | e }}</option>
   </select>
   <span class="last-update" id="last-update">—</span>
 </header>
@@ -1629,7 +1629,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const POLL_INTERVAL = 3000; // ms between API polls
-const DEFAULT_ENTITY = "{{ climate_entity }}";
+const DEFAULT_ENTITY = {{ climate_entity | tojson }};
 
 let selectedEntity = localStorage.getItem('smartpi_selected_entity') || DEFAULT_ENTITY;
 let currentState = null;
@@ -2148,7 +2148,14 @@ async function loadBlockDiagram() {
     const resp = await fetch('/static/block_diagram.svg');
     if (resp.ok) {
       const svgText = await resp.text();
-      document.getElementById('diagram-container').innerHTML = svgText;
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+      const svgEl = svgDoc.documentElement;
+      // Sanitize: remove scripts and event handlers to prevent XSS via compromised SVG
+      svgEl.querySelectorAll('script, [onload], [onerror], [onclick], [onmouseover]').forEach(n => n.remove());
+      const diagContainer = document.getElementById('diagram-container');
+      diagContainer.innerHTML = '';
+      diagContainer.appendChild(document.importNode(svgEl, true));
       setupDiagramInteractions();
       return;
     }

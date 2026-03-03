@@ -2,7 +2,9 @@
 
 import os
 import re
+import stat
 import logging
+from collections import deque
 
 from dotenv import load_dotenv
 
@@ -24,6 +26,16 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger("smartpi-dash")
+
+# ─── Security warnings ──────────────────────────────────────────
+if HA_URL.startswith("http://") and "localhost" not in HA_URL and "127.0.0.1" not in HA_URL:
+    log.warning("SECURITY: HA_URL uses plain HTTP. HA_TOKEN is transmitted in clear text. Use HTTPS.")
+
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_path):
+    _env_mode = os.stat(_env_path).st_mode
+    if _env_mode & (stat.S_IRGRP | stat.S_IROTH):
+        log.warning("SECURITY: .env is readable by group/other. Fix with: chmod 600 .env")
 
 # ─── Validation ──────────────────────────────────────────────────
 # Strict regex for HA entity IDs (e.g. climate.thermostat_cuisine)
@@ -47,13 +59,16 @@ def get_entity_store(entity_id: str) -> dict:
             "attributes": {},
             "sensors": {},
             "last_update": None,
-            "history": [],
+            "history": deque(maxlen=MAX_HISTORY),
         }
     return state_store["entities"][entity_id]
 
 
 def check_ha_token():
-    """Fail fast if HA_TOKEN is not configured."""
+    """Fail fast if HA_TOKEN is not configured or obviously invalid."""
     if not HA_TOKEN:
         log.critical("HA_TOKEN is empty or not set. Set it in .env or as an environment variable.")
+        raise SystemExit(1)
+    if len(HA_TOKEN) < 20:
+        log.critical("HA_TOKEN appears too short to be a valid HA token. Check .env configuration.")
         raise SystemExit(1)
