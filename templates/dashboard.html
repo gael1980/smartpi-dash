@@ -1775,7 +1775,7 @@ function updateHero(data) {
   document.getElementById('hv-target').textContent = target != null ? target.toFixed(1) : '—';
 
   const power = a.on_percent;
-  document.getElementById('hv-power').textContent = power != null ? Math.round(power) : '—';
+  document.getElementById('hv-power').textContent = power != null ? Math.round(power * 100) : '—';
 
   const ext = a.smartpi_t_ext || a.current_external_temperature;
   document.getElementById('hv-ext').textContent = ext != null ? ext.toFixed(1) : '—';
