@@ -3029,7 +3029,8 @@ function initFfChart() {
 }
 
 // ─── Model Health Tab ────────────────────────────────────────
-const MH_LEARN_TARGET = 31;
+const LEARN_PROGRESS_TARGET = 31;
+const MH_LEARN_TARGET = LEARN_PROGRESS_TARGET;
 
 function computeHealthScore(a) {
   let score = 100;
@@ -3169,10 +3170,13 @@ function computeTuningReadiness(a) {
   // Model reliability (45 pts)
   if (a.smartpi_tau_reliable === false) { score -= 15; issues.push('tau non fiable'); }
   else if (a.smartpi_tau_reliable === true) positives.push('tau fiable');
+  else { score -= 8; issues.push('tau inconnu'); }
   if (a.smartpi_deadtime_heat_reliable === false) { score -= 15; issues.push('deadtime heat non fiable'); }
   else if (a.smartpi_deadtime_heat_reliable === true) positives.push('deadtime heat fiable');
+  else { score -= 8; issues.push('deadtime heat inconnu'); }
   if (a.smartpi_deadtime_cool_reliable === false) { score -= 15; issues.push('deadtime cool non fiable'); }
   else if (a.smartpi_deadtime_cool_reliable === true) positives.push('deadtime cool fiable');
+  else { score -= 8; issues.push('deadtime cool inconnu'); }
 
   // Model degradation (15 pts)
   if (a.smartpi_autocalib_model_degraded === true) { score -= 15; issues.push('modèle dégradé'); }
@@ -3183,12 +3187,12 @@ function computeTuningReadiness(a) {
     if (rmse > 0.7) { score -= 15; issues.push('RMSE > 0.7°C'); }
     else if (rmse > 0.3) { score -= 5; issues.push('RMSE modérée'); }
     else positives.push('RMSE nominale');
-  }
+  } else { score -= 8; issues.push('RMSE manquante'); }
   const cusum = a.smartpi_twin_cusum;
   if (cusum != null) {
     if (cusum > 5) { score -= 10; issues.push('CUSUM élevé'); }
     else positives.push('CUSUM normal');
-  }
+  } else { score -= 5; issues.push('CUSUM manquant'); }
 
   // Operating point (15 pts)
   const regime = a.smartpi_regime;
@@ -3201,12 +3205,12 @@ function computeTuningReadiness(a) {
   // Learning maturity (10 pts)
   const learnA = a.smartpi_learn_ok_count_a;
   const learnB = a.smartpi_learn_ok_count_b;
-  const LEARN_TARGET = 100;
+  const LEARN_TARGET = LEARN_PROGRESS_TARGET;
   if (learnA != null && learnB != null) {
     const maturity = Math.min(learnA, learnB) / LEARN_TARGET;
     if (maturity < 0.5) { score -= 10; issues.push('apprentissage ' + Math.round(maturity * 100) + '%'); }
     else positives.push('apprentissage ' + Math.round(Math.min(maturity, 1) * 100) + '%');
-  }
+  } else { score -= 5; issues.push('apprentissage incomplet'); }
 
   return { score: Math.max(0, Math.min(100, score)), issues, positives };
 }
@@ -3382,13 +3386,18 @@ function updateTuningAssistant(data) {
   const dtCool = a.smartpi_deadtime_cool_s;
   const dtHeatReliable = a.smartpi_deadtime_heat_reliable;
   const dtCoolReliable = a.smartpi_deadtime_cool_reliable;
+  const reliabilityBadge = (v) => {
+    if (v === true) return tuningBadge('ok', 'fiable');
+    if (v === false) return tuningBadge('error', 'non fiable');
+    return tuningBadge('warn', 'inconnu');
+  };
 
   paramsEl.innerHTML = [
     renderTaRow('Kp', fmtNum(kp, 4)),
     renderTaRow('Ki', fmtNum(ki, 4)),
-    renderTaRow('tau_min', tau == null ? '—' : fmtNum(tau, 1) + ' min', tuningBadge(tauReliable === false ? 'error' : 'ok', tauReliable === false ? 'non fiable' : 'fiable')),
-    renderTaRow('deadtime heat', dtHeat == null ? '—' : fmtNum(dtHeat, 1) + ' s', tuningBadge(dtHeatReliable === false ? 'error' : 'ok', dtHeatReliable === false ? 'non fiable' : 'fiable')),
-    renderTaRow('deadtime cool', dtCool == null ? '—' : fmtNum(dtCool, 1) + ' s', tuningBadge(dtCoolReliable === false ? 'error' : 'ok', dtCoolReliable === false ? 'non fiable' : 'fiable')),
+    renderTaRow('tau_min', tau == null ? '—' : fmtNum(tau, 1) + ' min', reliabilityBadge(tauReliable)),
+    renderTaRow('deadtime heat', dtHeat == null ? '—' : fmtNum(dtHeat, 1) + ' s', reliabilityBadge(dtHeatReliable)),
+    renderTaRow('deadtime cool', dtCool == null ? '—' : fmtNum(dtCool, 1) + ' s', reliabilityBadge(dtCoolReliable)),
   ].join('');
 
   // ── 3. Contexte d'observabilité (with sparklines) ──
@@ -3447,7 +3456,7 @@ function updateTuningAssistant(data) {
   if (matEl) {
     const learnA = a.smartpi_learn_ok_count_a;
     const learnB = a.smartpi_learn_ok_count_b;
-    const LEARN_TARGET = 100;
+    const LEARN_TARGET = LEARN_PROGRESS_TARGET;
     const autocalibState = a.smartpi_autocalib_state;
     const snapshotAge = a.smartpi_autocalib_snapshot_age_h;
     const modelDegraded = a.smartpi_autocalib_model_degraded;
@@ -3574,7 +3583,7 @@ function updateTuningAssistant(data) {
       recs.push({ level: 'warn', msg: 'Snapshot autocalib ancien (' + snapshotAge.toFixed(0) + 'h) : les paramètres du modèle pourraient ne plus être à jour.' });
     }
     if (learnA != null && learnB != null) {
-      const matPct = Math.min(learnA, learnB) / 100;
+      const matPct = Math.min(learnA, learnB) / LEARN_PROGRESS_TARGET;
       if (matPct < 0.5) {
         recs.push({ level: 'warn', msg: 'Modèle immature (' + Math.round(matPct * 100) + '% d\'apprentissage) : les gains seront probablement ré-ajustés au fil de l\'apprentissage.' });
       }
@@ -4303,14 +4312,17 @@ function computeSessionMetrics(history, startIdx, endIdx) {
     }
   }
 
-  // Settling time: time from start to staying in near-band
+  // Settling time: first instant after the last out-of-band point
   let settlingTime = null;
   const nbThr = valid[0].near_band_above || 0.5;
-  for (let i = valid.length - 1; i >= 1; i--) {
-    if (Math.abs(valid[i].t_in - sp) > nbThr) {
-      settlingTime = (new Date(valid[i].ts).getTime() - t0) / 60000;
-      break;
-    }
+  let lastOutOfBandIdx = -1;
+  for (let i = 0; i < valid.length; i++) {
+    if (Math.abs(valid[i].t_in - sp) > nbThr) lastOutOfBandIdx = i;
+  }
+  if (lastOutOfBandIdx < 0) {
+    settlingTime = 0;
+  } else if (lastOutOfBandIdx < valid.length - 1) {
+    settlingTime = (new Date(valid[lastOutOfBandIdx + 1].ts).getTime() - t0) / 60000;
   }
 
   // IAE
