@@ -1894,6 +1894,11 @@
         <span><span class="ta-regime-swatch" style="background:rgba(239,68,68,0.15)"></span> guard / saturated</span>
         <span><span class="ta-regime-swatch" style="background:rgba(249,115,22,0.18)"></span> deadtime window</span>
       </div>
+      <div class="ta-regime-legend" id="ta-model-params-legend" style="margin-top:12px; padding-top: 8px; border-top: 1px solid var(--border);">
+        <span style="font-weight:600">Modèle:</span>
+        <!-- Populated by JS -->
+        <span class="ta-empty" style="padding:0; margin-left:8px;">En attente des paramètres...</span>
+      </div>
     </div>
 
     <div class="ta-card ta-full">
@@ -3352,6 +3357,7 @@ function updateTuningAssistant(data) {
   const a = data.raw_attributes || {};
   const paramsEl = document.getElementById('ta-params');
   const obsEl = document.getElementById('ta-observability');
+  const modelLegendEl = document.getElementById('ta-model-params-legend');
   const recEl = document.getElementById('ta-recommendations');
   const refEl = document.getElementById('ta-references');
   const matEl = document.getElementById('ta-maturity');
@@ -3450,6 +3456,21 @@ function updateTuningAssistant(data) {
     } else {
       refEl.innerHTML = '<div class="ta-empty">Paramètres modèle insuffisants (a, b, tau, deadtime requis).</div>';
     }
+  }
+
+  // ── 4b. Paramètres modèle dans la légende du graphique ──
+  if (modelLegendEl) {
+    const aParam = a.smartpi_a;
+    const bParam = a.smartpi_b;
+    const tauReliable = a.smartpi_tau_reliable;
+    const dtHeatReliable = a.smartpi_deadtime_heat_reliable;
+    const modelReliable = tauReliable === true && dtHeatReliable === true;
+    const badge = reliabilityBadge(modelReliable);
+
+    modelLegendEl.innerHTML = `<span style="font-weight:600">Modèle:</span>` +
+      `<span>a = ${fmtNum(aParam, 5)} ${reliabilityBadge(a.smartpi_learn_ok_count_a > 10)}</span>` +
+      `<span>b = ${fmtNum(bParam, 5)} ${reliabilityBadge(a.smartpi_learn_ok_count_b > 10)}</span>` +
+      `<span>&tau; = ${fmtNum(tau, 1)} min ${reliabilityBadge(tauReliable)}</span>`;
   }
 
   // ── 5. Maturité du modèle ──
@@ -3916,9 +3937,20 @@ function initTuningChart() {
     makeSeries('T_in (\u00b0C)', '#3b82f6', 2),
     makeSeries('Consigne (\u00b0C)', '#06b6d4', 1.5, [6, 3]),
     makeSeries('T\u0302 twin (\u00b0C)', '#94a3b8', 1.5, [3, 2]),
+    { ...makeSeries('Puissance (%)', '#f97316', 1.5, [4,2]), scale: 'power', fill: 'rgba(249,115,22,0.08)', paths: uPlot.paths.stepped({ align: -1 }) },
   ];
   const opts = makeOpts(el, taSeries, '\u00b0C', null, TUNING_CHART_HEIGHT);
   if (opts.axes && opts.axes.length >= 2) {
+    // Add a right-hand Y axis for power
+    opts.axes.push({
+      scale: 'power',
+      side: 1,
+      stroke: '#f97316',
+      grid: { show: false },
+      ticks: { stroke: 'rgba(249,115,22,0.4)', width: 1 },
+      font: '11px JetBrains Mono',
+      size: 45,
+    });
     opts.axes[0].font = '13px JetBrains Mono';
     opts.axes[1].font = '13px JetBrains Mono';
   }
@@ -3931,7 +3963,7 @@ function initTuningChart() {
     ]
   };
 
-  charts.tuning = new uPlot(opts, [[], [], [], []], el);
+  charts.tuning = new uPlot(opts, [[], [], [], [], []], el);
 
   const ro = new ResizeObserver(() => {
     const w = el.clientWidth;
@@ -3955,10 +3987,15 @@ function updateTuningChart(history) {
   const tTarget = filtered.map(p => numOrNull(p.t_target) ?? fallbackSP);
   const tIn = filtered.map((p, i) => sanitizeTuneTemp(p.t_in, tTarget[i]));
   const tHat = filtered.map((p, i) => sanitizeTuneTemp(p.twin_t_hat, tTarget[i]));
+  const uApp = filtered.map(p => {
+    const v = p.u_applied != null ? p.u_applied : p.on_percent;
+    return v != null ? v * (v <= 1 ? 100 : 1) : null;
+  });
 
   const nbFallback = currentNearBandFallback();
   const nearUp = filtered.map(p => numOrNull(p.near_band_above) ?? nbFallback.above);
   const nearDown = filtered.map(p => numOrNull(p.near_band_below) ?? nbFallback.below);
+  charts.tuning.setScale('power', { min: -5, max: 105 });
 
   // Regime transitions
   _tuningRegimeData = [];
@@ -4056,7 +4093,7 @@ function updateTuningChart(history) {
     }
   }
 
-  charts.tuning.setData([ts, tIn, tTarget, tHat]);
+  charts.tuning.setData([ts, tIn, tTarget, tHat, uApp]);
 
   // Keep Y scale readable by ignoring extreme outliers.
   const yVals = [...tIn, ...tTarget, ...tHat].filter(v => v != null);
