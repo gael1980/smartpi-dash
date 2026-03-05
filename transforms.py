@@ -149,6 +149,14 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
         # Thermal model
         "a": "smartpi_a",
         "b": "smartpi_b",
+        "a_ema": "smartpi_a_ema",
+        "b_ema": "smartpi_b_ema",
+        "a_filtered": "smartpi_a_filtered",
+        "b_filtered": "smartpi_b_filtered",
+        "a_filter": "smartpi_a_filter",
+        "b_filter": "smartpi_b_filter",
+        "a_filt": "smartpi_a_filt",
+        "b_filt": "smartpi_b_filt",
         "tau_min": "smartpi_tau_min",
         "tau_reliable": "smartpi_tau_reliable",
         "deadtime_heat_s": "smartpi_deadtime_heat_s",
@@ -308,6 +316,40 @@ def ensure_utc_iso(ts_str: str | None) -> str | None:
         return ts_str
 
 
+def _extract_optional_slope(attrs: dict, name: str):
+    """Extract optional filtered/EMA variants for slope-like model parameters."""
+    candidates = [
+        f"smartpi_{name}_ema",
+        f"smartpi_{name}_filtered",
+        f"smartpi_{name}_filter",
+        f"smartpi_{name}_filt",
+        f"{name}_ema",
+        f"{name}_filtered",
+        f"{name}_filter",
+        f"{name}_filt",
+    ]
+    for key in candidates:
+        val = attrs.get(key)
+        if val is not None:
+            return val
+
+    specific = attrs.get("specific_states", {})
+    if isinstance(specific, dict):
+        spi = specific.get("smart_pi", {})
+        if isinstance(spi, dict):
+            nested_candidates = [
+                f"{name}_ema",
+                f"{name}_filtered",
+                f"{name}_filter",
+                f"{name}_filt",
+            ]
+            for key in nested_candidates:
+                val = spi.get(key)
+                if val is not None:
+                    return val
+    return None
+
+
 def snapshot_for_history(attrs: dict) -> dict:
     """Create a compact snapshot for the rolling history."""
     return {
@@ -338,6 +380,10 @@ def snapshot_for_history(attrs: dict) -> dict:
         "phase": _first_not_none(attrs.get("smartpi_phase"), attrs.get("phase")),
         "deadtime_heat_s": attrs.get("smartpi_deadtime_heat_s"),
         "deadtime_cool_s": attrs.get("smartpi_deadtime_cool_s"),
+        "a": _first_not_none(attrs.get("smartpi_a"), attrs.get("a")),
+        "b": _first_not_none(attrs.get("smartpi_b"), attrs.get("b")),
+        "a_ema": _extract_optional_slope(attrs, "a"),
+        "b_ema": _extract_optional_slope(attrs, "b"),
         "near_band_above": attrs.get("smartpi_near_band_above_deg"),
         "near_band_below": attrs.get("smartpi_near_band_below_deg"),
         "in_deadband": attrs.get("smartpi_in_deadband"),

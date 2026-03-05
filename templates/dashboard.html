@@ -773,6 +773,7 @@
     background: var(--bg-panel);
     padding: 16px 20px; transition: background 0.2s;
   }
+  .mh-card.mh-full { grid-column: 1 / -1; }
   .mh-card:hover { background: rgba(17,24,39,0.9); }
   .mh-card-header {
     display: flex; align-items: center; gap: 8px;
@@ -829,6 +830,35 @@
   }
   .mh-param-status.mh-ok { background: var(--accent-green); }
   .mh-param-status.mh-error { background: var(--accent-red); }
+  .mh-chart-note {
+    margin: 0 0 10px 0;
+    color: var(--text-dim);
+    font: 400 12px 'JetBrains Mono', monospace;
+  }
+  .mh-diag-meta {
+    margin-top: 10px;
+    color: var(--text);
+    font: 400 12px 'JetBrains Mono', monospace;
+    line-height: 1.45;
+  }
+  .mh-diag-meta .mh-meta-strong { color: var(--text-bright); font-weight: 600; }
+  .mh-banner {
+    margin: 0 0 10px 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(249,115,22,0.35);
+    background: rgba(249,115,22,0.08);
+    color: #fdba74;
+    font: 500 12px 'JetBrains Mono', monospace;
+    line-height: 1.4;
+  }
+  .mh-banner.mh-hidden { display: none; }
+  .mh-empty {
+    text-align: center;
+    color: var(--text-dim);
+    font: 400 13px 'JetBrains Mono', monospace;
+    padding: 22px 0;
+  }
 
   /* ─── Events & Timeline Tab ───────────────────────────────── */
   .ev-layout { display: flex; flex-direction: column; gap: 16px; }
@@ -1806,6 +1836,34 @@
       <div id="mh-params-container"></div>
     </div>
 
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">📈</span>
+        <span class="mh-card-title">Historique paramètre a (12h)</span>
+      </div>
+      <p class="mh-chart-note">Séries observées uniquement. `a_attr` = valeur brute attribut. `a_ema` affiché uniquement s'il est présent dans les attributs SmartPI.</p>
+      <div class="chart-canvas-wrap" id="mh-chart-a" style="height:250px"></div>
+    </div>
+
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">📉</span>
+        <span class="mh-card-title">Historique paramètre b (12h)</span>
+      </div>
+      <p class="mh-chart-note">Séries observées uniquement. `b_attr` = valeur brute attribut. `b_ema` affiché uniquement s'il est présent dans les attributs SmartPI.</p>
+      <div class="chart-canvas-wrap" id="mh-chart-b" style="height:250px"></div>
+    </div>
+
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🩻</span>
+        <span class="mh-card-title">Diagnostic 3h (T_int + pentes d'apprentissage)</span>
+      </div>
+      <div class="mh-banner mh-hidden" id="mh-diag-banner"></div>
+      <div class="chart-canvas-wrap" id="mh-chart-diag" style="height:300px"></div>
+      <div class="mh-diag-meta" id="mh-diag-meta"><div class="mh-empty">En attente d'historique (3h).</div></div>
+    </div>
+
   </div>
 </div>
 
@@ -1937,6 +1995,13 @@ let previousValues = {};
 let charts = {};
 let historyData = [];
 let blockDiagramData = null;
+let modelHealthChartsInitialized = false;
+
+const MH_HISTORY_HOURS = 12;
+const MH_DIAG_HOURS = 3;
+const MH_STEP_THRESHOLD_C = 1.0;
+const MH_RECOMPUTE_AVAILABLE = false;
+const MH_RECOMPUTE_REASON = "cannot be computed from available sources: estimator logic lives in learning.py in SmartPI core, but this repository only contains diagram/tooltips without executable estimator code.";
 
 function entityParam() {
   return `entity_id=${encodeURIComponent(selectedEntity)}`;
@@ -2001,6 +2066,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
         if (historyData && historyData.length) updateCharts(historyData);
         if (currentState) updateFeedforward(currentState);
+      }, 50);
+    }
+    // Lazy-init Santé Modèle charts (a, b, diagnostic)
+    if (btn.dataset.tab === 'tab-model-health') {
+      setTimeout(() => {
+        if (!modelHealthChartsInitialized) {
+          initModelHealthCharts();
+        } else {
+          resizeModelHealthCharts();
+        }
+        if (historyData && historyData.length) updateModelHealthDiagnostics(historyData);
       }, 50);
     }
     // Render events timeline when Events tab opens
@@ -3164,6 +3240,345 @@ function updateModelHealth(data) {
     </div>`;
   }).join('');
 }
+
+function mhNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function mhSortHistory(history) {
+  const sorted = (history || []).filter(p => p && p.ts).slice();
+  sorted.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  return sorted;
+}
+
+function mhFilterHistoryByHours(history, hours) {
+  const sorted = mhSortHistory(history);
+  if (!sorted.length) return sorted;
+  const cutoff = Date.now() - (hours * 3600 * 1000);
+  return sorted.filter(p => new Date(p.ts).getTime() >= cutoff);
+}
+
+function mhMedian(nums) {
+  if (!nums.length) return null;
+  const s = nums.slice().sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  if (s.length % 2) return s[mid];
+  return (s[mid - 1] + s[mid]) / 2;
+}
+
+function mhEstimateCadenceSec(history) {
+  const points = mhSortHistory(history);
+  const diffs = [];
+  for (let i = 1; i < points.length; i++) {
+    const dt = (new Date(points[i].ts).getTime() - new Date(points[i - 1].ts).getTime()) / 1000;
+    if (Number.isFinite(dt) && dt >= 5 && dt <= 900) diffs.push(dt);
+  }
+  // Control loop is commonly around 60s; fall back to 60s when history is too sparse.
+  return mhMedian(diffs) || 60;
+}
+
+function mhDebounceLatest(candidates, debounceSec) {
+  if (!candidates.length) return [];
+  const kept = [];
+  for (const cand of candidates) {
+    const last = kept[kept.length - 1];
+    if (!last) {
+      kept.push(cand);
+      continue;
+    }
+    if ((cand.tsSec - last.tsSec) <= debounceSec) {
+      kept[kept.length - 1] = cand;
+    } else {
+      kept.push(cand);
+    }
+  }
+  return kept;
+}
+
+function detectSetpointStepEvents(history3h, cadenceSec) {
+  const points = mhSortHistory(history3h).map(p => ({
+    point: p,
+    tsSec: new Date(p.ts).getTime() / 1000,
+    sp: mhNum(p.t_target),
+  })).filter(p => Number.isFinite(p.tsSec));
+
+  const shortWindowSec = Math.min(10 * 60, Math.max(2 * 60, Math.round(cadenceSec * 3)));
+  // Event window W uses 30 observed samples (clamped), derived from measured dashboard cadence.
+  const eventWindowSec = Math.min(45 * 60, Math.max(15 * 60, Math.round(cadenceSec * 30)));
+  const debounceSec = eventWindowSec;
+
+  const riseCandidates = [];
+  const fallCandidates = [];
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    if (prev.sp == null || curr.sp == null) continue;
+    const dt = curr.tsSec - prev.tsSec;
+    if (!(dt > 0) || dt > shortWindowSec) continue;
+    const delta = curr.sp - prev.sp;
+    if (delta >= MH_STEP_THRESHOLD_C) {
+      riseCandidates.push({
+        idx: i,
+        tsSec: curr.tsSec,
+        ts: curr.point.ts,
+        delta,
+        prevSP: prev.sp,
+        newSP: curr.sp,
+      });
+    } else if (delta <= -MH_STEP_THRESHOLD_C) {
+      fallCandidates.push({
+        idx: i,
+        tsSec: curr.tsSec,
+        ts: curr.point.ts,
+        delta,
+        prevSP: prev.sp,
+        newSP: curr.sp,
+      });
+    }
+  }
+
+  const riseDebounced = mhDebounceLatest(riseCandidates, debounceSec);
+  const fallDebounced = mhDebounceLatest(fallCandidates, debounceSec);
+
+  return {
+    cadenceSec,
+    shortWindowSec,
+    eventWindowSec,
+    debounceSec,
+    rising: riseDebounced.length ? riseDebounced[riseDebounced.length - 1] : null,
+    falling: fallDebounced.length ? fallDebounced[fallDebounced.length - 1] : null,
+  };
+}
+
+function recomputeAFromHistory(windowData) {
+  return {
+    available: false,
+    reason: MH_RECOMPUTE_REASON,
+    values: new Array((windowData || []).length).fill(null),
+  };
+}
+
+function recomputeBFromHistory(windowData) {
+  return {
+    available: false,
+    reason: MH_RECOMPUTE_REASON,
+    values: new Array((windowData || []).length).fill(null),
+  };
+}
+
+function initModelHealthCharts() {
+  if (!window.uPlot || modelHealthChartsInitialized) return;
+  const aEl = document.getElementById('mh-chart-a');
+  const bEl = document.getElementById('mh-chart-b');
+  const dEl = document.getElementById('mh-chart-diag');
+  if (!aEl || !bEl || !dEl) return;
+  if (aEl.clientWidth === 0 || bEl.clientWidth === 0 || dEl.clientWidth === 0) return;
+
+  const aSeries = [
+    makeSeries('a_attr', '#8b5cf6', 2),
+    makeSeries('a_ema', '#22c55e', 1.5, [4, 3]),
+  ];
+  const bSeries = [
+    makeSeries('b_attr', '#ec4899', 2),
+    makeSeries('b_ema', '#f59e0b', 1.5, [4, 3]),
+  ];
+  const diagSeries = [
+    makeSeries('T_int', '#3b82f6', 2),
+    { ...makeSeries('a_attr', '#8b5cf6', 1.5), scale: 'slope' },
+    { ...makeSeries('a_recomputed', '#a78bfa', 1.5, [5, 3]), scale: 'slope' },
+    { ...makeSeries('b_attr', '#ec4899', 1.5), scale: 'slope' },
+    { ...makeSeries('b_recomputed', '#fda4af', 1.5, [5, 3]), scale: 'slope' },
+  ];
+
+  charts.mhA = new uPlot(
+    makeOpts(aEl, aSeries, 'a', null, 250),
+    [[], [], []],
+    aEl
+  );
+  charts.mhB = new uPlot(
+    makeOpts(bEl, bSeries, 'b', null, 250),
+    [[], [], []],
+    bEl
+  );
+
+  const diagOpts = makeOpts(dEl, diagSeries, '°C', null, 300);
+  diagOpts.scales = Object.assign({}, diagOpts.scales || {}, { slope: { auto: true } });
+  diagOpts.axes.push({
+    scale: 'slope',
+    side: 1,
+    stroke: '#a78bfa',
+    grid: { show: false },
+    ticks: { stroke: 'rgba(167,139,250,0.45)', width: 1 },
+    font: '11px JetBrains Mono',
+    label: 'a / b',
+  });
+  charts.mhDiag = new uPlot(
+    diagOpts,
+    [[], [], [], [], [], []],
+    dEl
+  );
+
+  if (charts.mhA.setSeries) charts.mhA.setSeries(2, { show: false });
+  if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: false });
+  if (charts.mhDiag.setSeries) {
+    charts.mhDiag.setSeries(2, { show: false });
+    charts.mhDiag.setSeries(3, { show: false });
+    charts.mhDiag.setSeries(4, { show: false });
+    charts.mhDiag.setSeries(5, { show: false });
+  }
+
+  const ro = new ResizeObserver(() => resizeModelHealthCharts());
+  ro.observe(aEl);
+  ro.observe(bEl);
+  ro.observe(dEl);
+  modelHealthChartsInitialized = true;
+
+  if (historyData && historyData.length) updateModelHealthDiagnostics(historyData);
+}
+
+function resizeModelHealthCharts() {
+  const aEl = document.getElementById('mh-chart-a');
+  const bEl = document.getElementById('mh-chart-b');
+  const dEl = document.getElementById('mh-chart-diag');
+  if (charts.mhA && aEl && aEl.clientWidth > 0) charts.mhA.setSize({ width: aEl.clientWidth, height: 250 });
+  if (charts.mhB && bEl && bEl.clientWidth > 0) charts.mhB.setSize({ width: bEl.clientWidth, height: 250 });
+  if (charts.mhDiag && dEl && dEl.clientWidth > 0) charts.mhDiag.setSize({ width: dEl.clientWidth, height: 300 });
+}
+
+function mhTimeLabel(isoTs) {
+  if (!isoTs) return '—';
+  try {
+    return new Date(isoTs).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '—';
+  }
+}
+
+function updateModelHealthDiagnostics(history) {
+  if (!history || !history.length) return;
+  if (!charts.mhA || !charts.mhB || !charts.mhDiag) return;
+
+  const h12 = mhFilterHistoryByHours(history, MH_HISTORY_HOURS);
+  const h3 = mhFilterHistoryByHours(history, MH_DIAG_HOURS);
+
+  const ts12 = h12.map(p => new Date(p.ts).getTime() / 1000);
+  const aAttr = h12.map(p => mhNum(p.a));
+  const aEma = h12.map(p => mhNum(p.a_ema ?? p.a_filtered ?? p.a_filter ?? p.a_filt));
+  const bAttr = h12.map(p => mhNum(p.b));
+  const bEma = h12.map(p => mhNum(p.b_ema ?? p.b_filtered ?? p.b_filter ?? p.b_filt));
+  const hasAEma = aEma.some(v => v != null);
+  const hasBEma = bEma.some(v => v != null);
+
+  charts.mhA.setData([ts12, aAttr, aEma]);
+  charts.mhB.setData([ts12, bAttr, bEma]);
+  if (charts.mhA.setSeries) charts.mhA.setSeries(2, { show: hasAEma });
+  if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: hasBEma });
+
+  const ts3 = h3.map(p => new Date(p.ts).getTime() / 1000);
+  const tIn3 = h3.map(p => mhNum(p.t_in));
+  const cadenceSec = mhEstimateCadenceSec(h3);
+  const ev = detectSetpointStepEvents(h3, cadenceSec);
+
+  const riseMask = ts3.map(() => false);
+  const fallMask = ts3.map(() => false);
+  if (ev.rising) {
+    const start = ev.rising.tsSec;
+    const end = start + ev.eventWindowSec;
+    for (let i = 0; i < ts3.length; i++) {
+      if (ts3[i] >= start && ts3[i] <= end) riseMask[i] = true;
+    }
+  }
+  if (ev.falling) {
+    const start = ev.falling.tsSec;
+    const end = start + ev.eventWindowSec;
+    for (let i = 0; i < ts3.length; i++) {
+      if (ts3[i] >= start && ts3[i] <= end) fallMask[i] = true;
+    }
+  }
+
+  const aAttrDiag = h3.map((p, i) => riseMask[i] ? mhNum(p.a) : null);
+  const bAttrDiag = h3.map((p, i) => fallMask[i] ? mhNum(p.b) : null);
+
+  const riseWindowPoints = h3.filter((_, i) => riseMask[i]);
+  const fallWindowPoints = h3.filter((_, i) => fallMask[i]);
+  const aRec = recomputeAFromHistory(riseWindowPoints);
+  const bRec = recomputeBFromHistory(fallWindowPoints);
+
+  let aRecIdx = 0;
+  let bRecIdx = 0;
+  const aRecDiag = h3.map((_, i) => {
+    if (!riseMask[i] || !aRec.available) return null;
+    const val = aRec.values[aRecIdx];
+    aRecIdx += 1;
+    return mhNum(val);
+  });
+  const bRecDiag = h3.map((_, i) => {
+    if (!fallMask[i] || !bRec.available) return null;
+    const val = bRec.values[bRecIdx];
+    bRecIdx += 1;
+    return mhNum(val);
+  });
+
+  charts.mhDiag.setData([ts3, tIn3, aAttrDiag, aRecDiag, bAttrDiag, bRecDiag]);
+  if (charts.mhDiag.setSeries) {
+    charts.mhDiag.setSeries(2, { show: aAttrDiag.some(v => v != null) });
+    charts.mhDiag.setSeries(3, { show: aRecDiag.some(v => v != null) });
+    charts.mhDiag.setSeries(4, { show: bAttrDiag.some(v => v != null) });
+    charts.mhDiag.setSeries(5, { show: bRecDiag.some(v => v != null) });
+  }
+
+  const bannerEl = document.getElementById('mh-diag-banner');
+  if (bannerEl) {
+    if (!MH_RECOMPUTE_AVAILABLE) {
+      bannerEl.classList.remove('mh-hidden');
+      bannerEl.textContent =
+        'a_recomputed / b_recomputed cannot be computed from available sources. ' +
+        MH_RECOMPUTE_REASON;
+    } else {
+      bannerEl.classList.add('mh-hidden');
+      bannerEl.textContent = '';
+    }
+  }
+
+  const metaEl = document.getElementById('mh-diag-meta');
+  if (metaEl) {
+    const riseTxt = ev.rising
+      ? `step +${ev.rising.delta.toFixed(2)}°C à ${mhTimeLabel(ev.rising.ts)} (fenêtre [t, t+${Math.round(ev.eventWindowSec / 60)} min])`
+      : 'aucun step montant (Δsetpoint >= +1.0°C) détecté';
+    const fallTxt = ev.falling
+      ? `step ${ev.falling.delta.toFixed(2)}°C à ${mhTimeLabel(ev.falling.ts)} (fenêtre [t, t+${Math.round(ev.eventWindowSec / 60)} min])`
+      : 'aucun step descendant (Δsetpoint <= -1.0°C) détecté';
+    metaEl.innerHTML =
+      `<div><span class="mh-meta-strong">Cadence médiane observée:</span> ${Math.round(ev.cadenceSec)} s</div>` +
+      `<div><span class="mh-meta-strong">Fenêtre de détection step:</span> ${Math.round(ev.shortWindowSec / 60)} min (delta entre deux points consigne consécutifs)</div>` +
+      `<div><span class="mh-meta-strong">Débounce:</span> si plusieurs steps de même signe surviennent dans ${Math.round(ev.debounceSec / 60)} min, le plus récent est conservé.</div>` +
+      `<div><span class="mh-meta-strong">Événement montant:</span> ${escapeHtml(riseTxt)}</div>` +
+      `<div><span class="mh-meta-strong">Événement descendant:</span> ${escapeHtml(fallTxt)}</div>` +
+      `<div><span class="mh-meta-strong">Guardrail analyse:</span> traces basées sur observations (T_int, setpoint, attributs a/b) sans inversion de modèle.</div>`;
+  }
+}
+
+function runModelHealthDiagnosticFixture() {
+  const t0 = Date.UTC(2026, 0, 1, 0, 0, 0);
+  const mkTs = (min) => new Date(t0 + min * 60 * 1000).toISOString();
+  const mock = [
+    { ts: mkTs(0), t_target: 19.0, t_in: 18.8, a: 0.012, b: 0.021 },
+    { ts: mkTs(1), t_target: 19.0, t_in: 18.8, a: 0.012, b: 0.021 },
+    { ts: mkTs(2), t_target: 20.2, t_in: 18.9, a: 0.013, b: 0.021 },
+    { ts: mkTs(3), t_target: 20.2, t_in: 19.0, a: 0.014, b: 0.021 },
+    { ts: mkTs(4), t_target: 18.9, t_in: 19.1, a: 0.014, b: 0.020 },
+    { ts: mkTs(5), t_target: 18.9, t_in: 19.0, a: 0.013, b: 0.019 },
+  ];
+  const ev = detectSetpointStepEvents(mock, 60);
+  const riseOk = ev.rising && ev.rising.delta >= 1.0;
+  const fallOk = ev.falling && ev.falling.delta <= -1.0;
+  if (!riseOk || !fallOk) {
+    console.warn('Model Health fixture failed: expected one rising and one falling setpoint step.', ev);
+  }
+}
+runModelHealthDiagnosticFixture();
 
 
 function tuningBadge(level, label) {
@@ -4665,30 +5080,40 @@ document.querySelectorAll('.ev-filter-btn').forEach(btn => {
 
 async function fetchHistory() {
   try {
+    const updateAllHistoryViews = () => {
+      updateCharts(historyData);
+      updateEvents(historyData);
+      updatePerformance(historyData);
+      updateTuningChart(historyData);
+      updateModelHealthDiagnostics(historyData);
+      if (currentState) updateTuningAssistant(currentState);
+    };
+    const historySpanHours = (hist) => {
+      if (!hist || hist.length < 2) return 0;
+      const sorted = mhSortHistory(hist);
+      const t0 = new Date(sorted[0].ts).getTime();
+      const t1 = new Date(sorted[sorted.length - 1].ts).getTime();
+      if (!(t1 > t0)) return 0;
+      return (t1 - t0) / 3600000;
+    };
+
     // First try in-memory history
     let resp = await fetch(`/api/history?${entityParam()}`);
     let data = await resp.json();
     if (data.ok && data.count > 5) {
       historyData = data.data;
-      updateCharts(historyData);
-      updateEvents(historyData);
-      updatePerformance(historyData);
-      updateTuningChart(historyData);
-      if (currentState) updateTuningAssistant(currentState);
-      return;
+      updateAllHistoryViews();
+      if (historySpanHours(historyData) >= MH_HISTORY_HOURS) return;
     }
 
-    // Fallback to HA history API
-    const hours = parseInt(document.getElementById('chart-range').value) || 12;
+    // Fallback to HA history API (ensure enough depth for Santé Modèle 12h charts)
+    const selectedHours = parseInt(document.getElementById('chart-range').value) || 12;
+    const hours = Math.max(selectedHours, MH_HISTORY_HOURS);
     resp = await fetch(`/api/ha-history?${entityParam()}&hours=${hours}`);
     data = await resp.json();
     if (data.ok) {
       historyData = data.data;
-      updateCharts(historyData);
-      updateEvents(historyData);
-      updatePerformance(historyData);
-      updateTuningChart(historyData);
-      if (currentState) updateTuningAssistant(currentState);
+      updateAllHistoryViews();
     }
   } catch (e) {
     console.error('Fetch history error:', e);
