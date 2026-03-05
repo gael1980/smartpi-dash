@@ -859,6 +859,84 @@
     font: 400 13px 'JetBrains Mono', monospace;
     padding: 22px 0;
   }
+  .mh-mini-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .mh-mini-kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .mh-mini-kpi .k {
+    color: var(--text-dim);
+    font: 500 11px 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+  }
+  .mh-mini-kpi .v {
+    color: var(--text-bright);
+    font: 700 18px 'JetBrains Mono', monospace;
+    margin-top: 4px;
+  }
+  .mh-reason-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+  }
+  .mh-reason-title {
+    color: var(--text-bright);
+    font: 600 13px 'JetBrains Mono', monospace;
+  }
+  .mh-mode-switch {
+    display: inline-flex;
+    gap: 6px;
+  }
+  .mh-mode-btn {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text);
+    font: 500 11px 'JetBrains Mono', monospace;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .mh-mode-btn.active {
+    border-color: rgba(6,182,212,0.5);
+    color: #67e8f9;
+    background: rgba(6,182,212,0.1);
+  }
+  .mh-reason-list {
+    display: grid;
+    gap: 6px;
+  }
+  .mh-reason-row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid rgba(30,41,59,0.7);
+    border-radius: 6px;
+    background: var(--bg-card);
+    padding: 6px 8px;
+    font: 400 12px 'JetBrains Mono', monospace;
+  }
+  .mh-reason-count {
+    color: #67e8f9;
+    font-weight: 700;
+    text-align: right;
+  }
+  .mh-reason-text {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* ─── Events & Timeline Tab ───────────────────────────────── */
   .ev-layout { display: flex; flex-direction: column; gap: 16px; }
@@ -1827,6 +1905,28 @@
       <div id="mh-learning-container"></div>
     </div>
 
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🧭</span>
+        <span class="mh-card-title">Timeline apprentissage (12h)</span>
+      </div>
+      <div class="mh-mini-kpis" id="mh-learning-kpi-container">
+        <div class="mh-empty">En attente d'état courant...</div>
+      </div>
+      <div class="chart-canvas-wrap" id="mh-chart-learning-timeline" style="height:260px"></div>
+      <div class="mh-diag-meta" id="mh-learning-timeline-meta"><div class="mh-empty">En attente d'historique (12h).</div></div>
+      <div class="mh-reason-header">
+        <span class="mh-reason-title">Top raisons de skip (12h)</span>
+        <div class="mh-mode-switch">
+          <button class="mh-mode-btn active" id="mh-reason-mode-prefix" type="button">prefix</button>
+          <button class="mh-mode-btn" id="mh-reason-mode-exact" type="button">exact</button>
+        </div>
+      </div>
+      <div class="mh-reason-list" id="mh-skip-top-reasons">
+        <div class="mh-empty">Aucun skip observé.</div>
+      </div>
+    </div>
+
     <!-- Model Parameters -->
     <div class="mh-card">
       <div class="mh-card-header">
@@ -2002,6 +2102,19 @@ const MH_DIAG_HOURS = 3;
 const MH_STEP_THRESHOLD_C = 1.0;
 const MH_RECOMPUTE_AVAILABLE = false;
 const MH_RECOMPUTE_REASON = "cannot be computed from available sources: estimator logic lives in learning.py in SmartPI core, but this repository only contains diagram/tooltips without executable estimator code.";
+let mhSkipReasonGrouping = 'prefix';
+let mhReasonModeToggleInitialized = false;
+let mhTimelineMeta = {
+  okDelta: [],
+  skipDelta: [],
+  skipReason: [],
+  skipReasonFull: [],
+  okADelta: [],
+  okBDelta: [],
+  deadtimeState: [],
+  satState: [],
+  inDeadtime: [],
+};
 
 function entityParam() {
   return `entity_id=${encodeURIComponent(selectedEntity)}`;
@@ -3217,6 +3330,17 @@ function updateModelHealth(data) {
       <span class="mh-param-val" style="max-width:56%;text-align:right;word-break:break-word">${escapeHtml(learnReason)}</span>
     </div>`;
 
+  const lkpi = document.getElementById('mh-learning-kpi-container');
+  if (lkpi) {
+    const valOrDash = (v) => (v == null ? '—' : String(v));
+    lkpi.innerHTML = [
+      `<div class="mh-mini-kpi"><div class="k">learn_ok_count_a</div><div class="v">${escapeHtml(valOrDash(a.smartpi_learn_ok_count_a))}</div></div>`,
+      `<div class="mh-mini-kpi"><div class="k">learn_ok_count_b</div><div class="v">${escapeHtml(valOrDash(a.smartpi_learn_ok_count_b))}</div></div>`,
+      `<div class="mh-mini-kpi"><div class="k">deadtime_skip_count_a</div><div class="v">${escapeHtml(valOrDash(a.smartpi_deadtime_skip_count_a))}</div></div>`,
+      `<div class="mh-mini-kpi"><div class="k">deadtime_skip_count_b</div><div class="v">${escapeHtml(valOrDash(a.smartpi_deadtime_skip_count_b))}</div></div>`,
+    ].join('');
+  }
+
   // 6. Model Parameters
   const params = [
     { label: 'a (gain)', key: 'smartpi_a', unit: '°C/%/min', reliable: null },
@@ -3296,6 +3420,85 @@ function mhDebounceLatest(candidates, debounceSec) {
   return kept;
 }
 
+function mhBoolish(v) {
+  return v === true || v === 'true' || v === 1 || v === '1';
+}
+
+function mhSaturationActive(v) {
+  if (v == null) return false;
+  if (v === true) return true;
+  const s = String(v).trim().toLowerCase();
+  if (!s || s === 'none' || s === 'ok' || s === 'nominal' || s === 'false' || s === '0' || s === 'off') return false;
+  return true;
+}
+
+function diffCounter(curr, prev) {
+  const c = mhNum(curr);
+  const p = mhNum(prev);
+  if (c == null || p == null) return 0;
+  if (c < p) return 0;
+  const d = Math.floor(c - p);
+  return d > 0 ? d : 0;
+}
+
+function mhCounterReset(curr, prev) {
+  const c = mhNum(curr);
+  const p = mhNum(prev);
+  return c != null && p != null && c < p;
+}
+
+function mhNormalizeReason(reason) {
+  if (reason == null) return 'unknown';
+  const raw = typeof reason === 'string' ? reason : JSON.stringify(reason);
+  const trimmed = raw.trim();
+  return trimmed || 'unknown';
+}
+
+function mhReasonGroupKey(reason, mode) {
+  const base = mhNormalizeReason(reason);
+  if (mode === 'exact') return base;
+  const prefix = base.split(':')[0].trim();
+  return prefix || base;
+}
+
+function mhReasonPreview(reason, maxLen) {
+  const txt = mhNormalizeReason(reason);
+  const m = maxLen || 70;
+  return txt.length > m ? txt.slice(0, m - 1) + '…' : txt;
+}
+
+function mhReasonABTag(reason) {
+  const r = mhNormalizeReason(reason).toLowerCase();
+  const hasA = /(^|[^a-z])a([^a-z]|$)/.test(r) || /param(?:eter|ètre)?[_ ]?a/.test(r);
+  const hasB = /(^|[^a-z])b([^a-z]|$)/.test(r) || /param(?:eter|ètre)?[_ ]?b/.test(r);
+  if (hasA && !hasB) return 'A';
+  if (hasB && !hasA) return 'B';
+  return '';
+}
+
+function initMhReasonModeToggle() {
+  if (mhReasonModeToggleInitialized) return;
+  const prefixBtn = document.getElementById('mh-reason-mode-prefix');
+  const exactBtn = document.getElementById('mh-reason-mode-exact');
+  if (!prefixBtn || !exactBtn) return;
+  const refreshButtons = () => {
+    prefixBtn.classList.toggle('active', mhSkipReasonGrouping === 'prefix');
+    exactBtn.classList.toggle('active', mhSkipReasonGrouping === 'exact');
+  };
+  prefixBtn.addEventListener('click', () => {
+    mhSkipReasonGrouping = 'prefix';
+    refreshButtons();
+    if (historyData && historyData.length) updateModelHealthDiagnostics(historyData);
+  });
+  exactBtn.addEventListener('click', () => {
+    mhSkipReasonGrouping = 'exact';
+    refreshButtons();
+    if (historyData && historyData.length) updateModelHealthDiagnostics(historyData);
+  });
+  refreshButtons();
+  mhReasonModeToggleInitialized = true;
+}
+
 function detectSetpointStepEvents(history3h, cadenceSec) {
   const points = mhSortHistory(history3h).map(p => ({
     point: p,
@@ -3373,8 +3576,9 @@ function initModelHealthCharts() {
   const aEl = document.getElementById('mh-chart-a');
   const bEl = document.getElementById('mh-chart-b');
   const dEl = document.getElementById('mh-chart-diag');
-  if (!aEl || !bEl || !dEl) return;
-  if (aEl.clientWidth === 0 || bEl.clientWidth === 0 || dEl.clientWidth === 0) return;
+  const tEl = document.getElementById('mh-chart-learning-timeline');
+  if (!aEl || !bEl || !dEl || !tEl) return;
+  if (aEl.clientWidth === 0 || bEl.clientWidth === 0 || dEl.clientWidth === 0 || tEl.clientWidth === 0) return;
 
   const aSeries = [
     makeSeries('a_attr', '#8b5cf6', 2),
@@ -3390,6 +3594,64 @@ function initModelHealthCharts() {
     { ...makeSeries('a_recomputed', '#a78bfa', 1.5, [5, 3]), scale: 'slope' },
     { ...makeSeries('b_attr', '#ec4899', 1.5), scale: 'slope' },
     { ...makeSeries('b_recomputed', '#fda4af', 1.5, [5, 3]), scale: 'slope' },
+  ];
+  const timelineSeries = [
+    {
+      ...makeSeries('OK events', '#22c55e', 0),
+      points: { show: true, size: 7, stroke: '#22c55e', fill: '#22c55e' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const d = mhTimelineMeta.okDelta[di] || 1;
+        const da = mhTimelineMeta.okADelta[di] || 0;
+        const db = mhTimelineMeta.okBDelta[di] || 0;
+        const ab = [];
+        if (da > 0) ab.push(`A:+${da}`);
+        if (db > 0) ab.push(`B:+${db}`);
+        return `OK = learn_ok_count +${d}${ab.length ? ' · ' + ab.join(' ') : ''}`;
+      },
+    },
+    {
+      ...makeSeries('SKIP events', '#ef4444', 0),
+      points: { show: true, size: 7, stroke: '#ef4444', fill: '#ef4444' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const d = mhTimelineMeta.skipDelta[di] || 1;
+        const r = mhTimelineMeta.skipReason[di] || 'unknown';
+        const dt = mhTimelineMeta.inDeadtime[di] ? 'deadtime=on' : 'deadtime=off';
+        const sat = mhTimelineMeta.satState[di] ? `sat=${mhTimelineMeta.satState[di]}` : 'sat=none';
+        return `SKIP = learn_skip_count +${d} · ${r} · ${dt} · ${sat}`;
+      },
+    },
+    {
+      ...makeSeries('Deadtime window', '#f59e0b', 1.3),
+      paths: uPlot.paths.stepped({ align: -1 }),
+      points: { show: false },
+      value: (u, v, si, di) => v == null ? 'off' : `on${mhTimelineMeta.deadtimeState[di] ? ' · ' + mhTimelineMeta.deadtimeState[di] : ''}`,
+    },
+    {
+      ...makeSeries('Saturation', '#f97316', 1.3),
+      paths: uPlot.paths.stepped({ align: -1 }),
+      points: { show: false },
+      value: (u, v, si, di) => v == null ? 'off' : `on · ${mhTimelineMeta.satState[di] || 'active'}`,
+    },
+    {
+      ...makeSeries('A appris', '#06b6d4', 0),
+      points: { show: true, size: 6, stroke: '#06b6d4', fill: '#06b6d4' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const d = mhTimelineMeta.okADelta[di] || 1;
+        return `Nouveau A appris: +${d} (learn_ok_count_a)`;
+      },
+    },
+    {
+      ...makeSeries('B appris', '#8b5cf6', 0),
+      points: { show: true, size: 6, stroke: '#8b5cf6', fill: '#8b5cf6' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const d = mhTimelineMeta.okBDelta[di] || 1;
+        return `Nouveau B appris: +${d} (learn_ok_count_b)`;
+      },
+    },
   ];
 
   charts.mhA = new uPlot(
@@ -3419,6 +3681,23 @@ function initModelHealthCharts() {
     [[], [], [], [], [], []],
     dEl
   );
+  const timelineOpts = makeOpts(tEl, timelineSeries, '', [-0.5, 3.5], 260);
+  timelineOpts.axes[1].values = (u, vals) => vals.map(v => {
+    const r = Math.round(v);
+    if (r === 3) return 'OK (learn_ok_count++)';
+    if (r === 2) return 'SKIP (learn_skip_count++)';
+    if (r === 1) return 'Deadtime';
+    if (r === 0) return 'Saturation';
+    return '';
+  });
+  timelineOpts.axes[1].splits = [0, 1, 2, 3];
+  timelineOpts.axes[1].size = 190;
+  timelineOpts.axes[1].font = '11px JetBrains Mono';
+  charts.mhLearnTimeline = new uPlot(
+    timelineOpts,
+    [[], [], [], [], [], [], []],
+    tEl
+  );
 
   if (charts.mhA.setSeries) charts.mhA.setSeries(2, { show: false });
   if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: false });
@@ -3433,7 +3712,9 @@ function initModelHealthCharts() {
   ro.observe(aEl);
   ro.observe(bEl);
   ro.observe(dEl);
+  ro.observe(tEl);
   modelHealthChartsInitialized = true;
+  initMhReasonModeToggle();
 
   if (historyData && historyData.length) updateModelHealthDiagnostics(historyData);
 }
@@ -3442,9 +3723,11 @@ function resizeModelHealthCharts() {
   const aEl = document.getElementById('mh-chart-a');
   const bEl = document.getElementById('mh-chart-b');
   const dEl = document.getElementById('mh-chart-diag');
+  const tEl = document.getElementById('mh-chart-learning-timeline');
   if (charts.mhA && aEl && aEl.clientWidth > 0) charts.mhA.setSize({ width: aEl.clientWidth, height: 250 });
   if (charts.mhB && bEl && bEl.clientWidth > 0) charts.mhB.setSize({ width: bEl.clientWidth, height: 250 });
   if (charts.mhDiag && dEl && dEl.clientWidth > 0) charts.mhDiag.setSize({ width: dEl.clientWidth, height: 300 });
+  if (charts.mhLearnTimeline && tEl && tEl.clientWidth > 0) charts.mhLearnTimeline.setSize({ width: tEl.clientWidth, height: 260 });
 }
 
 function mhTimeLabel(isoTs) {
@@ -3458,12 +3741,143 @@ function mhTimeLabel(isoTs) {
 
 function updateModelHealthDiagnostics(history) {
   if (!history || !history.length) return;
-  if (!charts.mhA || !charts.mhB || !charts.mhDiag) return;
+  if (!charts.mhA || !charts.mhB || !charts.mhDiag || !charts.mhLearnTimeline) return;
+  initMhReasonModeToggle();
 
   const h12 = mhFilterHistoryByHours(history, MH_HISTORY_HOURS);
   const h3 = mhFilterHistoryByHours(history, MH_DIAG_HOURS);
 
+  // Timeline apprentissage (12h) reconstructed from counter deltas.
   const ts12 = h12.map(p => new Date(p.ts).getTime() / 1000);
+  const okEvents = h12.map(() => null);
+  const skipEvents = h12.map(() => null);
+  const deadtimeBand = h12.map(() => null);
+  const satBand = h12.map(() => null);
+  const aLearnEvents = h12.map(() => null);
+  const bLearnEvents = h12.map(() => null);
+  const okDeltaMeta = h12.map(() => 0);
+  const skipDeltaMeta = h12.map(() => 0);
+  const skipReasonMeta = h12.map(() => '');
+  const skipReasonFullMeta = h12.map(() => '');
+  const okADeltaMeta = h12.map(() => 0);
+  const okBDeltaMeta = h12.map(() => 0);
+  const deadtimeStateMeta = h12.map(() => '');
+  const satStateMeta = h12.map(() => '');
+  const inDeadtimeMeta = h12.map(() => false);
+  const resetTimes = [];
+  const reasonCounts = new Map();
+  let totalOkDelta = 0;
+  let totalSkipDelta = 0;
+  let totalALearnDelta = 0;
+  let totalBLearnDelta = 0;
+  let latestSkipFullReason = '';
+
+  for (let i = 0; i < h12.length; i++) {
+    const curr = h12[i];
+    const prev = i > 0 ? h12[i - 1] : null;
+    const deadtimeOn = mhBoolish(curr.in_deadtime_window);
+    const satRaw = curr.sat ?? curr.cycle_state;
+    const satOn = mhSaturationActive(satRaw);
+    inDeadtimeMeta[i] = deadtimeOn;
+    deadtimeStateMeta[i] = curr.deadtime_state != null ? String(curr.deadtime_state) : '';
+    satStateMeta[i] = satRaw != null ? String(satRaw) : '';
+
+    if (i > 0) {
+      const okDelta = diffCounter(curr.learn_ok_count, prev.learn_ok_count);
+      const skipDelta = diffCounter(curr.learn_skip_count, prev.learn_skip_count);
+      const okADelta = diffCounter(curr.learn_ok_count_a, prev.learn_ok_count_a);
+      const okBDelta = diffCounter(curr.learn_ok_count_b, prev.learn_ok_count_b);
+      const reset =
+        mhCounterReset(curr.learn_ok_count, prev.learn_ok_count) ||
+        mhCounterReset(curr.learn_skip_count, prev.learn_skip_count) ||
+        mhCounterReset(curr.learn_ok_count_a, prev.learn_ok_count_a) ||
+        mhCounterReset(curr.learn_ok_count_b, prev.learn_ok_count_b);
+      if (reset) resetTimes.push(curr.ts);
+
+      if (okDelta > 0) {
+        okEvents[i] = 3;
+        okDeltaMeta[i] = okDelta;
+        totalOkDelta += okDelta;
+      }
+      if (okADelta > 0) {
+        aLearnEvents[i] = 3.18;
+        okADeltaMeta[i] = okADelta;
+        totalALearnDelta += okADelta;
+      }
+      if (okBDelta > 0) {
+        bLearnEvents[i] = 2.82;
+        okBDeltaMeta[i] = okBDelta;
+        totalBLearnDelta += okBDelta;
+      }
+      if (skipDelta > 0) {
+        skipEvents[i] = 2;
+        skipDeltaMeta[i] = skipDelta;
+        totalSkipDelta += skipDelta;
+
+        const reasonFull = mhNormalizeReason(curr.learn_last_reason);
+        const abTag = mhReasonABTag(reasonFull);
+        const reasonPreview = mhReasonPreview(reasonFull, 56) + (abTag ? ` [${abTag}]` : '');
+        skipReasonMeta[i] = reasonPreview;
+        skipReasonFullMeta[i] = reasonFull;
+        latestSkipFullReason = reasonFull;
+
+        const grouped = mhReasonGroupKey(reasonFull, mhSkipReasonGrouping);
+        reasonCounts.set(grouped, (reasonCounts.get(grouped) || 0) + skipDelta);
+      }
+    }
+
+    deadtimeBand[i] = deadtimeOn ? 1 : null;
+    satBand[i] = satOn ? 0 : null;
+  }
+
+  mhTimelineMeta = {
+    okDelta: okDeltaMeta,
+    skipDelta: skipDeltaMeta,
+    skipReason: skipReasonMeta,
+    skipReasonFull: skipReasonFullMeta,
+    okADelta: okADeltaMeta,
+    okBDelta: okBDeltaMeta,
+    deadtimeState: deadtimeStateMeta,
+    satState: satStateMeta,
+    inDeadtime: inDeadtimeMeta,
+  };
+  charts.mhLearnTimeline.setData([ts12, okEvents, skipEvents, deadtimeBand, satBand, aLearnEvents, bLearnEvents]);
+  if (charts.mhLearnTimeline.setSeries) {
+    charts.mhLearnTimeline.setSeries(1, { show: okEvents.some(v => v != null) });
+    charts.mhLearnTimeline.setSeries(2, { show: skipEvents.some(v => v != null) });
+    charts.mhLearnTimeline.setSeries(3, { show: deadtimeBand.some(v => v != null) });
+    charts.mhLearnTimeline.setSeries(4, { show: satBand.some(v => v != null) });
+    charts.mhLearnTimeline.setSeries(5, { show: aLearnEvents.some(v => v != null) });
+    charts.mhLearnTimeline.setSeries(6, { show: bLearnEvents.some(v => v != null) });
+  }
+
+  const topReasonsEl = document.getElementById('mh-skip-top-reasons');
+  if (topReasonsEl) {
+    const topReasons = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (!topReasons.length) {
+      topReasonsEl.innerHTML = '<div class="mh-empty">Aucun skip observé sur 12h.</div>';
+    } else {
+      topReasonsEl.innerHTML = topReasons.map(([reason, count]) =>
+        `<div class="mh-reason-row"><span class="mh-reason-count">x${count}</span><span class="mh-reason-text" title="${escapeHtml(reason)}">${escapeHtml(reason)}</span></div>`
+      ).join('');
+    }
+  }
+
+  const timelineMetaEl = document.getElementById('mh-learning-timeline-meta');
+  if (timelineMetaEl) {
+    const resetsPreview = resetTimes.length
+      ? resetTimes.slice(-3).map(ts => mhTimeLabel(ts)).join(', ')
+      : 'aucun';
+    const modeLabel = mhSkipReasonGrouping === 'prefix' ? 'prefix before ":"' : 'exact';
+    timelineMetaEl.innerHTML =
+      `<div><span class="mh-meta-strong">Reconstruction:</span> événements dérivés par deltas de compteurs (learn_ok_count / learn_skip_count).</div>` +
+      `<div><span class="mh-meta-strong">OK Δ cumulé:</span> ${totalOkDelta} · <span class="mh-meta-strong">SKIP Δ cumulé:</span> ${totalSkipDelta} · <span class="mh-meta-strong">A appris Δ:</span> ${totalALearnDelta} · <span class="mh-meta-strong">B appris Δ:</span> ${totalBLearnDelta}</div>` +
+      `<div><span class="mh-meta-strong">Resets détectés (counter decrease):</span> ${resetTimes.length} (${escapeHtml(resetsPreview)})</div>` +
+      `<div><span class="mh-meta-strong">Dernier skip reason (full):</span> ${escapeHtml(latestSkipFullReason || '—')}</div>` +
+      `<div><span class="mh-meta-strong">Signification:</span> OK = learn_ok_count augmente · SKIP = learn_skip_count augmente · A/B appris = learn_ok_count_a/b augmentent.</div>` +
+      `<div><span class="mh-meta-strong">Agrégation raisons:</span> mode ${escapeHtml(modeLabel)} · seules les timestamps avec skip_delta &gt; 0 sont comptées.</div>`;
+  }
+
   const aAttr = h12.map(p => mhNum(p.a));
   const aEma = h12.map(p => mhNum(p.a_ema ?? p.a_filtered ?? p.a_filter ?? p.a_filt));
   const bAttr = h12.map(p => mhNum(p.b));
