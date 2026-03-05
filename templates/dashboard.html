@@ -1927,6 +1927,18 @@
       </div>
     </div>
 
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">📐</span>
+        <span class="mh-card-title">Pentes apprentissage (24h) — segments uniquement</span>
+      </div>
+      <p class="mh-chart-note">Reconstruction stricte des fenêtres ON/OFF depuis `u_applied` et recalcul des pentes avec les mêmes garde-fous que `learning.py` / `learning_window.py`.</p>
+      <div class="chart-canvas-wrap" id="mh-chart-dtdt-24h" style="height:260px"></div>
+      <div class="chart-canvas-wrap" id="mh-chart-a-24h" style="height:250px; margin-top:10px"></div>
+      <div class="chart-canvas-wrap" id="mh-chart-b-24h" style="height:250px; margin-top:10px"></div>
+      <div class="mh-diag-meta" id="mh-slope-24h-meta"><div class="mh-empty">En attente d'historique (24h).</div></div>
+    </div>
+
     <!-- Model Parameters -->
     <div class="mh-card">
       <div class="mh-card-header">
@@ -2099,9 +2111,25 @@ let modelHealthChartsInitialized = false;
 
 const MH_HISTORY_HOURS = 12;
 const MH_DIAG_HOURS = 3;
+const MH_SLOPE_DIAG_HOURS = 24;
+const MH_REQUIRED_HISTORY_HOURS = Math.max(MH_HISTORY_HOURS, MH_SLOPE_DIAG_HOURS);
 const MH_STEP_THRESHOLD_C = 1.0;
 const MH_RECOMPUTE_AVAILABLE = false;
 const MH_RECOMPUTE_REASON = "cannot be computed from available sources: estimator logic lives in learning.py in SmartPI core, but this repository only contains diagram/tooltips without executable estimator code.";
+// SmartPI constants (learning.py + smartpi/const.py).
+const MH_LEARNING_CONST = {
+  U_OFF_MAX: 0.05,
+  U_ON_MIN: 0.20,
+  DELTA_MIN_OFF: 0.5,
+  DELTA_MIN_ON: 0.2,
+  DT_DERIVATIVE_MIN_ABS: 0.03,
+  MAX_ABS_DT_PER_MIN: 0.35,
+  AB_A_SOFT_GATE_MIN_B: 5,
+  // learning_window.py in SmartPI does not expose explicit episode min durations.
+  // Keep the documented core defaults used for ON/OFF episode qualification.
+  EPISODE_MIN_DURATION_ON_S: 600,
+  EPISODE_MIN_DURATION_OFF_S: 900,
+};
 let mhSkipReasonGrouping = 'prefix';
 let mhReasonModeToggleInitialized = false;
 let mhTimelineMeta = {
@@ -2114,6 +2142,15 @@ let mhTimelineMeta = {
   deadtimeState: [],
   satState: [],
   inDeadtime: [],
+};
+let mhSlope24Meta = {
+  dtdtRejectReason: [],
+  dtdtRejectDurationSec: [],
+  dtdtRejectContext: [],
+  aAcceptDelta: [],
+  bAcceptDelta: [],
+  aRejectReason: [],
+  bRejectReason: [],
 };
 
 function entityParam() {
@@ -3447,6 +3484,181 @@ function mhCounterReset(curr, prev) {
   return c != null && p != null && c < p;
 }
 
+function mhClamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function mhNormPower(v) {
+  const n = mhNum(v);
+  if (n == null) return null;
+  return Math.abs(n) > 1.01 ? (n / 100.0) : n;
+}
+
+function mhRegimeFromU(uNorm) {
+  if (uNorm == null) return 'mid';
+  if (uNorm >= MH_LEARNING_CONST.U_ON_MIN) return 'on';
+  if (uNorm <= MH_LEARNING_CONST.U_OFF_MAX) return 'off';
+  return 'mid';
+}
+
+function mhBuildCandidateSegments(h24, cadenceSec) {
+  const points = h24.map((p, i) => ({
+    idx: i,
+    tsSec: new Date(p.ts).getTime() / 1000,
+    regime: mhRegimeFromU(mhNormPower(p.u_applied)),
+  })).filter(p => Number.isFinite(p.tsSec));
+  const candidates = [];
+  if (!points.length) return candidates;
+
+  const maxGapSec = Math.max(2 * cadenceSec, 120);
+  let start = null;
+  let last = null;
+  for (const curr of points) {
+    if (curr.regime === 'mid') {
+      if (start && last) {
+        const durationSec = Math.max(0, last.tsSec - start.tsSec);
+        const minDuration = start.regime === 'on'
+          ? MH_LEARNING_CONST.EPISODE_MIN_DURATION_ON_S
+          : MH_LEARNING_CONST.EPISODE_MIN_DURATION_OFF_S;
+        if (durationSec >= minDuration) {
+          candidates.push({
+            regime: start.regime,
+            startIdx: start.idx,
+            endIdx: last.idx,
+            startTsSec: start.tsSec,
+            endTsSec: last.tsSec,
+            durationSec,
+          });
+        }
+      }
+      start = null;
+      last = null;
+      continue;
+    }
+
+    if (!start) {
+      start = curr;
+      last = curr;
+      continue;
+    }
+
+    const gap = curr.tsSec - last.tsSec;
+    if (curr.regime === start.regime && gap > 0 && gap <= maxGapSec) {
+      last = curr;
+      continue;
+    }
+
+    const durationSec = Math.max(0, last.tsSec - start.tsSec);
+    const minDuration = start.regime === 'on'
+      ? MH_LEARNING_CONST.EPISODE_MIN_DURATION_ON_S
+      : MH_LEARNING_CONST.EPISODE_MIN_DURATION_OFF_S;
+    if (durationSec >= minDuration) {
+      candidates.push({
+        regime: start.regime,
+        startIdx: start.idx,
+        endIdx: last.idx,
+        startTsSec: start.tsSec,
+        endTsSec: last.tsSec,
+        durationSec,
+      });
+    }
+    start = curr;
+    last = curr;
+  }
+
+  if (start && last) {
+    const durationSec = Math.max(0, last.tsSec - start.tsSec);
+    const minDuration = start.regime === 'on'
+      ? MH_LEARNING_CONST.EPISODE_MIN_DURATION_ON_S
+      : MH_LEARNING_CONST.EPISODE_MIN_DURATION_OFF_S;
+    if (durationSec >= minDuration) {
+      candidates.push({
+        regime: start.regime,
+        startIdx: start.idx,
+        endIdx: last.idx,
+        startTsSec: start.tsSec,
+        endTsSec: last.tsSec,
+        durationSec,
+      });
+    }
+  }
+  return candidates;
+}
+
+function mhLinearRegressionSlope(x, y) {
+  const n = x.length;
+  if (n < 2) return null;
+  let sumX = 0.0;
+  let sumY = 0.0;
+  for (let i = 0; i < n; i++) {
+    sumX += x[i];
+    sumY += y[i];
+  }
+  const meanX = sumX / n;
+  const meanY = sumY / n;
+  let cov = 0.0;
+  let varX = 0.0;
+  for (let i = 0; i < n; i++) {
+    const dx = x[i] - meanX;
+    cov += dx * (y[i] - meanY);
+    varX += dx * dx;
+  }
+  if (varX < 1e-9) return null;
+  return cov / varX;
+}
+
+function mhRobustDtdtPerMin(samples, trimStartFrac, trimEndFrac) {
+  const startFrac = mhClamp(trimStartFrac || 0.0, 0.0, 0.45);
+  const endFrac = mhClamp(trimEndFrac || 0.0, 0.0, 0.45);
+  if (!samples || samples.length < 6) {
+    return { value: null, method: 'insufficient_samples', n: samples ? samples.length : 0 };
+  }
+
+  let pts = samples
+    .filter(p => Number.isFinite(p.tsSec) && Number.isFinite(p.tIn))
+    .slice()
+    .sort((a, b) => a.tsSec - b.tsSec);
+  if (pts.length < 6) {
+    return { value: null, method: 'insufficient_samples', n: pts.length };
+  }
+
+  if (startFrac > 0.0 || endFrac > 0.0) {
+    const t0 = pts[0].tsSec;
+    const t1 = pts[pts.length - 1].tsSec;
+    const span = t1 - t0;
+    const validStart = t0 + span * startFrac;
+    const validEnd = t1 - span * endFrac;
+    pts = pts.filter(p => p.tsSec >= validStart && p.tsSec <= validEnd);
+    if (pts.length < 4) {
+      return { value: null, method: 'insufficient_samples_trimmed', n: pts.length };
+    }
+  }
+
+  const y = pts.map(p => p.tIn);
+  const amp = Math.max(...y) - Math.min(...y);
+  if (amp < MH_LEARNING_CONST.DT_DERIVATIVE_MIN_ABS) {
+    return { value: null, method: 'low_amplitude', n: pts.length };
+  }
+
+  const x = pts.map(p => p.tsSec);
+  const slopeSec = mhLinearRegressionSlope(x, y);
+  if (slopeSec == null) {
+    return { value: null, method: 'regression_fail', n: pts.length };
+  }
+
+  let slopeMin = slopeSec * 60.0;
+  const dtMinWindow = (x[x.length - 1] - x[0]) / 60.0;
+  if (dtMinWindow > 0.5) {
+    const minAbsSlope = MH_LEARNING_CONST.DT_DERIVATIVE_MIN_ABS / dtMinWindow;
+    if (Math.abs(slopeMin) < minAbsSlope) {
+      return { value: null, method: 'low_slope', n: pts.length };
+    }
+  }
+
+  slopeMin = mhClamp(slopeMin, -0.35, 0.35);
+  return { value: slopeMin, method: 'least_squares', n: pts.length };
+}
+
 function mhNormalizeReason(reason) {
   if (reason == null) return 'unknown';
   const raw = typeof reason === 'string' ? reason : JSON.stringify(reason);
@@ -3577,8 +3789,14 @@ function initModelHealthCharts() {
   const bEl = document.getElementById('mh-chart-b');
   const dEl = document.getElementById('mh-chart-diag');
   const tEl = document.getElementById('mh-chart-learning-timeline');
-  if (!aEl || !bEl || !dEl || !tEl) return;
-  if (aEl.clientWidth === 0 || bEl.clientWidth === 0 || dEl.clientWidth === 0 || tEl.clientWidth === 0) return;
+  const d24El = document.getElementById('mh-chart-dtdt-24h');
+  const a24El = document.getElementById('mh-chart-a-24h');
+  const b24El = document.getElementById('mh-chart-b-24h');
+  if (!aEl || !bEl || !dEl || !tEl || !d24El || !a24El || !b24El) return;
+  if (
+    aEl.clientWidth === 0 || bEl.clientWidth === 0 || dEl.clientWidth === 0 || tEl.clientWidth === 0 ||
+    d24El.clientWidth === 0 || a24El.clientWidth === 0 || b24El.clientWidth === 0
+  ) return;
 
   const aSeries = [
     makeSeries('a_attr', '#8b5cf6', 2),
@@ -3653,6 +3871,58 @@ function initModelHealthCharts() {
       },
     },
   ];
+  const dtdt24Series = [
+    { ...makeSeries('dT/dt ON', '#22c55e', 1.8), scale: 'slope' },
+    { ...makeSeries('dT/dt OFF', '#f97316', 1.8), scale: 'slope' },
+    {
+      ...makeSeries('Fenêtres rejetées', '#ef4444', 0),
+      points: { show: true, size: 6, stroke: '#ef4444', fill: '#ef4444' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const reason = mhSlope24Meta.dtdtRejectReason[di] || 'reject';
+        const durationSec = mhSlope24Meta.dtdtRejectDurationSec[di];
+        const ctx = mhSlope24Meta.dtdtRejectContext[di];
+        const durTxt = Number.isFinite(durationSec) ? `${Math.round(durationSec / 60)} min` : 'durée inconnue';
+        return `${reason} · ${durTxt}${ctx ? ` · ${ctx}` : ''}`;
+      },
+    },
+  ];
+  const a24Series = [
+    makeSeries('a_attr', '#8b5cf6', 1.8),
+    { ...makeSeries('a_meas_recomputed', '#22c55e', 0), points: { show: true, size: 5, stroke: '#22c55e', fill: '#22c55e' } },
+    {
+      ...makeSeries('A appris (counter delta)', '#06b6d4', 0),
+      points: { show: true, size: 6, stroke: '#06b6d4', fill: '#06b6d4' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const delta = mhSlope24Meta.aAcceptDelta[di] || 1;
+        return `learn_ok_count_a +${delta}`;
+      },
+    },
+    {
+      ...makeSeries('A rejeté', '#ef4444', 0),
+      points: { show: true, size: 5, stroke: '#ef4444', fill: '#ef4444' },
+      value: (u, v, si, di) => v == null ? '—' : (mhSlope24Meta.aRejectReason[di] || 'reject'),
+    },
+  ];
+  const b24Series = [
+    makeSeries('b_attr', '#ec4899', 1.8),
+    { ...makeSeries('b_meas_recomputed', '#f59e0b', 0), points: { show: true, size: 5, stroke: '#f59e0b', fill: '#f59e0b' } },
+    {
+      ...makeSeries('B appris (counter delta)', '#8b5cf6', 0),
+      points: { show: true, size: 6, stroke: '#8b5cf6', fill: '#8b5cf6' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const delta = mhSlope24Meta.bAcceptDelta[di] || 1;
+        return `learn_ok_count_b +${delta}`;
+      },
+    },
+    {
+      ...makeSeries('B rejeté', '#ef4444', 0),
+      points: { show: true, size: 5, stroke: '#ef4444', fill: '#ef4444' },
+      value: (u, v, si, di) => v == null ? '—' : (mhSlope24Meta.bRejectReason[di] || 'reject'),
+    },
+  ];
 
   charts.mhA = new uPlot(
     makeOpts(aEl, aSeries, 'a', null, 250),
@@ -3698,6 +3968,23 @@ function initModelHealthCharts() {
     [[], [], [], [], [], [], []],
     tEl
   );
+  const dtdt24Opts = makeOpts(d24El, dtdt24Series, '°C/min', null, 260);
+  dtdt24Opts.scales = Object.assign({}, dtdt24Opts.scales || {}, { slope: { auto: true } });
+  charts.mhDtdt24 = new uPlot(
+    dtdt24Opts,
+    [[], [], [], []],
+    d24El
+  );
+  charts.mhA24Diag = new uPlot(
+    makeOpts(a24El, a24Series, 'a', null, 250),
+    [[], [], [], [], []],
+    a24El
+  );
+  charts.mhB24Diag = new uPlot(
+    makeOpts(b24El, b24Series, 'b', null, 250),
+    [[], [], [], [], []],
+    b24El
+  );
 
   if (charts.mhA.setSeries) charts.mhA.setSeries(2, { show: false });
   if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: false });
@@ -3707,12 +3994,30 @@ function initModelHealthCharts() {
     charts.mhDiag.setSeries(4, { show: false });
     charts.mhDiag.setSeries(5, { show: false });
   }
+  if (charts.mhDtdt24.setSeries) {
+    charts.mhDtdt24.setSeries(1, { show: false });
+    charts.mhDtdt24.setSeries(2, { show: false });
+    charts.mhDtdt24.setSeries(3, { show: false });
+  }
+  if (charts.mhA24Diag.setSeries) {
+    charts.mhA24Diag.setSeries(2, { show: false });
+    charts.mhA24Diag.setSeries(3, { show: false });
+    charts.mhA24Diag.setSeries(4, { show: false });
+  }
+  if (charts.mhB24Diag.setSeries) {
+    charts.mhB24Diag.setSeries(2, { show: false });
+    charts.mhB24Diag.setSeries(3, { show: false });
+    charts.mhB24Diag.setSeries(4, { show: false });
+  }
 
   const ro = new ResizeObserver(() => resizeModelHealthCharts());
   ro.observe(aEl);
   ro.observe(bEl);
   ro.observe(dEl);
   ro.observe(tEl);
+  ro.observe(d24El);
+  ro.observe(a24El);
+  ro.observe(b24El);
   modelHealthChartsInitialized = true;
   initMhReasonModeToggle();
 
@@ -3724,10 +4029,16 @@ function resizeModelHealthCharts() {
   const bEl = document.getElementById('mh-chart-b');
   const dEl = document.getElementById('mh-chart-diag');
   const tEl = document.getElementById('mh-chart-learning-timeline');
+  const d24El = document.getElementById('mh-chart-dtdt-24h');
+  const a24El = document.getElementById('mh-chart-a-24h');
+  const b24El = document.getElementById('mh-chart-b-24h');
   if (charts.mhA && aEl && aEl.clientWidth > 0) charts.mhA.setSize({ width: aEl.clientWidth, height: 250 });
   if (charts.mhB && bEl && bEl.clientWidth > 0) charts.mhB.setSize({ width: bEl.clientWidth, height: 250 });
   if (charts.mhDiag && dEl && dEl.clientWidth > 0) charts.mhDiag.setSize({ width: dEl.clientWidth, height: 300 });
   if (charts.mhLearnTimeline && tEl && tEl.clientWidth > 0) charts.mhLearnTimeline.setSize({ width: tEl.clientWidth, height: 260 });
+  if (charts.mhDtdt24 && d24El && d24El.clientWidth > 0) charts.mhDtdt24.setSize({ width: d24El.clientWidth, height: 260 });
+  if (charts.mhA24Diag && a24El && a24El.clientWidth > 0) charts.mhA24Diag.setSize({ width: a24El.clientWidth, height: 250 });
+  if (charts.mhB24Diag && b24El && b24El.clientWidth > 0) charts.mhB24Diag.setSize({ width: b24El.clientWidth, height: 250 });
 }
 
 function mhTimeLabel(isoTs) {
@@ -3741,10 +4052,11 @@ function mhTimeLabel(isoTs) {
 
 function updateModelHealthDiagnostics(history) {
   if (!history || !history.length) return;
-  if (!charts.mhA || !charts.mhB || !charts.mhDiag || !charts.mhLearnTimeline) return;
+  if (!charts.mhA || !charts.mhB || !charts.mhDiag || !charts.mhLearnTimeline || !charts.mhDtdt24 || !charts.mhA24Diag || !charts.mhB24Diag) return;
   initMhReasonModeToggle();
 
   const h12 = mhFilterHistoryByHours(history, MH_HISTORY_HOURS);
+  const h24 = mhFilterHistoryByHours(history, MH_SLOPE_DIAG_HOURS);
   const h3 = mhFilterHistoryByHours(history, MH_DIAG_HOURS);
 
   // Timeline apprentissage (12h) reconstructed from counter deltas.
@@ -3889,6 +4201,199 @@ function updateModelHealthDiagnostics(history) {
   charts.mhB.setData([ts12, bAttr, bEma]);
   if (charts.mhA.setSeries) charts.mhA.setSeries(2, { show: hasAEma });
   if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: hasBEma });
+
+  // Pentes apprentissage (24h) — reconstruction stricte ON/OFF.
+  const ts24 = h24.map(p => new Date(p.ts).getTime() / 1000);
+  const cadence24Sec = mhEstimateCadenceSec(h24);
+  const dTdtOn = h24.map(() => null);
+  const dTdtOff = h24.map(() => null);
+  const rejectedMarkers = h24.map(() => null);
+  const aAttr24 = h24.map(p => mhNum(p.a));
+  const bAttr24 = h24.map(p => mhNum(p.b));
+  const aMeas24 = h24.map(() => null);
+  const bMeas24 = h24.map(() => null);
+  const aAcceptMarkers = h24.map(() => null);
+  const bAcceptMarkers = h24.map(() => null);
+  const aRejectedMarkers = h24.map(() => null);
+  const bRejectedMarkers = h24.map(() => null);
+
+  const dtdtRejectReasonMeta = h24.map(() => '');
+  const dtdtRejectDurationMeta = h24.map(() => null);
+  const dtdtRejectContextMeta = h24.map(() => '');
+  const aAcceptDeltaMeta = h24.map(() => 0);
+  const bAcceptDeltaMeta = h24.map(() => 0);
+  const aRejectReasonMeta = h24.map(() => '');
+  const bRejectReasonMeta = h24.map(() => '');
+
+  const candidates = mhBuildCandidateSegments(h24, cadence24Sec);
+  let onWindows = 0;
+  let offWindows = 0;
+  let onValid = 0;
+  let offValid = 0;
+  let rejectCount = 0;
+  let aGuardReject = 0;
+  let bGuardReject = 0;
+
+  for (const seg of candidates) {
+    if (seg.regime === 'on') onWindows += 1;
+    if (seg.regime === 'off') offWindows += 1;
+
+    const segSamples = [];
+    for (let i = seg.startIdx; i <= seg.endIdx; i++) {
+      const tIn = mhNum(h24[i].t_in ?? h24[i].sensor_temperature);
+      const tsSec = ts24[i];
+      if (tIn != null && Number.isFinite(tsSec)) {
+        segSamples.push({ tsSec, tIn });
+      }
+    }
+
+    const trimStart = seg.regime === 'off' ? 0.10 : 0.0;
+    const slope = mhRobustDtdtPerMin(segSamples, trimStart, 0.0);
+    const midIdx = Math.floor((seg.startIdx + seg.endIdx) / 2);
+    if (slope.value == null) {
+      rejectCount += 1;
+      rejectedMarkers[midIdx] = 0.0;
+      dtdtRejectReasonMeta[midIdx] = slope.method;
+      dtdtRejectDurationMeta[midIdx] = seg.durationSec;
+      dtdtRejectContextMeta[midIdx] = mhNormalizeReason(h24[midIdx].learn_last_reason);
+      continue;
+    }
+
+    if (seg.regime === 'on') onValid += 1;
+    if (seg.regime === 'off') offValid += 1;
+
+    for (let i = seg.startIdx; i <= seg.endIdx; i++) {
+      if (seg.regime === 'on') dTdtOn[i] = slope.value;
+      if (seg.regime === 'off') dTdtOff[i] = slope.value;
+    }
+
+    // a_meas ON windows only.
+    if (seg.regime === 'on') {
+      const uVals = [];
+      const deltaVals = [];
+      for (let i = seg.startIdx; i <= seg.endIdx; i++) {
+        const uNorm = mhNormPower(h24[i].u_applied);
+        if (uNorm != null) uVals.push(uNorm);
+        const tIn = mhNum(h24[i].t_in ?? h24[i].sensor_temperature);
+        const tExt = mhNum(h24[i].t_ext);
+        if (tIn != null && tExt != null) deltaVals.push(tIn - tExt);
+      }
+      const uMean = uVals.length ? (uVals.reduce((s, v) => s + v, 0) / uVals.length) : null;
+      const deltaMean = deltaVals.length ? (deltaVals.reduce((s, v) => s + v, 0) / deltaVals.length) : null;
+      const bAttrMid = mhNum(h24[midIdx].b);
+      let guardReason = '';
+      if (uMean == null || !(uMean > MH_LEARNING_CONST.U_ON_MIN)) {
+        guardReason = 'skip: u mid-range';
+      } else if (deltaMean == null || Math.abs(deltaMean) < MH_LEARNING_CONST.DELTA_MIN_ON) {
+        guardReason = 'skip: a delta too small';
+      } else if (Math.abs(slope.value) > MH_LEARNING_CONST.MAX_ABS_DT_PER_MIN) {
+        guardReason = 'skip: slope outlier';
+      } else if (bAttrMid == null) {
+        guardReason = 'skip: b missing';
+      } else if ((mhNum(h24[midIdx].learn_ok_count_b) || 0) < MH_LEARNING_CONST.AB_A_SOFT_GATE_MIN_B) {
+        guardReason = `skip: a blocked (b insufficient, ${(mhNum(h24[midIdx].learn_ok_count_b) || 0)}/${MH_LEARNING_CONST.AB_A_SOFT_GATE_MIN_B} b samples)`;
+      } else {
+        const aMeas = (slope.value + bAttrMid * deltaMean) / uMean;
+        if (!(aMeas > 0)) {
+          guardReason = 'skip: a_meas <= 0';
+        } else {
+          for (let i = seg.startIdx; i <= seg.endIdx; i++) aMeas24[i] = aMeas;
+        }
+      }
+      if (guardReason) {
+        aGuardReject += 1;
+        aRejectedMarkers[midIdx] = aAttr24[midIdx] ?? 0;
+        aRejectReasonMeta[midIdx] = guardReason;
+      }
+    }
+
+    // b_meas OFF windows only.
+    if (seg.regime === 'off') {
+      const uVals = [];
+      const deltaVals = [];
+      for (let i = seg.startIdx; i <= seg.endIdx; i++) {
+        const uNorm = mhNormPower(h24[i].u_applied);
+        if (uNorm != null) uVals.push(uNorm);
+        const tIn = mhNum(h24[i].t_in ?? h24[i].sensor_temperature);
+        const tExt = mhNum(h24[i].t_ext);
+        if (tIn != null && tExt != null) deltaVals.push(tIn - tExt);
+      }
+      const uMean = uVals.length ? (uVals.reduce((s, v) => s + v, 0) / uVals.length) : null;
+      const deltaMean = deltaVals.length ? (deltaVals.reduce((s, v) => s + v, 0) / deltaVals.length) : null;
+      let guardReason = '';
+      if (uMean == null || !(uMean < MH_LEARNING_CONST.U_OFF_MAX)) {
+        guardReason = 'skip: u mid-range';
+      } else if (deltaMean == null || Math.abs(deltaMean) < MH_LEARNING_CONST.DELTA_MIN_OFF) {
+        guardReason = 'skip: b delta too small';
+      } else if (Math.abs(slope.value) > MH_LEARNING_CONST.MAX_ABS_DT_PER_MIN) {
+        guardReason = 'skip: slope outlier';
+      } else {
+        const bMeas = -slope.value / deltaMean;
+        if (!(bMeas > 0)) {
+          guardReason = 'skip: b_meas <= 0';
+        } else {
+          for (let i = seg.startIdx; i <= seg.endIdx; i++) bMeas24[i] = bMeas;
+        }
+      }
+      if (guardReason) {
+        bGuardReject += 1;
+        bRejectedMarkers[midIdx] = bAttr24[midIdx] ?? 0;
+        bRejectReasonMeta[midIdx] = guardReason;
+      }
+    }
+  }
+
+  for (let i = 1; i < h24.length; i++) {
+    const okA = diffCounter(h24[i].learn_ok_count_a, h24[i - 1].learn_ok_count_a);
+    const okB = diffCounter(h24[i].learn_ok_count_b, h24[i - 1].learn_ok_count_b);
+    if (okA > 0) {
+      aAcceptMarkers[i] = aMeas24[i] ?? aAttr24[i] ?? null;
+      aAcceptDeltaMeta[i] = okA;
+    }
+    if (okB > 0) {
+      bAcceptMarkers[i] = bMeas24[i] ?? bAttr24[i] ?? null;
+      bAcceptDeltaMeta[i] = okB;
+    }
+  }
+
+  mhSlope24Meta = {
+    dtdtRejectReason: dtdtRejectReasonMeta,
+    dtdtRejectDurationSec: dtdtRejectDurationMeta,
+    dtdtRejectContext: dtdtRejectContextMeta,
+    aAcceptDelta: aAcceptDeltaMeta,
+    bAcceptDelta: bAcceptDeltaMeta,
+    aRejectReason: aRejectReasonMeta,
+    bRejectReason: bRejectReasonMeta,
+  };
+
+  charts.mhDtdt24.setData([ts24, dTdtOn, dTdtOff, rejectedMarkers]);
+  charts.mhA24Diag.setData([ts24, aAttr24, aMeas24, aAcceptMarkers, aRejectedMarkers]);
+  charts.mhB24Diag.setData([ts24, bAttr24, bMeas24, bAcceptMarkers, bRejectedMarkers]);
+  if (charts.mhDtdt24.setSeries) {
+    charts.mhDtdt24.setSeries(1, { show: dTdtOn.some(v => v != null) });
+    charts.mhDtdt24.setSeries(2, { show: dTdtOff.some(v => v != null) });
+    charts.mhDtdt24.setSeries(3, { show: rejectedMarkers.some(v => v != null) });
+  }
+  if (charts.mhA24Diag.setSeries) {
+    charts.mhA24Diag.setSeries(2, { show: aMeas24.some(v => v != null) });
+    charts.mhA24Diag.setSeries(3, { show: aAcceptMarkers.some(v => v != null) });
+    charts.mhA24Diag.setSeries(4, { show: aRejectedMarkers.some(v => v != null) });
+  }
+  if (charts.mhB24Diag.setSeries) {
+    charts.mhB24Diag.setSeries(2, { show: bMeas24.some(v => v != null) });
+    charts.mhB24Diag.setSeries(3, { show: bAcceptMarkers.some(v => v != null) });
+    charts.mhB24Diag.setSeries(4, { show: bRejectedMarkers.some(v => v != null) });
+  }
+
+  const slopeMetaEl = document.getElementById('mh-slope-24h-meta');
+  if (slopeMetaEl) {
+    slopeMetaEl.innerHTML =
+      `<div><span class="mh-meta-strong">Fenêtres candidates:</span> ON=${onWindows}, OFF=${offWindows} · seuils durée ON/OFF = ${MH_LEARNING_CONST.EPISODE_MIN_DURATION_ON_S}s / ${MH_LEARNING_CONST.EPISODE_MIN_DURATION_OFF_S}s.</div>` +
+      `<div><span class="mh-meta-strong">Pentes robustes:</span> ON valides=${onValid}, OFF valides=${offValid} · rejets robust_dTdt=${rejectCount}.</div>` +
+      `<div><span class="mh-meta-strong">Guards mesure:</span> A rejetés=${aGuardReject}, B rejetés=${bGuardReject} · accepts marqueurs via Δ(learn_ok_count_a/b).</div>` +
+      `<div><span class="mh-meta-strong">Approximation cadence:</span> durée de segment = t_fin - t_début (conservateur, pas d'interpolation intra-cycle).</div>` +
+      `<div><span class="mh-meta-strong">Champs utilisés:</span> t_in, t_ext, u_applied, a, b, learn_ok_count_a/b, learn_last_reason.</div>`;
+  }
 
   const ts3 = h3.map(p => new Date(p.ts).getTime() / 1000);
   const tIn3 = h3.map(p => mhNum(p.t_in));
@@ -5517,12 +6022,12 @@ async function fetchHistory() {
     if (data.ok && data.count > 5) {
       historyData = data.data;
       updateAllHistoryViews();
-      if (historySpanHours(historyData) >= MH_HISTORY_HOURS) return;
+      if (historySpanHours(historyData) >= MH_REQUIRED_HISTORY_HOURS) return;
     }
 
-    // Fallback to HA history API (ensure enough depth for Santé Modèle 12h charts)
+    // Fallback to HA history API (ensure enough depth for Santé Modèle 24h diagnostics)
     const selectedHours = parseInt(document.getElementById('chart-range').value) || 12;
-    const hours = Math.max(selectedHours, MH_HISTORY_HOURS);
+    const hours = Math.max(selectedHours, MH_REQUIRED_HISTORY_HOURS);
     resp = await fetch(`/api/ha-history?${entityParam()}&hours=${hours}`);
     data = await resp.json();
     if (data.ok) {

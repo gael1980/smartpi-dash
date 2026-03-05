@@ -150,6 +150,7 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
         "in_near_band": "smartpi_in_near_band",
         "in_deadband": "smartpi_in_deadband",
         # Thermal model
+        "sensor_temperature": "smartpi_sensor_temperature",
         "a": "smartpi_a",
         "b": "smartpi_b",
         "a_ema": "smartpi_a_ema",
@@ -363,7 +364,8 @@ def snapshot_for_history(attrs: dict) -> dict:
     """Create a compact snapshot for the rolling history."""
     return {
         "ts": datetime.now(timezone.utc).isoformat(),
-        "t_in": attrs.get("current_temperature"),
+        "sensor_temperature": attrs.get("smartpi_sensor_temperature"),
+        "t_in": _first_not_none(attrs.get("smartpi_sensor_temperature"), attrs.get("current_temperature")),
         "t_target": _first_not_none(
             attrs.get("temperature"),
             attrs.get("target_temperature"),
