@@ -24,6 +24,7 @@ SMARTPI_GROUPS = {
             "smartpi_deadtime_heat_reliable", "smartpi_deadtime_cool_reliable",
             "smartpi_tau_reliable",
             "smartpi_learn_ok_count_a", "smartpi_learn_ok_count_b",
+            "smartpi_learn_last_reason",
         ],
     },
     "twin": {
@@ -156,6 +157,7 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
         "deadtime_cool_reliable": "smartpi_deadtime_cool_reliable",
         "learn_ok_count_a": "smartpi_learn_ok_count_a",
         "learn_ok_count_b": "smartpi_learn_ok_count_b",
+        "learn_last_reason": "smartpi_learn_last_reason",
         # Governance
         "governance_regime": "smartpi_regime",
         "phase": "smartpi_phase",
@@ -342,6 +344,10 @@ def snapshot_for_history(attrs: dict) -> dict:
         "ff_gate": attrs.get("smartpi_ff_gate"),
         "ff_scale": attrs.get("smartpi_ff_scale"),
         "ff_k_ff": attrs.get("smartpi_ff_k_ff"),
+        "learn_last_reason": _first_not_none(
+            attrs.get("smartpi_learn_last_reason"),
+            attrs.get("learn_last_reason"),
+        ),
         "autocalib_state": attrs.get("smartpi_autocalib_state"),
         "cycle_state": attrs.get("smartpi_cycle_state"),
         "guard_cut": attrs.get("smartpi_guard_cut_active"),
