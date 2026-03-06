@@ -103,6 +103,100 @@ def _first_not_none(*values):
     return None
 
 
+
+# ─── Module-level mapping constants (defined once, not per-call) ──────────────
+
+_SMARTPI_MAPPING = {
+    # Regulation
+    "Kp": "smartpi_kp",
+    "Ki": "smartpi_ki",
+    "error_p": "smartpi_error_p",
+    "integral_error": "smartpi_error_i",
+    "u_pi": "smartpi_u_pi",
+    "u_cmd": "smartpi_u_cmd",
+    "u_applied": "smartpi_u_applied",
+    "u_limited": "smartpi_u_limited",
+    "u_ff": "smartpi_u_ff",
+    "u_p": "smartpi_u_p",
+    "u_i": "smartpi_u_i",
+    "aw_du": "smartpi_aw_du",
+    "on_percent": "smartpi_on_percent",
+    # We also keep the top-level target from filtered_setpoint
+    "filtered_setpoint": "smartpi_sp_for_p",
+    # Setpoint filter
+    "near_band_deg": "smartpi_near_band_deg",
+    "near_band_above_deg": "smartpi_near_band_above_deg",
+    "near_band_below_deg": "smartpi_near_band_below_deg",
+    "in_near_band": "smartpi_in_near_band",
+    "in_deadband": "smartpi_in_deadband",
+    # Thermal model
+    "sensor_temperature": "smartpi_sensor_temperature",
+    "a": "smartpi_a",
+    "b": "smartpi_b",
+    "a_ema": "smartpi_a_ema",
+    "b_ema": "smartpi_b_ema",
+    "a_filtered": "smartpi_a_filtered",
+    "b_filtered": "smartpi_b_filtered",
+    "a_filter": "smartpi_a_filter",
+    "b_filter": "smartpi_b_filter",
+    "a_filt": "smartpi_a_filt",
+    "b_filt": "smartpi_b_filt",
+    "tau_min": "smartpi_tau_min",
+    "tau_reliable": "smartpi_tau_reliable",
+    "deadtime_heat_s": "smartpi_deadtime_heat_s",
+    "deadtime_cool_s": "smartpi_deadtime_cool_s",
+    "deadtime_heat_reliable": "smartpi_deadtime_heat_reliable",
+    "deadtime_cool_reliable": "smartpi_deadtime_cool_reliable",
+    "learn_ok_count_a": "smartpi_learn_ok_count_a",
+    "learn_ok_count_b": "smartpi_learn_ok_count_b",
+    "learn_ok_count": "smartpi_learn_ok_count",
+    "learn_skip_count": "smartpi_learn_skip_count",
+    "deadtime_state": "smartpi_deadtime_state",
+    "in_deadtime_window": "smartpi_in_deadtime_window",
+    "deadtime_skip_count_a": "smartpi_deadtime_skip_count_a",
+    "deadtime_skip_count_b": "smartpi_deadtime_skip_count_b",
+    "learn_last_reason": "smartpi_learn_last_reason",
+    # Governance
+    "governance_regime": "smartpi_regime",
+    "phase": "smartpi_phase",
+    "i_mode": "smartpi_integral_state",
+    "last_decision_gains": "smartpi_governance_action",
+    "last_decision_thermal": "smartpi_governance_diag_code",
+    "guard_cut_active": "smartpi_guard_cut_active",
+    "hysteresis_thermal_guard": "smartpi_thermal_guard_active",
+    # Feedforward
+    "ff_raw": "smartpi_ff_u_ff",
+    "ff_reason": "smartpi_ff_gate",
+    "ff_warmup_cycles": "smartpi_ff_warmup",
+    "ff_warmup_ok_count": "smartpi_ff_warmup_ok_count",
+    "ff_warmup_scale": "smartpi_ff_scale",
+    # Note: ff_enabled is derived from ff_reason != "ff_none"
+    # Calibration
+    "calibration_state": "smartpi_calibration_state",
+    "autocalib_state": "smartpi_autocalib_state",
+    "autocalib_model_degraded": "smartpi_autocalib_model_degraded",
+    "autocalib_triggered_params": "smartpi_autocalib_triggered_params",
+    "autocalib_retry_count": "smartpi_autocalib_retry_count",
+    "autocalib_snapshot_age_h": "smartpi_autocalib_snapshot_age_h",
+    # Setpoint filter
+    "regulation_mode": "smartpi_filter_mode",
+    # Cycle PWM
+    "cycle_min": "smartpi_cycle_min",
+    "sat": "smartpi_cycle_state",
+    "forced_by_timing": "smartpi_rate_limit",
+}
+
+_PRED_MAPPING = {
+    "twin_T_hat": "smartpi_twin_t_hat",
+    "twin_innovation": "smartpi_twin_innovation",
+    "twin_d_hat": "smartpi_twin_d_hat_ema",
+    "twin_rmse_30": "smartpi_twin_rmse",
+    "twin_T_steady": "smartpi_twin_t_steady",
+    "twin_cusum_pos": "smartpi_twin_cusum",
+    "eta_reason": "smartpi_twin_eta_reason",
+}
+
+
 def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     """Flatten the nested HA attributes so that SmartPI data is at the top level.
 
@@ -125,88 +219,7 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     if not isinstance(spi, dict):
         return flat
 
-    # Explicit mapping from nested smart_pi keys → flat smartpi_ keys
-    MAPPING = {
-        # Regulation
-        "Kp": "smartpi_kp",
-        "Ki": "smartpi_ki",
-        "error_p": "smartpi_error_p",
-        "integral_error": "smartpi_error_i",
-        "u_pi": "smartpi_u_pi",
-        "u_cmd": "smartpi_u_cmd",
-        "u_applied": "smartpi_u_applied",
-        "u_limited": "smartpi_u_limited",
-        "u_ff": "smartpi_u_ff",
-        "u_p": "smartpi_u_p",
-        "u_i": "smartpi_u_i",
-        "aw_du": "smartpi_aw_du",
-        "on_percent": "smartpi_on_percent",
-        # We also keep the top-level target from filtered_setpoint
-        "filtered_setpoint": "smartpi_sp_for_p",
-        # Setpoint filter
-        "near_band_deg": "smartpi_near_band_deg",
-        "near_band_above_deg": "smartpi_near_band_above_deg",
-        "near_band_below_deg": "smartpi_near_band_below_deg",
-        "in_near_band": "smartpi_in_near_band",
-        "in_deadband": "smartpi_in_deadband",
-        # Thermal model
-        "sensor_temperature": "smartpi_sensor_temperature",
-        "a": "smartpi_a",
-        "b": "smartpi_b",
-        "a_ema": "smartpi_a_ema",
-        "b_ema": "smartpi_b_ema",
-        "a_filtered": "smartpi_a_filtered",
-        "b_filtered": "smartpi_b_filtered",
-        "a_filter": "smartpi_a_filter",
-        "b_filter": "smartpi_b_filter",
-        "a_filt": "smartpi_a_filt",
-        "b_filt": "smartpi_b_filt",
-        "tau_min": "smartpi_tau_min",
-        "tau_reliable": "smartpi_tau_reliable",
-        "deadtime_heat_s": "smartpi_deadtime_heat_s",
-        "deadtime_cool_s": "smartpi_deadtime_cool_s",
-        "deadtime_heat_reliable": "smartpi_deadtime_heat_reliable",
-        "deadtime_cool_reliable": "smartpi_deadtime_cool_reliable",
-        "learn_ok_count_a": "smartpi_learn_ok_count_a",
-        "learn_ok_count_b": "smartpi_learn_ok_count_b",
-        "learn_ok_count": "smartpi_learn_ok_count",
-        "learn_skip_count": "smartpi_learn_skip_count",
-        "deadtime_state": "smartpi_deadtime_state",
-        "in_deadtime_window": "smartpi_in_deadtime_window",
-        "deadtime_skip_count_a": "smartpi_deadtime_skip_count_a",
-        "deadtime_skip_count_b": "smartpi_deadtime_skip_count_b",
-        "learn_last_reason": "smartpi_learn_last_reason",
-        # Governance
-        "governance_regime": "smartpi_regime",
-        "phase": "smartpi_phase",
-        "i_mode": "smartpi_integral_state",
-        "last_decision_gains": "smartpi_governance_action",
-        "last_decision_thermal": "smartpi_governance_diag_code",
-        "guard_cut_active": "smartpi_guard_cut_active",
-        "hysteresis_thermal_guard": "smartpi_thermal_guard_active",
-        # Feedforward
-        "ff_raw": "smartpi_ff_u_ff",
-        "ff_reason": "smartpi_ff_gate",
-        "ff_warmup_cycles": "smartpi_ff_warmup",
-        "ff_warmup_ok_count": "smartpi_ff_warmup_ok_count",
-        "ff_warmup_scale": "smartpi_ff_scale",
-        # Note: ff_enabled is derived from ff_reason != "ff_none"
-        # Calibration
-        "calibration_state": "smartpi_calibration_state",
-        "autocalib_state": "smartpi_autocalib_state",
-        "autocalib_model_degraded": "smartpi_autocalib_model_degraded",
-        "autocalib_triggered_params": "smartpi_autocalib_triggered_params",
-        "autocalib_retry_count": "smartpi_autocalib_retry_count",
-        "autocalib_snapshot_age_h": "smartpi_autocalib_snapshot_age_h",
-        # Setpoint filter
-        "regulation_mode": "smartpi_filter_mode",
-        # Cycle PWM
-        "cycle_min": "smartpi_cycle_min",
-        "sat": "smartpi_cycle_state",
-        "forced_by_timing": "smartpi_rate_limit",
-    }
-
-    for src, dst in MAPPING.items():
+    for src, dst in _SMARTPI_MAPPING.items():
         val = spi.get(src)
         if val is not None:
             flat[dst] = val
@@ -239,16 +252,7 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     # Pred / twin data is nested one more level
     pred = spi.get("pred", {})
     if isinstance(pred, dict):
-        PRED_MAPPING = {
-            "twin_T_hat": "smartpi_twin_t_hat",
-            "twin_innovation": "smartpi_twin_innovation",
-            "twin_d_hat": "smartpi_twin_d_hat_ema",
-            "twin_rmse_30": "smartpi_twin_rmse",
-            "twin_T_steady": "smartpi_twin_t_steady",
-            "twin_cusum_pos": "smartpi_twin_cusum",
-            "eta_reason": "smartpi_twin_eta_reason",
-        }
-        for src, dst in PRED_MAPPING.items():
+        for src, dst in _PRED_MAPPING.items():
             val = pred.get(src)
             if val is not None:
                 flat[dst] = val

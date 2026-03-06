@@ -6,3 +6,5 @@ __pycache__/
 uv.lock
 .claude/
 .DS_Store
+.ai/
+*.zip

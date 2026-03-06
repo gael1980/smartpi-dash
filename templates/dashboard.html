@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SmartPI Dashboard — Régulation Temps Réel</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2155,6 +2155,7 @@ const DEFAULT_ENTITY = {{ climate_entity | tojson }};
 let selectedEntity = localStorage.getItem('smartpi_selected_entity') || DEFAULT_ENTITY;
 let currentState = null;
 let previousValues = {};
+let lastStateETag = null; // ETag for /api/state conditional requests
 let charts = {};
 let historyData = [];
 let blockDiagramData = null;
@@ -2890,7 +2891,7 @@ function updateDebugChain(data) {
   const piActive = iState !== 'HARD_FREEZE' && iState !== '';
   const piInd = document.getElementById('cu-pi-indicator');
   if (piInd) {
-    piInd.innerHTML = '<span class="cu-dot"></span> correction PI \u00b7 ' + (piActive ? (iState || 'actif') : 'arr\u00eat');
+    piInd.innerHTML = '<span class="cu-dot"></span> correction PI \u00b7 ' + (piActive ? escapeHtml(iState || 'actif') : 'arr\u00eat');
     piInd.className = 'cu-indicator ' + (piActive ? 'cu-on' : 'cu-off');
   }
 
@@ -2938,7 +2939,7 @@ function updateDebugChain(data) {
     } else if (sat != null && sat !== 'ok' && sat !== 'nominal' && sat !== true && sat !== false) {
       satLabel = String(sat); satClass = 'cu-off';
     }
-    satInd.innerHTML = '<span class="cu-dot"></span> Saturation: ' + satLabel;
+    satInd.innerHTML = '<span class="cu-dot"></span> Saturation: ' + escapeHtml(satLabel);
     satInd.className = 'cu-indicator ' + satClass;
   }
 
@@ -2976,7 +2977,7 @@ function updateDebugChain(data) {
     const ffMaxNote = ffScale != null ? '' : '\u2014 \u00b7 max non fiable : 0.3';
 
     const ffRows = [
-      ['Raison', '<code style="background:var(--bg-card);padding:2px 6px;border-radius:3px">' + (ffReason || '\u2014') + '</code>'],
+      ['Raison', '<code style="background:var(--bg-card);padding:2px 6px;border-radius:3px">' + escapeHtml(ffReason || '\u2014') + '</code>'],
       ['Brut (ff_raw)', ffRaw != null ? dcPct(ffRaw) + '%' : '\u2014'],
       ['\u00c9chelle (ff_scale)', ffScale != null ? ffScale.toFixed(3) : ffMaxNote],
       ['Warmup FF', ffWarmup != null ? ffWarmup + (ffWarmupOk != null ? '/' + ffWarmupOk + ' cycles OK' : '') : '\u2014'],
@@ -2995,7 +2996,7 @@ function updateDebugChain(data) {
       ['Ki', ki != null ? ki.toFixed(6) : '\u2014'],
       ['Erreur P (e_p)', ep != null ? '<span style="color:' + (ep > 0.1 ? 'var(--accent-cyan)' : ep < -0.1 ? 'var(--accent-orange)' : 'var(--accent-green)') + '">' + ep.toFixed(3) + ' \u00b0C</span>' : '\u2014'],
       ['Erreur I (\u222Be)', ei != null ? ei.toFixed(3) + ' \u00b0C' : '\u2014'],
-      ['\u00c9tat int\u00e9gral', iState || '\u2014'],
+      ['\u00c9tat int\u00e9gral', escapeHtml(iState || '\u2014')],
       ['u_p = Kp\u00b7ep', uPCalc != null ? dcPct(uPCalc) + '%' : '\u2014'],
       ['u_i = Ki\u00b7\u222Bei', uICalc != null ? dcPct(uICalc) + '%' : '\u2014'],
     ];
@@ -6203,7 +6204,10 @@ function updatePerformance(history) {
 // ─── Main polling loop ───────────────────────────────────────
 async function fetchState() {
   try {
-    const resp = await fetch(`/api/state?${entityParam()}`);
+    const headers = lastStateETag ? { 'If-None-Match': lastStateETag } : {};
+    const resp = await fetch(`/api/state?${entityParam()}`, { headers });
+    if (resp.status === 304) return; // state unchanged, skip DOM updates
+    lastStateETag = resp.headers.get('ETag') || null;
     const data = await resp.json();
     if (!data.ok) return;
 
@@ -6423,6 +6427,7 @@ async function loadEntitySelector() {
     currentState = null;
     previousValues = {};
     historyData = [];
+    lastStateETag = null; // force full reload for new entity
     fetchState();
     fetchHistory();
   });

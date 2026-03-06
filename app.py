@@ -6,6 +6,7 @@ SmartPI thermostat data to the browser dashboard.
 """
 
 import os
+import time
 
 from flask import Flask, render_template, jsonify, request, abort
 from flask_limiter import Limiter
@@ -21,6 +22,17 @@ from transforms import (
 )
 from ha_client import ha_discover_smartpi_entities, ha_get_history
 from ws_listener import start_ws_thread
+
+# ─── Server-side caches ──────────────────────────────────────────
+
+# Keyed by (entity_id, hours) → (timestamp, points)
+_ha_history_cache: dict = {}
+HA_HISTORY_CACHE_TTL = 60  # seconds
+
+# Static responses computed once on first request
+_config_data: dict | None = None
+_block_diagram_data: dict | None = None
+
 
 # ─── Application ─────────────────────────────────────────────────
 app = Flask(__name__)
@@ -43,7 +55,8 @@ def set_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    if request.is_secure:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
@@ -109,16 +122,24 @@ def api_state():
     attrs = estore["attributes"]
     climate = estore["climate"]
 
-    return jsonify({
+    # ETag based on last_update — skip full response if state unchanged
+    last_update = estore["last_update"] or ""
+    etag = f'"{last_update}"'
+    if last_update and request.headers.get("If-None-Match") == etag:
+        return "", 304
+
+    resp = jsonify({
         "ok": True,
         "connected": state_store["connected"],
         "entity_id": entity_id,
-        "last_update": estore["last_update"],
+        "last_update": last_update,
         "hvac_mode": climate.get("state", "unknown"),
         "hvac_action": attrs.get("hvac_action", "unknown"),
         "groups": extract_smartpi_data(attrs),
         "raw_attributes": attrs,
     })
+    resp.headers["ETag"] = etag
+    return resp
 
 
 @app.route("/api/history")
@@ -148,19 +169,24 @@ def api_ha_history():
     try:
         hours = int(hours_raw)
     except (ValueError, TypeError):
-        log.warning("Invalid 'hours' param: %r from %s", hours_raw, request.remote_addr)
+        log.warning("Invalid 'hours' param: %r from %s", hours_raw[:20], request.remote_addr)
         hours = 24
     hours = max(1, min(hours, 168))  # Clamp between 1 and 7 days
-    history = ha_get_history(entity_id, hours)
 
-    # Transform HA history format to our format
-    points = []
-    for entry in history:
-        raw_attrs = entry.get("attributes", {})
-        attrs = flatten_smartpi_attrs(raw_attrs)
-        points.append(snapshot_for_history(attrs))
-        # Override timestamp with HA's last_changed
-        points[-1]["ts"] = ensure_utc_iso(entry.get("last_changed"))
+    # Serve from cache if still fresh (avoids hammering HA REST every 15s)
+    cache_key = (entity_id, hours)
+    cached = _ha_history_cache.get(cache_key)
+    if cached and time.monotonic() - cached[0] < HA_HISTORY_CACHE_TTL:
+        points = cached[1]
+    else:
+        history = ha_get_history(entity_id, hours)
+        points = []
+        for entry in history:
+            raw_attrs = entry.get("attributes", {})
+            attrs = flatten_smartpi_attrs(raw_attrs)
+            points.append(snapshot_for_history(attrs))
+            points[-1]["ts"] = ensure_utc_iso(entry.get("last_changed"))
+        _ha_history_cache[cache_key] = (time.monotonic(), points)
 
     return jsonify({
         "ok": True,
@@ -172,20 +198,27 @@ def api_ha_history():
 @app.route("/api/config")
 def api_config():
     """Return the dashboard configuration (groups, keys)."""
-    return jsonify({
-        "ok": True,
-        "entity_id": CLIMATE_ENTITY,
-        "groups": {
-            gid: {"label": g["label"], "icon": g["icon"], "keys": g["keys"]}
-            for gid, g in SMARTPI_GROUPS.items()
-        },
-    })
+    global _config_data
+    if _config_data is None:
+        _config_data = {
+            "ok": True,
+            "entity_id": CLIMATE_ENTITY,
+            "groups": {
+                gid: {"label": g["label"], "icon": g["icon"], "keys": g["keys"]}
+                for gid, g in SMARTPI_GROUPS.items()
+            },
+        }
+    resp = jsonify(_config_data)
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
 
 
 @app.route("/api/block-diagram")
 def api_block_diagram():
     """Return the SVG block diagram metadata (tooltip data)."""
-    return jsonify({
+    global _block_diagram_data
+    if _block_diagram_data is None:
+        _block_diagram_data = {
         "ok": True,
         "blocks": {
             "sp_brut": {"label": "SP_brut", "group": "setpoint_filter"},
@@ -215,7 +248,10 @@ def api_block_diagram():
             "learn_win": {"label": "LearningWindow", "group": "model"},
             "phase": {"label": "Phase Machine", "group": "governance", "attr": "smartpi_phase"},
         },
-    })
+        }
+    resp = jsonify(_block_diagram_data)
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
 
 
 @app.route("/health")

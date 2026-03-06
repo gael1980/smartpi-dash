@@ -39,7 +39,7 @@ if os.path.exists(_env_path):
 
 # ─── Validation ──────────────────────────────────────────────────
 # Strict regex for HA entity IDs (e.g. climate.thermostat_cuisine)
-ENTITY_ID_RE = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
+ENTITY_ID_RE = re.compile(r"^[a-z_]+\.[a-z0-9_-]+$")
 
 # ─── Shared State (thread-safe via GIL for simple reads/writes) ──
 state_store = {

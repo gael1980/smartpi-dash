@@ -59,6 +59,11 @@ async def _ws_listener():
                 if CLIMATE_ENTITY not in known_ids:
                     known_ids.add(CLIMATE_ENTITY)
 
+                # Pre-compute sensor prefix → climate entity mapping (O(1) lookup per event)
+                sensor_prefix_map = {
+                    eid.replace("climate.", "sensor."): eid for eid in known_ids
+                }
+
                 for eid in known_ids:
                     initial = ha_get_state(eid)
                     if initial:
@@ -100,20 +105,21 @@ async def _ws_listener():
                                   attrs.get("on_percent", "?"))
 
                     # Also capture related sensor entities for any known climate entity
-                    elif any(entity_id.startswith(eid.replace("climate.", "sensor."))
-                             for eid in known_ids):
-                        # Find which climate entity this sensor belongs to
-                        for eid in known_ids:
-                            prefix = eid.replace("climate.", "sensor.")
-                            if entity_id.startswith(prefix):
-                                new_state = data.get("new_state", {})
-                                estore = get_entity_store(eid)
-                                estore["sensors"][entity_id] = {
-                                    "state": new_state.get("state"),
-                                    "attributes": new_state.get("attributes", {}),
-                                    "last_changed": new_state.get("last_changed"),
-                                }
-                                break
+                    else:
+                        # O(n) prefix scan using pre-computed dict
+                        matched_climate = next(
+                            (climate_eid for prefix, climate_eid in sensor_prefix_map.items()
+                             if entity_id.startswith(prefix)),
+                            None,
+                        )
+                        if matched_climate is not None:
+                            new_state = data.get("new_state", {})
+                            estore = get_entity_store(matched_climate)
+                            estore["sensors"][entity_id] = {
+                                "state": new_state.get("state"),
+                                "attributes": new_state.get("attributes", {}),
+                                "last_changed": new_state.get("last_changed"),
+                            }
 
         except websockets.exceptions.ConnectionClosed:
             log.warning("WebSocket connection closed, reconnecting in 5s...")
