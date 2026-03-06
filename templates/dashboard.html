@@ -2019,12 +2019,21 @@
 
     <div class="mh-card mh-full">
       <div class="mh-card-header">
-        <span class="mh-card-icon">🩻</span>
-        <span class="mh-card-title">Diagnostic 3h (T_int + pentes d'apprentissage)</span>
+        <span class="mh-card-icon">📈</span>
+        <span class="mh-card-title">Évolution a &amp; b — 24h</span>
       </div>
-      <div class="mh-banner mh-hidden" id="mh-diag-banner"></div>
-      <div class="chart-canvas-wrap" id="mh-chart-diag" style="height:300px"></div>
-      <div class="mh-diag-meta" id="mh-diag-meta"><div class="mh-empty">En attente d'historique (3h).</div></div>
+      <p class="mh-chart-note">Traces continues sur 24h. Axe gauche : <span style="color:#8b5cf6">a</span> · Axe droit : <span style="color:#ec4899">b</span>. Marqueurs cyan/violet = apprentissages acceptés (learn_ok_count_a/b++).</p>
+      <div class="chart-canvas-wrap" id="mh-chart-diag-ab" style="height:280px"></div>
+    </div>
+
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🌡️</span>
+        <span class="mh-card-title">Contexte d'apprentissage — 24h</span>
+      </div>
+      <p class="mh-chart-note">T_int &amp; consigne (axe gauche °C) + u appliqué (axe droit %). Zones hautes u = épisodes ON → apprentissage a. Zones basses u = épisodes OFF → apprentissage b.</p>
+      <div class="chart-canvas-wrap" id="mh-chart-diag-ctx" style="height:200px"></div>
+      <div class="mh-diag-meta" id="mh-diag-meta"><div class="mh-empty">En attente d'historique (24h).</div></div>
     </div>
 
   </div>
@@ -2162,12 +2171,8 @@ let blockDiagramData = null;
 let modelHealthChartsInitialized = false;
 
 const MH_HISTORY_HOURS = 12;
-const MH_DIAG_HOURS = 3;
 const MH_SLOPE_DIAG_HOURS = 24;
 const MH_REQUIRED_HISTORY_HOURS = Math.max(MH_HISTORY_HOURS, MH_SLOPE_DIAG_HOURS);
-const MH_STEP_THRESHOLD_C = 1.0;
-const MH_RECOMPUTE_AVAILABLE = false;
-const MH_RECOMPUTE_REASON = "cannot be computed from available sources: estimator logic lives in learning.py in SmartPI core, but this repository only contains diagram/tooltips without executable estimator code.";
 // SmartPI constants (learning.py + smartpi/const.py).
 const MH_LEARNING_CONST = {
   U_OFF_MAX: 0.05,
@@ -3776,91 +3781,21 @@ function initMhReasonModeToggle() {
   mhReasonModeToggleInitialized = true;
 }
 
-function detectSetpointStepEvents(history3h, cadenceSec) {
-  const points = mhSortHistory(history3h).map(p => ({
-    point: p,
-    tsSec: new Date(p.ts).getTime() / 1000,
-    sp: mhNum(p.t_target),
-  })).filter(p => Number.isFinite(p.tsSec));
-
-  const shortWindowSec = Math.min(10 * 60, Math.max(2 * 60, Math.round(cadenceSec * 3)));
-  // Event window W uses 30 observed samples (clamped), derived from measured dashboard cadence.
-  const eventWindowSec = Math.min(45 * 60, Math.max(15 * 60, Math.round(cadenceSec * 30)));
-  const debounceSec = eventWindowSec;
-
-  const riseCandidates = [];
-  const fallCandidates = [];
-
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    if (prev.sp == null || curr.sp == null) continue;
-    const dt = curr.tsSec - prev.tsSec;
-    if (!(dt > 0) || dt > shortWindowSec) continue;
-    const delta = curr.sp - prev.sp;
-    if (delta >= MH_STEP_THRESHOLD_C) {
-      riseCandidates.push({
-        idx: i,
-        tsSec: curr.tsSec,
-        ts: curr.point.ts,
-        delta,
-        prevSP: prev.sp,
-        newSP: curr.sp,
-      });
-    } else if (delta <= -MH_STEP_THRESHOLD_C) {
-      fallCandidates.push({
-        idx: i,
-        tsSec: curr.tsSec,
-        ts: curr.point.ts,
-        delta,
-        prevSP: prev.sp,
-        newSP: curr.sp,
-      });
-    }
-  }
-
-  const riseDebounced = mhDebounceLatest(riseCandidates, debounceSec);
-  const fallDebounced = mhDebounceLatest(fallCandidates, debounceSec);
-
-  return {
-    cadenceSec,
-    shortWindowSec,
-    eventWindowSec,
-    debounceSec,
-    rising: riseDebounced.length ? riseDebounced[riseDebounced.length - 1] : null,
-    falling: fallDebounced.length ? fallDebounced[fallDebounced.length - 1] : null,
-  };
-}
-
-function recomputeAFromHistory(windowData) {
-  return {
-    available: false,
-    reason: MH_RECOMPUTE_REASON,
-    values: new Array((windowData || []).length).fill(null),
-  };
-}
-
-function recomputeBFromHistory(windowData) {
-  return {
-    available: false,
-    reason: MH_RECOMPUTE_REASON,
-    values: new Array((windowData || []).length).fill(null),
-  };
-}
 
 function initModelHealthCharts() {
   if (!window.uPlot || modelHealthChartsInitialized) return;
   const aEl = document.getElementById('mh-chart-a');
   const bEl = document.getElementById('mh-chart-b');
-  const dEl = document.getElementById('mh-chart-diag');
+  const abEl = document.getElementById('mh-chart-diag-ab');
+  const ctxEl = document.getElementById('mh-chart-diag-ctx');
   const tEl = document.getElementById('mh-chart-learning-timeline');
   const d24El = document.getElementById('mh-chart-dtdt-24h');
   const a24El = document.getElementById('mh-chart-a-24h');
   const b24El = document.getElementById('mh-chart-b-24h');
-  if (!aEl || !bEl || !dEl || !tEl || !d24El || !a24El || !b24El) return;
+  if (!aEl || !bEl || !abEl || !ctxEl || !tEl || !d24El || !a24El || !b24El) return;
   if (
-    aEl.clientWidth === 0 || bEl.clientWidth === 0 || dEl.clientWidth === 0 || tEl.clientWidth === 0 ||
-    d24El.clientWidth === 0 || a24El.clientWidth === 0 || b24El.clientWidth === 0
+    aEl.clientWidth === 0 || bEl.clientWidth === 0 || abEl.clientWidth === 0 || ctxEl.clientWidth === 0 ||
+    tEl.clientWidth === 0 || d24El.clientWidth === 0 || a24El.clientWidth === 0 || b24El.clientWidth === 0
   ) return;
 
   const aSeries = [
@@ -3871,12 +3806,41 @@ function initModelHealthCharts() {
     makeSeries('b_attr', '#ec4899', 2),
     makeSeries('b_ema', '#f59e0b', 1.5, [4, 3]),
   ];
-  const diagSeries = [
+  const abSeries = [
+    { ...makeSeries('a', '#8b5cf6', 2), value: (u, v) => v == null ? '—' : v.toExponential(4) },
+    { ...makeSeries('a_ema', '#22c55e', 1.5, [4, 3]), value: (u, v) => v == null ? '—' : v.toExponential(4) },
+    { ...makeSeries('b', '#ec4899', 2), scale: 'b', value: (u, v) => v == null ? '—' : v.toExponential(4) },
+    { ...makeSeries('b_ema', '#f59e0b', 1.5, [4, 3]), scale: 'b', value: (u, v) => v == null ? '—' : v.toExponential(4) },
+    {
+      ...makeSeries('A appris', '#06b6d4', 0),
+      points: { show: true, size: 7, stroke: '#06b6d4', fill: '#06b6d4' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const d = mhSlope24Meta.aAcceptDelta[di] || 1;
+        return `a accepté · +${d} (learn_ok_count_a)`;
+      },
+    },
+    {
+      ...makeSeries('B appris', '#a78bfa', 0),
+      scale: 'b',
+      points: { show: true, size: 7, stroke: '#a78bfa', fill: '#a78bfa' },
+      value: (u, v, si, di) => {
+        if (v == null) return '—';
+        const d = mhSlope24Meta.bAcceptDelta[di] || 1;
+        return `b accepté · +${d} (learn_ok_count_b)`;
+      },
+    },
+  ];
+  const ctxSeries = [
     makeSeries('T_int', '#3b82f6', 2),
-    { ...makeSeries('a_attr', '#8b5cf6', 1.5), scale: 'slope' },
-    { ...makeSeries('a_recomputed', '#a78bfa', 1.5, [5, 3]), scale: 'slope' },
-    { ...makeSeries('b_attr', '#ec4899', 1.5), scale: 'slope' },
-    { ...makeSeries('b_recomputed', '#fda4af', 1.5, [5, 3]), scale: 'slope' },
+    makeSeries('Consigne', '#f97316', 1.5, [4, 3]),
+    {
+      ...makeSeries('u (%)', '#22c55e', 1.5),
+      scale: 'u',
+      fill: 'rgba(34,197,94,0.12)',
+      paths: uPlot.paths.stepped({ align: -1 }),
+      value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %',
+    },
   ];
   const timelineSeries = [
     {
@@ -4000,21 +3964,39 @@ function initModelHealthCharts() {
     bEl
   );
 
-  const diagOpts = makeOpts(dEl, diagSeries, '°C', null, 300);
-  diagOpts.scales = Object.assign({}, diagOpts.scales || {}, { slope: { auto: true } });
-  diagOpts.axes.push({
-    scale: 'slope',
+  const abOpts = makeOpts(abEl, abSeries, 'a', null, 280);
+  abOpts.scales = Object.assign({}, abOpts.scales || {}, { b: { auto: true } });
+  abOpts.axes.push({
+    scale: 'b',
     side: 1,
-    stroke: '#a78bfa',
+    stroke: '#ec4899',
     grid: { show: false },
-    ticks: { stroke: 'rgba(167,139,250,0.45)', width: 1 },
+    ticks: { stroke: 'rgba(236,72,153,0.45)', width: 1 },
     font: '11px JetBrains Mono',
-    label: 'a / b',
+    label: 'b',
+    values: (u, vals) => vals.map(v => v != null ? v.toExponential(2) : ''),
   });
-  charts.mhDiag = new uPlot(
-    diagOpts,
-    [[], [], [], [], [], []],
-    dEl
+  charts.mhDiagAb = new uPlot(
+    abOpts,
+    [[], [], [], [], [], [], []],
+    abEl
+  );
+  const ctxOpts = makeOpts(ctxEl, ctxSeries, '°C', null, 200);
+  ctxOpts.scales = Object.assign({}, ctxOpts.scales || {}, { u: { auto: true } });
+  ctxOpts.axes.push({
+    scale: 'u',
+    side: 1,
+    stroke: '#22c55e',
+    grid: { show: false },
+    ticks: { stroke: 'rgba(34,197,94,0.45)', width: 1 },
+    font: '11px JetBrains Mono',
+    label: '%',
+    values: (u, vals) => vals.map(v => v != null ? Math.round(v) + '%' : ''),
+  });
+  charts.mhDiagCtx = new uPlot(
+    ctxOpts,
+    [[], [], [], []],
+    ctxEl
   );
   const timelineOpts = makeOpts(tEl, timelineSeries, '', [-0.5, 3.5], 260);
   timelineOpts.axes[1].values = (u, vals) => vals.map(v => {
@@ -4052,11 +4034,11 @@ function initModelHealthCharts() {
 
   if (charts.mhA.setSeries) charts.mhA.setSeries(2, { show: false });
   if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: false });
-  if (charts.mhDiag.setSeries) {
-    charts.mhDiag.setSeries(2, { show: false });
-    charts.mhDiag.setSeries(3, { show: false });
-    charts.mhDiag.setSeries(4, { show: false });
-    charts.mhDiag.setSeries(5, { show: false });
+  if (charts.mhDiagAb.setSeries) {
+    charts.mhDiagAb.setSeries(2, { show: false }); // a_ema hidden until data present
+    charts.mhDiagAb.setSeries(4, { show: false }); // b_ema hidden until data present
+    charts.mhDiagAb.setSeries(5, { show: false }); // A appris hidden until data present
+    charts.mhDiagAb.setSeries(6, { show: false }); // B appris hidden until data present
   }
   if (charts.mhDtdt24.setSeries) {
     charts.mhDtdt24.setSeries(1, { show: false });
@@ -4077,7 +4059,8 @@ function initModelHealthCharts() {
   const ro = new ResizeObserver(() => resizeModelHealthCharts());
   ro.observe(aEl);
   ro.observe(bEl);
-  ro.observe(dEl);
+  ro.observe(abEl);
+  ro.observe(ctxEl);
   ro.observe(tEl);
   ro.observe(d24El);
   ro.observe(a24El);
@@ -4091,14 +4074,16 @@ function initModelHealthCharts() {
 function resizeModelHealthCharts() {
   const aEl = document.getElementById('mh-chart-a');
   const bEl = document.getElementById('mh-chart-b');
-  const dEl = document.getElementById('mh-chart-diag');
+  const abEl = document.getElementById('mh-chart-diag-ab');
+  const ctxEl = document.getElementById('mh-chart-diag-ctx');
   const tEl = document.getElementById('mh-chart-learning-timeline');
   const d24El = document.getElementById('mh-chart-dtdt-24h');
   const a24El = document.getElementById('mh-chart-a-24h');
   const b24El = document.getElementById('mh-chart-b-24h');
   if (charts.mhA && aEl && aEl.clientWidth > 0) charts.mhA.setSize({ width: aEl.clientWidth, height: 250 });
   if (charts.mhB && bEl && bEl.clientWidth > 0) charts.mhB.setSize({ width: bEl.clientWidth, height: 250 });
-  if (charts.mhDiag && dEl && dEl.clientWidth > 0) charts.mhDiag.setSize({ width: dEl.clientWidth, height: 300 });
+  if (charts.mhDiagAb && abEl && abEl.clientWidth > 0) charts.mhDiagAb.setSize({ width: abEl.clientWidth, height: 280 });
+  if (charts.mhDiagCtx && ctxEl && ctxEl.clientWidth > 0) charts.mhDiagCtx.setSize({ width: ctxEl.clientWidth, height: 200 });
   if (charts.mhLearnTimeline && tEl && tEl.clientWidth > 0) charts.mhLearnTimeline.setSize({ width: tEl.clientWidth, height: 260 });
   if (charts.mhDtdt24 && d24El && d24El.clientWidth > 0) charts.mhDtdt24.setSize({ width: d24El.clientWidth, height: 260 });
   if (charts.mhA24Diag && a24El && a24El.clientWidth > 0) charts.mhA24Diag.setSize({ width: a24El.clientWidth, height: 250 });
@@ -4366,12 +4351,11 @@ function renderABAudit(audit) {
 
 function updateModelHealthDiagnostics(history) {
   if (!history || !history.length) return;
-  if (!charts.mhA || !charts.mhB || !charts.mhDiag || !charts.mhLearnTimeline || !charts.mhDtdt24 || !charts.mhA24Diag || !charts.mhB24Diag) return;
+  if (!charts.mhA || !charts.mhB || !charts.mhDiagAb || !charts.mhDiagCtx || !charts.mhLearnTimeline || !charts.mhDtdt24 || !charts.mhA24Diag || !charts.mhB24Diag) return;
   initMhReasonModeToggle();
 
   const h12 = mhFilterHistoryByHours(history, MH_HISTORY_HOURS);
   const h24 = mhFilterHistoryByHours(history, MH_SLOPE_DIAG_HOURS);
-  const h3 = mhFilterHistoryByHours(history, MH_DIAG_HOURS);
 
   // Timeline apprentissage (12h) reconstructed from counter deltas.
   const ts12 = h12.map(p => new Date(p.ts).getTime() / 1000);
@@ -4523,7 +4507,12 @@ function updateModelHealthDiagnostics(history) {
   const dTdtOff = h24.map(() => null);
   const rejectedMarkers = h24.map(() => null);
   const aAttr24 = h24.map(p => mhNum(p.a));
+  const aEma24 = h24.map(p => mhNum(p.a_ema ?? p.a_filtered ?? p.a_filter ?? p.a_filt));
   const bAttr24 = h24.map(p => mhNum(p.b));
+  const bEma24 = h24.map(p => mhNum(p.b_ema ?? p.b_filtered ?? p.b_filter ?? p.b_filt));
+  const tIn24 = h24.map(p => mhNum(p.t_in ?? p.sensor_temperature));
+  const tTarget24 = h24.map(p => mhNum(p.t_target ?? p.temperature));
+  const uApplied24Pct = h24.map(p => { const n = mhNormPower(p.u_applied); return n != null ? n * 100 : null; });
   const aMeas24 = h24.map(() => null);
   const bMeas24 = h24.map(() => null);
   const aAcceptMarkers = h24.map(() => null);
@@ -4747,109 +4736,40 @@ function updateModelHealthDiagnostics(history) {
     renderABAudit(audit);
   }
 
-  const ts3 = h3.map(p => new Date(p.ts).getTime() / 1000);
-  const tIn3 = h3.map(p => mhNum(p.t_in));
-  const cadenceSec = mhEstimateCadenceSec(h3);
-  const ev = detectSetpointStepEvents(h3, cadenceSec);
+  // ─── Diagnostic a/b — graphes Évolution + Contexte (24h) ────────────────────
+  const hasAEma24 = aEma24.some(v => v != null);
+  const hasBEma24 = bEma24.some(v => v != null);
 
-  const riseMask = ts3.map(() => false);
-  const fallMask = ts3.map(() => false);
-  if (ev.rising) {
-    const start = ev.rising.tsSec;
-    const end = start + ev.eventWindowSec;
-    for (let i = 0; i < ts3.length; i++) {
-      if (ts3[i] >= start && ts3[i] <= end) riseMask[i] = true;
-    }
-  }
-  if (ev.falling) {
-    const start = ev.falling.tsSec;
-    const end = start + ev.eventWindowSec;
-    for (let i = 0; i < ts3.length; i++) {
-      if (ts3[i] >= start && ts3[i] <= end) fallMask[i] = true;
-    }
+  charts.mhDiagAb.setData([ts24, aAttr24, aEma24, bAttr24, bEma24, aAcceptMarkers, bAcceptMarkers]);
+  if (charts.mhDiagAb.setSeries) {
+    charts.mhDiagAb.setSeries(2, { show: hasAEma24 });
+    charts.mhDiagAb.setSeries(4, { show: hasBEma24 });
+    charts.mhDiagAb.setSeries(5, { show: aAcceptMarkers.some(v => v != null) });
+    charts.mhDiagAb.setSeries(6, { show: bAcceptMarkers.some(v => v != null) });
   }
 
-  const aAttrDiag = h3.map((p, i) => riseMask[i] ? mhNum(p.a) : null);
-  const bAttrDiag = h3.map((p, i) => fallMask[i] ? mhNum(p.b) : null);
-
-  const riseWindowPoints = h3.filter((_, i) => riseMask[i]);
-  const fallWindowPoints = h3.filter((_, i) => fallMask[i]);
-  const aRec = recomputeAFromHistory(riseWindowPoints);
-  const bRec = recomputeBFromHistory(fallWindowPoints);
-
-  let aRecIdx = 0;
-  let bRecIdx = 0;
-  const aRecDiag = h3.map((_, i) => {
-    if (!riseMask[i] || !aRec.available) return null;
-    const val = aRec.values[aRecIdx];
-    aRecIdx += 1;
-    return mhNum(val);
-  });
-  const bRecDiag = h3.map((_, i) => {
-    if (!fallMask[i] || !bRec.available) return null;
-    const val = bRec.values[bRecIdx];
-    bRecIdx += 1;
-    return mhNum(val);
-  });
-
-  charts.mhDiag.setData([ts3, tIn3, aAttrDiag, aRecDiag, bAttrDiag, bRecDiag]);
-  if (charts.mhDiag.setSeries) {
-    charts.mhDiag.setSeries(2, { show: aAttrDiag.some(v => v != null) });
-    charts.mhDiag.setSeries(3, { show: aRecDiag.some(v => v != null) });
-    charts.mhDiag.setSeries(4, { show: bAttrDiag.some(v => v != null) });
-    charts.mhDiag.setSeries(5, { show: bRecDiag.some(v => v != null) });
-  }
-
-  const bannerEl = document.getElementById('mh-diag-banner');
-  if (bannerEl) {
-    if (!MH_RECOMPUTE_AVAILABLE) {
-      bannerEl.classList.remove('mh-hidden');
-      bannerEl.textContent =
-        'a_recomputed / b_recomputed cannot be computed from available sources. ' +
-        MH_RECOMPUTE_REASON;
-    } else {
-      bannerEl.classList.add('mh-hidden');
-      bannerEl.textContent = '';
-    }
-  }
+  charts.mhDiagCtx.setData([ts24, tIn24, tTarget24, uApplied24Pct]);
 
   const metaEl = document.getElementById('mh-diag-meta');
   if (metaEl) {
-    const riseTxt = ev.rising
-      ? `step +${ev.rising.delta.toFixed(2)}°C à ${mhTimeLabel(ev.rising.ts)} (fenêtre [t, t+${Math.round(ev.eventWindowSec / 60)} min])`
-      : 'aucun step montant (Δsetpoint >= +1.0°C) détecté';
-    const fallTxt = ev.falling
-      ? `step ${ev.falling.delta.toFixed(2)}°C à ${mhTimeLabel(ev.falling.ts)} (fenêtre [t, t+${Math.round(ev.eventWindowSec / 60)} min])`
-      : 'aucun step descendant (Δsetpoint <= -1.0°C) détecté';
+    const aVals24 = aAttr24.filter(v => v != null);
+    const bVals24 = bAttr24.filter(v => v != null);
+    const aLast = aVals24.length ? aVals24[aVals24.length - 1] : null;
+    const bLast = bVals24.length ? bVals24[bVals24.length - 1] : null;
+    const aStd = mhStdDev(aVals24);
+    const bStd = mhStdDev(bVals24);
+    const aLearnN = aAcceptMarkers.filter(v => v != null).length;
+    const bLearnN = bAcceptMarkers.filter(v => v != null).length;
+    const uOnPct = (MH_LEARNING_CONST.U_ON_MIN * 100).toFixed(0);
+    const uOffPct = (MH_LEARNING_CONST.U_OFF_MAX * 100).toFixed(0);
     metaEl.innerHTML =
-      `<div><span class="mh-meta-strong">Cadence médiane observée:</span> ${Math.round(ev.cadenceSec)} s</div>` +
-      `<div><span class="mh-meta-strong">Fenêtre de détection step:</span> ${Math.round(ev.shortWindowSec / 60)} min (delta entre deux points consigne consécutifs)</div>` +
-      `<div><span class="mh-meta-strong">Débounce:</span> si plusieurs steps de même signe surviennent dans ${Math.round(ev.debounceSec / 60)} min, le plus récent est conservé.</div>` +
-      `<div><span class="mh-meta-strong">Événement montant:</span> ${escapeHtml(riseTxt)}</div>` +
-      `<div><span class="mh-meta-strong">Événement descendant:</span> ${escapeHtml(fallTxt)}</div>` +
-      `<div><span class="mh-meta-strong">Guardrail analyse:</span> traces basées sur observations (T_int, setpoint, attributs a/b) sans inversion de modèle.</div>`;
+      `<div><span class="mh-meta-strong">a (actuel):</span> ${aLast != null ? aLast.toExponential(4) : '—'} · <span class="mh-meta-strong">σ 24h:</span> ${aStd != null ? aStd.toExponential(3) : '—'} · <span class="mh-meta-strong">apprentissages:</span> ${aLearnN}</div>` +
+      `<div><span class="mh-meta-strong">b (actuel):</span> ${bLast != null ? bLast.toExponential(4) : '—'} · <span class="mh-meta-strong">σ 24h:</span> ${bStd != null ? bStd.toExponential(3) : '—'} · <span class="mh-meta-strong">apprentissages:</span> ${bLearnN}</div>` +
+      `<div><span class="mh-meta-strong">Épisodes 24h:</span> ON = ${onWindows} candidats / ${onValid} valides · OFF = ${offWindows} candidats / ${offValid} valides</div>` +
+      `<div><span class="mh-meta-strong">Seuils u:</span> u &gt; ${uOnPct}% → épisode ON (apprentissage a) · u &lt; ${uOffPct}% → épisode OFF (apprentissage b)</div>` +
+      `<div><span class="mh-meta-strong">EMA:</span> ${hasAEma24 || hasBEma24 ? 'traces EMA présentes (en pointillés)' : 'a_ema / b_ema non disponibles dans les attributs'}.</div>`;
   }
 }
-
-function runModelHealthDiagnosticFixture() {
-  const t0 = Date.UTC(2026, 0, 1, 0, 0, 0);
-  const mkTs = (min) => new Date(t0 + min * 60 * 1000).toISOString();
-  const mock = [
-    { ts: mkTs(0), t_target: 19.0, t_in: 18.8, a: 0.012, b: 0.021 },
-    { ts: mkTs(1), t_target: 19.0, t_in: 18.8, a: 0.012, b: 0.021 },
-    { ts: mkTs(2), t_target: 20.2, t_in: 18.9, a: 0.013, b: 0.021 },
-    { ts: mkTs(3), t_target: 20.2, t_in: 19.0, a: 0.014, b: 0.021 },
-    { ts: mkTs(4), t_target: 18.9, t_in: 19.1, a: 0.014, b: 0.020 },
-    { ts: mkTs(5), t_target: 18.9, t_in: 19.0, a: 0.013, b: 0.019 },
-  ];
-  const ev = detectSetpointStepEvents(mock, 60);
-  const riseOk = ev.rising && ev.rising.delta >= 1.0;
-  const fallOk = ev.falling && ev.falling.delta <= -1.0;
-  if (!riseOk || !fallOk) {
-    console.warn('Model Health fixture failed: expected one rising and one falling setpoint step.', ev);
-  }
-}
-runModelHealthDiagnosticFixture();
 
 
 function tuningBadge(level, label) {
