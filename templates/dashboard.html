@@ -938,6 +938,48 @@
     white-space: nowrap;
   }
 
+  /* ─── Audit a/b Table ────────────────────────────────────── */
+  .mh-audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font: 400 13px 'JetBrains Mono', monospace;
+    margin-top: 8px;
+  }
+  .mh-audit-table th,
+  .mh-audit-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(30,41,59,0.5);
+    text-align: left;
+  }
+  .mh-audit-table th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .mh-audit-table td:first-child {
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .mh-audit-section {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(30,41,59,0.5);
+  }
+  .mh-audit-section-title {
+    color: var(--text-dim);
+    font: 600 11px 'IBM Plex Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .mh-audit-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   /* ─── Events & Timeline Tab ───────────────────────────────── */
   .ev-layout { display: flex; flex-direction: column; gap: 16px; }
 
@@ -1937,6 +1979,15 @@
       <div class="chart-canvas-wrap" id="mh-chart-a-24h" style="height:250px; margin-top:10px"></div>
       <div class="chart-canvas-wrap" id="mh-chart-b-24h" style="height:250px; margin-top:10px"></div>
       <div class="mh-diag-meta" id="mh-slope-24h-meta"><div class="mh-empty">En attente d'historique (24h).</div></div>
+    </div>
+
+    <!-- Audit a/b -->
+    <div class="mh-card mh-full">
+      <div class="mh-card-header">
+        <span class="mh-card-icon">🔍</span>
+        <span class="mh-card-title">Audit a / b</span>
+      </div>
+      <div id="mh-audit-ab-container"><div class="mh-empty">En attente d'historique (24h).</div></div>
     </div>
 
     <!-- Model Parameters -->
@@ -3285,6 +3336,19 @@ function computeHealthScore(a) {
   if (age != null && age > 48) { score -= 10; issues.push('snapshot > 48h'); }
   const retries = a.smartpi_autocalib_retry_count;
   if (retries != null && retries > 2) { score -= 5; issues.push(retries + ' retries calibration'); }
+  // a/b plausibility and learning penalties
+  const aVal = a.smartpi_a;
+  const bVal = a.smartpi_b;
+  if (aVal != null && aVal <= 0) { score -= 10; issues.push('a <= 0 (non physique)'); }
+  if (bVal != null && bVal <= 0) { score -= 10; issues.push('b <= 0 (non physique)'); }
+  const learnA = a.smartpi_learn_ok_count_a;
+  const learnB = a.smartpi_learn_ok_count_b;
+  if (learnA != null && learnB != null && learnA === 0 && learnB === 0) {
+    score -= 10; issues.push('aucun apprentissage a/b');
+  } else {
+    if (learnA != null && learnA > 0 && learnA < 5) { score -= 5; issues.push('apprentissage a insuffisant (' + learnA + ')'); }
+    if (learnB != null && learnB > 0 && learnB < 5) { score -= 5; issues.push('apprentissage b insuffisant (' + learnB + ')'); }
+  }
   return { score: Math.max(0, score), issues };
 }
 
@@ -4049,6 +4113,256 @@ function mhTimeLabel(isoTs) {
   }
 }
 
+// ─── Audit a/b ───────────────────────────────────────────────
+const MH_AUDIT_CONST = {
+  U_NOM: 0.5,
+  // relative deviation thresholds
+  DEV_OK: 0.15, DEV_WARN: 0.30,
+  // CV thresholds
+  CV_OK: 0.20, CV_WARN: 0.40,
+  // accept ratio thresholds
+  AR_OK: 0.50, AR_WARN: 0.25,
+  // tau cross-check thresholds
+  TAU_OK: 0.20, TAU_WARN: 0.40,
+  // plausibility ranges
+  A_MIN: 0.001, A_MAX: 0.5,
+  B_MIN: 0.0001, B_MAX: 0.05,
+  TAU_MIN: 15, TAU_MAX: 600,
+  // drift thresholds
+  DRIFT_MIN_N: 4, DRIFT_MAX_N: 8,
+  DRIFT_WARN_RATIO: 0.75, DRIFT_FAIL_RATIO: 0.875,
+  DRIFT_WARN_DEV: 0.10, DRIFT_FAIL_DEV: 0.20,
+  // trend slope thresholds (relative change per hour)
+  TREND_MODERATE: 0.02, TREND_STRONG: 0.05,
+};
+
+function mhStdDev(arr) {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+  const variance = arr.reduce((s, v) => s + (v - mean) ** 2, 0) / (arr.length - 1);
+  return Math.sqrt(variance);
+}
+
+function computeABAudit(aMeasArr, bMeasArr, aAcceptN, aRejectN, bAcceptN, bRejectN, aAllMeas, bAllMeas, aAllTs, bAllTs, attrs) {
+  const C = MH_AUDIT_CONST;
+  const aAttr = mhNum(attrs.smartpi_a);
+  const bAttr = mhNum(attrs.smartpi_b);
+  const tauAttr = mhNum(attrs.smartpi_tau_min);
+
+  function auditParam(measArr, allMeas, allTs, attrVal, acceptN, rejectN) {
+    const result = {
+      attrVal, measArr,
+      median: null, n: measArr.length, cv: null, relDev: null,
+      trend: 'insufficient', trendSlope: null,
+      acceptN, rejectN, acceptRatio: null,
+      drift: { detected: false, level: null, direction: null, amplitude: null, streakRatio: null, n: 0 },
+    };
+    if (measArr.length > 0) {
+      result.median = mhMedian(measArr);
+      const mean = measArr.reduce((s, v) => s + v, 0) / measArr.length;
+      if (mean !== 0) result.cv = mhStdDev(measArr) / Math.abs(mean);
+      if (attrVal != null && attrVal !== 0) {
+        result.relDev = (result.median - attrVal) / Math.abs(attrVal);
+      }
+    }
+    const total = acceptN + rejectN;
+    if (total > 0) result.acceptRatio = acceptN / total;
+
+    // Trend detection
+    if (allMeas.length >= 3 && allTs.length === allMeas.length) {
+      const slope = mhLinearRegressionSlope(allTs, allMeas);
+      if (slope != null && attrVal != null && attrVal !== 0) {
+        const slopePerHour = slope * 3600;
+        const relSlopePerHour = Math.abs(slopePerHour / attrVal);
+        result.trendSlope = slopePerHour;
+        if (relSlopePerHour < C.TREND_MODERATE) result.trend = 'stable';
+        else if (relSlopePerHour < C.TREND_STRONG) result.trend = slopePerHour > 0 ? 'rising_moderate' : 'falling_moderate';
+        else result.trend = slopePerHour > 0 ? 'rising_strong' : 'falling_strong';
+      } else if (allMeas.length >= 3) {
+        result.trend = 'stable';
+      }
+    }
+
+    // Drift detection from all measurements (accepted + rejected)
+    if (attrVal != null && allMeas.length >= C.DRIFT_MIN_N) {
+      const recent = allMeas.slice(-C.DRIFT_MAX_N);
+      const n = recent.length;
+      let nAbove = 0, nBelow = 0;
+      const deviations = [];
+      for (const m of recent) {
+        if (m > attrVal) nAbove++;
+        else if (m < attrVal) nBelow++;
+        deviations.push((m - attrVal) / Math.abs(attrVal));
+      }
+      const streakRatio = Math.max(nAbove, nBelow) / n;
+      const medianDev = Math.abs(mhMedian(deviations.map(Math.abs)));
+      result.drift.n = n;
+      result.drift.streakRatio = streakRatio;
+      if (streakRatio >= C.DRIFT_FAIL_RATIO && medianDev > C.DRIFT_FAIL_DEV) {
+        result.drift.detected = true;
+        result.drift.level = 'fail';
+        result.drift.direction = nAbove > nBelow ? 'up' : 'down';
+        result.drift.amplitude = medianDev;
+      } else if (streakRatio >= C.DRIFT_WARN_RATIO && medianDev > C.DRIFT_WARN_DEV) {
+        result.drift.detected = true;
+        result.drift.level = 'warn';
+        result.drift.direction = nAbove > nBelow ? 'up' : 'down';
+        result.drift.amplitude = medianDev;
+      }
+    }
+    return result;
+  }
+
+  const a = auditParam(aMeasArr, aAllMeas, aAllTs, aAttr, aAcceptN, aRejectN);
+  const b = auditParam(bMeasArr, bAllMeas, bAllTs, bAttr, bAcceptN, bRejectN);
+
+  // Cross-check tau
+  const tauCheck = { tauModel: tauAttr, tauImplicit: null, relDev: null };
+  if (aAttr != null && bAttr != null && (aAttr * C.U_NOM + bAttr) > 0) {
+    tauCheck.tauImplicit = 1.0 / (aAttr * C.U_NOM + bAttr);
+    if (tauAttr != null && tauAttr > 0) {
+      tauCheck.relDev = (tauCheck.tauImplicit - tauAttr) / tauAttr;
+    }
+  }
+
+  // Physical plausibility
+  const checks = [];
+  if (aAttr != null) checks.push({ label: 'a > 0', ok: aAttr > 0 });
+  if (bAttr != null) checks.push({ label: 'b > 0', ok: bAttr > 0 });
+  if (aAttr != null) checks.push({ label: `a in [${C.A_MIN}, ${C.A_MAX}]`, ok: aAttr >= C.A_MIN && aAttr <= C.A_MAX });
+  if (bAttr != null) checks.push({ label: `b in [${C.B_MIN}, ${C.B_MAX}]`, ok: bAttr >= C.B_MIN && bAttr <= C.B_MAX });
+  const tauEff = tauCheck.tauImplicit ?? tauAttr;
+  if (tauEff != null) checks.push({ label: `tau in [${C.TAU_MIN}, ${C.TAU_MAX}] min`, ok: tauEff >= C.TAU_MIN && tauEff <= C.TAU_MAX });
+
+  return { a, b, tauCheck, physicalChecks: checks };
+}
+
+function renderABAudit(audit) {
+  const el = document.getElementById('mh-audit-ab-container');
+  if (!el) return;
+  const C = MH_AUDIT_CONST;
+
+  function badge(ok, warnCond, label) {
+    if (ok) return `<span class="mh-badge mh-ok">${escapeHtml(label)}</span>`;
+    if (warnCond) return `<span class="mh-badge mh-warn">${escapeHtml(label)}</span>`;
+    return `<span class="mh-badge mh-error">${escapeHtml(label)}</span>`;
+  }
+
+  function fmtPct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '--'; }
+  function fmtVal(v, d) { return v != null ? v.toFixed(d) : '--'; }
+
+  function devBadge(relDev) {
+    if (relDev == null) return '<span class="mh-badge">--</span>';
+    const pct = (relDev * 100).toFixed(1) + '%';
+    const abs = Math.abs(relDev);
+    if (abs < C.DEV_OK) return badge(true, false, pct);
+    if (abs < C.DEV_WARN) return badge(false, true, pct);
+    return badge(false, false, pct);
+  }
+
+  function cvBadge(cv) {
+    if (cv == null) return '<span class="mh-badge">--</span>';
+    const pct = (cv * 100).toFixed(1) + '%';
+    if (cv < C.CV_OK) return badge(true, false, pct);
+    if (cv < C.CV_WARN) return badge(false, true, pct);
+    return badge(false, false, pct);
+  }
+
+  function arBadge(ratio) {
+    if (ratio == null) return '<span class="mh-badge">--</span>';
+    const pct = (ratio * 100).toFixed(0) + '%';
+    if (ratio >= C.AR_OK) return badge(true, false, pct);
+    if (ratio >= C.AR_WARN) return badge(false, true, pct);
+    return badge(false, false, pct);
+  }
+
+  function trendLabel(t) {
+    const map = {
+      stable: 'stable', rising_moderate: 'hausse moderee', falling_moderate: 'baisse moderee',
+      rising_strong: 'forte hausse', falling_strong: 'forte baisse', insufficient: 'donnees insuffisantes'
+    };
+    return map[t] || t;
+  }
+  function trendBadge(t) {
+    if (t === 'stable') return badge(true, false, trendLabel(t));
+    if (t === 'insufficient') return '<span class="mh-badge">' + trendLabel(t) + '</span>';
+    if (t.includes('moderate')) return badge(false, true, trendLabel(t));
+    return badge(false, false, trendLabel(t));
+  }
+
+  function driftBadge(d) {
+    if (!d.detected) return '--';
+    const dir = d.direction === 'up' ? 'hausse' : 'baisse';
+    const amp = (d.amplitude * 100).toFixed(1) + '%';
+    const txt = `Drift ${d.level === 'fail' ? '!' : '?'} ${dir} ${amp}`;
+    if (d.level === 'fail') return badge(false, false, txt);
+    return badge(false, true, txt);
+  }
+
+  function paramCell(p, decimals) {
+    return `<td>
+      <div>${fmtVal(p.attrVal, decimals)}</div>
+    </td>`;
+  }
+  function measCell(p, decimals) {
+    return `<td>
+      <div>${fmtVal(p.median, decimals)} (N=${p.n})</div>
+    </td>`;
+  }
+
+  const aD = 5, bD = 5;
+
+  let html = `<table class="mh-audit-table">
+    <thead><tr><th></th><th>Param a (gain)</th><th>Param b (pertes)</th></tr></thead>
+    <tbody>
+      <tr><td>Valeur modele</td>${paramCell(audit.a, aD)}${paramCell(audit.b, bD)}</tr>
+      <tr><td>Mediane mes.</td>${measCell(audit.a, aD)}${measCell(audit.b, bD)}</tr>
+      <tr><td>Ecart relatif</td><td>${devBadge(audit.a.relDev)}</td><td>${devBadge(audit.b.relDev)}</td></tr>
+      <tr><td>CV mesures</td><td>${cvBadge(audit.a.cv)}</td><td>${cvBadge(audit.b.cv)}</td></tr>
+      <tr><td>Tendance 24h</td><td>${trendBadge(audit.a.trend)}</td><td>${trendBadge(audit.b.trend)}</td></tr>
+      <tr><td>Accept/Reject</td>
+        <td>${audit.a.acceptN}/${audit.a.rejectN} ${arBadge(audit.a.acceptRatio)}</td>
+        <td>${audit.b.acceptN}/${audit.b.rejectN} ${arBadge(audit.b.acceptRatio)}</td></tr>
+      <tr><td>Drift</td><td>${driftBadge(audit.a.drift)}</td><td>${driftBadge(audit.b.drift)}</td></tr>
+    </tbody></table>`;
+
+  // Cross-check tau
+  const tc = audit.tauCheck;
+  html += `<div class="mh-audit-section">
+    <div class="mh-audit-section-title">Coherence croisee tau</div>
+    <div class="mh-param-row">
+      <span class="mh-param-key">tau modele</span>
+      <span class="mh-param-val">${fmtVal(tc.tauModel, 1)} min</span>
+    </div>
+    <div class="mh-param-row">
+      <span class="mh-param-key">tau implicite 1/(a*U_nom+b)</span>
+      <span class="mh-param-val">${fmtVal(tc.tauImplicit, 1)} min</span>
+    </div>
+    <div class="mh-param-row">
+      <span class="mh-param-key">Ecart</span>
+      ${tc.relDev != null
+        ? (Math.abs(tc.relDev) < C.TAU_OK
+          ? badge(true, false, fmtPct(tc.relDev))
+          : Math.abs(tc.relDev) < C.TAU_WARN
+            ? badge(false, true, fmtPct(tc.relDev))
+            : badge(false, false, fmtPct(tc.relDev)))
+        : '<span class="mh-badge">--</span>'}
+    </div>
+  </div>`;
+
+  // Physical checks
+  html += `<div class="mh-audit-section">
+    <div class="mh-audit-section-title">Plausibilite physique</div>
+    <div class="mh-audit-checks">
+      ${audit.physicalChecks.map(c =>
+        `<span class="mh-badge ${c.ok ? 'mh-ok' : 'mh-error'}">${escapeHtml(c.label)}: ${c.ok ? 'OK' : 'FAIL'}</span>`
+      ).join('')}
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
 function updateModelHealthDiagnostics(history) {
   if (!history || !history.length) return;
   if (!charts.mhA || !charts.mhB || !charts.mhDiag || !charts.mhLearnTimeline || !charts.mhDtdt24 || !charts.mhA24Diag || !charts.mhB24Diag) return;
@@ -4392,6 +4706,44 @@ function updateModelHealthDiagnostics(history) {
       `<div><span class="mh-meta-strong">Guards mesure:</span> A rejetés=${aGuardReject}, B rejetés=${bGuardReject} · accepts marqueurs via Δ(learn_ok_count_a/b).</div>` +
       `<div><span class="mh-meta-strong">Approximation cadence:</span> durée de segment = t_fin - t_début (conservateur, pas d'interpolation intra-cycle).</div>` +
       `<div><span class="mh-meta-strong">Champs utilisés:</span> t_in, t_ext, u_applied, a, b, learn_ok_count_a/b, learn_last_reason.</div>`;
+  }
+
+  // ─── Audit a/b ─────────────────────────────────────────────
+  {
+    // Collect accepted measurements (non-null from aMeas24/bMeas24, deduplicated per segment)
+    const aMeasAccepted = [], bMeasAccepted = [];
+    const aAllMeas = [], bAllMeas = [], aAllTs = [], bAllTs = [];
+    const seen = new Set();
+    for (let i = 0; i < h24.length; i++) {
+      // Accepted a_meas values (take one per distinct value to avoid segment duplication)
+      if (aMeas24[i] != null) {
+        const key = 'a_' + aMeas24[i].toFixed(8);
+        if (!seen.has(key)) { seen.add(key); aMeasAccepted.push(aMeas24[i]); aAllMeas.push(aMeas24[i]); aAllTs.push(ts24[i]); }
+      }
+      // Rejected a measurements — use the marker value as a proxy for the rejected measurement location
+      if (aRejectedMarkers[i] != null && aAttr24[i] != null) {
+        aAllMeas.push(aAttr24[i]); aAllTs.push(ts24[i]);
+      }
+      if (bMeas24[i] != null) {
+        const key = 'b_' + bMeas24[i].toFixed(8);
+        if (!seen.has(key)) { seen.add(key); bMeasAccepted.push(bMeas24[i]); bAllMeas.push(bMeas24[i]); bAllTs.push(ts24[i]); }
+      }
+      if (bRejectedMarkers[i] != null && bAttr24[i] != null) {
+        bAllMeas.push(bAttr24[i]); bAllTs.push(ts24[i]);
+      }
+    }
+    const aAcceptCount = aMeasAccepted.length;
+    const bAcceptCount = bMeasAccepted.length;
+
+    const attrs = (currentState && currentState.raw_attributes) || {};
+    const audit = computeABAudit(
+      aMeasAccepted, bMeasAccepted,
+      aAcceptCount, aGuardReject,
+      bAcceptCount, bGuardReject,
+      aAllMeas, bAllMeas, aAllTs, bAllTs,
+      attrs
+    );
+    renderABAudit(audit);
   }
 
   const ts3 = h3.map(p => new Date(p.ts).getTime() / 1000);
