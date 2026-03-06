@@ -1554,7 +1554,7 @@
       <button class="ev-filter-btn active" data-type="deadband">Deadband <span class="ev-count" id="ev-cnt-deadband">0</span></button>
       <button class="ev-filter-btn active" data-type="autocalib">AutoCalib <span class="ev-count" id="ev-cnt-autocalib">0</span></button>
       <button class="ev-filter-btn active" data-type="guard">Guard <span class="ev-count" id="ev-cnt-guard">0</span></button>
-      <button class="ev-filter-btn active" data-type="learn_reason">learn_last_reason <span class="ev-count" id="ev-cnt-learn_reason">0</span></button>
+      <button class="ev-filter-btn active" data-type="learn_reason">Raison apprentissage <span class="ev-count" id="ev-cnt-learn_reason">0</span></button>
       <div class="ev-summary"><span id="ev-total">0 événements</span></div>
     </div>
     <div class="ev-list" id="ev-list">
@@ -3872,8 +3872,8 @@ function initModelHealthCharts() {
     },
   ];
   const dtdt24Series = [
-    { ...makeSeries('dT/dt ON', '#22c55e', 1.8), scale: 'slope' },
-    { ...makeSeries('dT/dt OFF', '#f97316', 1.8), scale: 'slope' },
+    makeSeries('dT/dt ON', '#22c55e', 1.8),
+    makeSeries('dT/dt OFF', '#f97316', 1.8),
     {
       ...makeSeries('Fenêtres rejetées', '#ef4444', 0),
       points: { show: true, size: 6, stroke: '#ef4444', fill: '#ef4444' },
@@ -3969,7 +3969,6 @@ function initModelHealthCharts() {
     tEl
   );
   const dtdt24Opts = makeOpts(d24El, dtdt24Series, '°C/min', null, 260);
-  dtdt24Opts.scales = Object.assign({}, dtdt24Opts.scales || {}, { slope: { auto: true } });
   charts.mhDtdt24 = new uPlot(
     dtdt24Opts,
     [[], [], [], []],
@@ -4811,11 +4810,10 @@ function updateTuningAssistant(data) {
     const tauReliable = a.smartpi_tau_reliable;
     const dtHeatReliable = a.smartpi_deadtime_heat_reliable;
     const modelReliable = tauReliable === true && dtHeatReliable === true;
-    const badge = reliabilityBadge(modelReliable);
 
     modelLegendEl.innerHTML = `<span style="font-weight:600">Modèle:</span>` +
-      `<span>a = ${fmtNum(aParam, 5)} ${reliabilityBadge(a.smartpi_learn_ok_count_a > 10)}</span>` +
-      `<span>b = ${fmtNum(bParam, 5)} ${reliabilityBadge(a.smartpi_learn_ok_count_b > 10)}</span>` +
+      `<span>a = ${fmtNum(aParam, 5)} ${reliabilityBadge(a.smartpi_learn_ok_count_a != null ? a.smartpi_learn_ok_count_a > 10 : null)}</span>` +
+      `<span>b = ${fmtNum(bParam, 5)} ${reliabilityBadge(a.smartpi_learn_ok_count_b != null ? a.smartpi_learn_ok_count_b > 10 : null)}</span>` +
       `<span>&tau; = ${fmtNum(tau, 1)} min ${reliabilityBadge(tauReliable)}</span>`;
   }
 
