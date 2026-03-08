@@ -2710,13 +2710,14 @@ function initCuChart() {
   if (charts.cuU) return; // already created
   const cuEl = document.getElementById('cu-chart-u');
   if (!cuEl || cuEl.clientWidth === 0) return; // tab not visible
+  const cuFmtPct = (u, v) => v == null ? '—' : v.toFixed(1) + ' %';
   const cuSeries = [
-    { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.12)', paths: uPlot.paths.stepped({ align: -1 }) },
-    makeSeries('u_pi (%)', '#22c55e', 1.5),
-    makeSeries('u_ff (%)', '#06b6d4', 1.5),
-    makeSeries('u_cmd (%)', '#ec4899', 1, [4,3]),
-    makeSeries('u_p (%)', '#3b82f6', 1, [3,3]),
-    makeSeries('u_i (%)', '#8b5cf6', 1, [3,3]),
+    { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.12)', paths: uPlot.paths.stepped({ align: -1 }), value: cuFmtPct },
+    { ...makeSeries('u_pi (%)', '#22c55e', 1.5), value: cuFmtPct },
+    { ...makeSeries('u_ff (%)', '#06b6d4', 1.5), value: cuFmtPct },
+    { ...makeSeries('u_cmd (%)', '#ec4899', 1, [4,3]), value: cuFmtPct },
+    { ...makeSeries('u_p (%)', '#3b82f6', 1, [3,3]), value: cuFmtPct },
+    { ...makeSeries('u_i (%)', '#8b5cf6', 1, [3,3]), value: cuFmtPct },
   ];
   charts.cuU = new uPlot(
     makeOpts(cuEl, cuSeries, '%', [null, null], 260),
@@ -2744,13 +2745,14 @@ function initCharts() {
   const twinEl = document.getElementById('chart-twin');
 
   // Temperature chart
+  const fmtTemp = (u, v) => v == null ? '—' : v.toFixed(2) + ' °C';
   const tempSeries = [
-    makeSeries('T_in', '#3b82f6', 2),
-    makeSeries('Consigne', '#06b6d4', 1.5, [6,3]),
-    { ...makeSeries('T_ext', '#22c55e', 1), scale: 't_ext' },
-    makeSeries('Twin T\u0302', '#64748b', 1, [3,3]),
-    makeSeries('Near band +', '#f59e0b', 1, [4,4]),
-    makeSeries('Near band \u2212', '#f59e0b', 1, [4,4]),
+    { ...makeSeries('T_in (°C)', '#3b82f6', 2), value: fmtTemp },
+    { ...makeSeries('Consigne (°C)', '#06b6d4', 1.5, [6,3]), value: fmtTemp },
+    { ...makeSeries('T_ext (°C)', '#22c55e', 1), scale: 't_ext', value: fmtTemp },
+    { ...makeSeries('Twin T\u0302 (°C)', '#64748b', 1, [3,3]), value: fmtTemp },
+    { ...makeSeries('Near band + (°C)', '#f59e0b', 1, [4,4]), value: fmtTemp },
+    { ...makeSeries('Near band \u2212 (°C)', '#f59e0b', 1, [4,4]), value: fmtTemp },
   ];
   const tempOpts = makeOpts(tempEl, tempSeries, '\u00b0C', null, 350);
   // Right axis for T_ext (separate scale to avoid crushing indoor data)
@@ -2771,18 +2773,20 @@ function initCharts() {
   charts.temp = new uPlot(tempOpts, emptyData, tempEl);
 
   // Power chart
+  const fmtPct = (u, v) => v == null ? '—' : v.toFixed(1) + ' %';
   const powerSeries = [
-    { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.15)', paths: uPlot.paths.stepped({ align: -1 }) },
-    makeSeries('u_ff (%)', '#06b6d4', 1),
+    { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.15)', paths: uPlot.paths.stepped({ align: -1 }), value: fmtPct },
+    { ...makeSeries('u_ff (%)', '#06b6d4', 1), value: fmtPct },
   ];
   charts.power = new uPlot(makeOpts(powerEl, powerSeries, '%', [0, 105]), [[], [], []], powerEl);
 
   // Twin diagnostics chart
+  const fmtTwinC = (u, v) => v == null ? '—' : v.toFixed(3) + ' °C';
   const twinSeries = [
-    makeSeries('Innovation (\u00b0C)', '#8b5cf6', 1.5),
-    makeSeries('d\u0302_ema', '#ec4899', 1.5),
+    { ...makeSeries('Innovation (\u00b0C)', '#8b5cf6', 1.5), value: fmtTwinC },
+    { ...makeSeries('d\u0302_ema (\u00b0C)', '#ec4899', 1.5), value: fmtTwinC },
   ];
-  charts.twin = new uPlot(makeOpts(twinEl, twinSeries), [[], [], []], twinEl);
+  charts.twin = new uPlot(makeOpts(twinEl, twinSeries, '\u00b0C'), [[], [], []], twinEl);
 
   // U components chart (for Chaîne U tab — lazy, may not be visible yet)
   initCuChart();
@@ -3482,7 +3486,7 @@ function initFfChart() {
   const el = document.getElementById('ff-chart');
   if (!el || el.clientWidth === 0) return;
   const ffSeries = [
-    { ...makeSeries('u_ff (%)', '#06b6d4', 2), fill: 'rgba(6,182,212,0.12)', paths: uPlot.paths.stepped({ align: -1 }) },
+    { ...makeSeries('u_ff (%)', '#06b6d4', 2), fill: 'rgba(6,182,212,0.12)', paths: uPlot.paths.stepped({ align: -1 }), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
   ];
   charts.ff = new uPlot(
     makeOpts(el, ffSeries, '%', [0, 105], 240),
@@ -3974,13 +3978,14 @@ function initModelHealthCharts() {
     tEl.clientWidth === 0 || d24El.clientWidth === 0 || a24El.clientWidth === 0 || b24El.clientWidth === 0
   ) return;
 
+  const fmtExp3 = (u, v) => v == null ? '—' : v.toExponential(3);
   const aSeries = [
-    makeSeries('a_attr', '#8b5cf6', 2),
-    makeSeries('a_ema', '#22c55e', 1.5, [4, 3]),
+    { ...makeSeries('a_attr', '#8b5cf6', 2), value: fmtExp3 },
+    { ...makeSeries('a_ema', '#22c55e', 1.5, [4, 3]), value: fmtExp3 },
   ];
   const bSeries = [
-    makeSeries('b_attr', '#ec4899', 2),
-    makeSeries('b_ema', '#f59e0b', 1.5, [4, 3]),
+    { ...makeSeries('b_attr', '#ec4899', 2), value: fmtExp3 },
+    { ...makeSeries('b_ema', '#f59e0b', 1.5, [4, 3]), value: fmtExp3 },
   ];
   const abSeries = [
     { ...makeSeries('a', '#8b5cf6', 2), value: (u, v) => v == null ? '—' : v.toExponential(4) },
@@ -4007,9 +4012,10 @@ function initModelHealthCharts() {
       },
     },
   ];
+  const ctxFmtT = (u, v) => v == null ? '—' : v.toFixed(2) + ' °C';
   const ctxSeries = [
-    makeSeries('T_int', '#3b82f6', 2),
-    makeSeries('Consigne', '#f97316', 1.5, [4, 3]),
+    { ...makeSeries('T_int (°C)', '#3b82f6', 2), value: ctxFmtT },
+    { ...makeSeries('Consigne (°C)', '#f97316', 1.5, [4, 3]), value: ctxFmtT },
     {
       ...makeSeries('u (%)', '#22c55e', 1.5),
       scale: 'u',
@@ -4076,9 +4082,10 @@ function initModelHealthCharts() {
       },
     },
   ];
+  const fmtDtdt = (u, v) => v == null ? '—' : v.toFixed(4) + ' °C/min';
   const dtdt24Series = [
-    makeSeries('dT/dt ON', '#22c55e', 1.8),
-    makeSeries('dT/dt OFF', '#f97316', 1.8),
+    { ...makeSeries('dT/dt ON (°C/min)', '#22c55e', 1.8), value: fmtDtdt },
+    { ...makeSeries('dT/dt OFF (°C/min)', '#f97316', 1.8), value: fmtDtdt },
     {
       ...makeSeries('Fenêtres rejetées', '#ef4444', 0),
       points: { show: true, size: 6, stroke: '#ef4444', fill: '#ef4444' },
@@ -4093,8 +4100,8 @@ function initModelHealthCharts() {
     },
   ];
   const a24Series = [
-    makeSeries('a_attr', '#8b5cf6', 1.8),
-    { ...makeSeries('a_meas_recomputed', '#22c55e', 0), points: { show: true, size: 5, stroke: '#22c55e', fill: '#22c55e' } },
+    { ...makeSeries('a_attr', '#8b5cf6', 1.8), value: fmtExp3 },
+    { ...makeSeries('a_meas_recomputed', '#22c55e', 0), points: { show: true, size: 5, stroke: '#22c55e', fill: '#22c55e' }, value: fmtExp3 },
     {
       ...makeSeries('A appris (counter delta)', '#06b6d4', 0),
       points: { show: true, size: 6, stroke: '#06b6d4', fill: '#06b6d4' },
@@ -4111,8 +4118,8 @@ function initModelHealthCharts() {
     },
   ];
   const b24Series = [
-    makeSeries('b_attr', '#ec4899', 1.8),
-    { ...makeSeries('b_meas_recomputed', '#f59e0b', 0), points: { show: true, size: 5, stroke: '#f59e0b', fill: '#f59e0b' } },
+    { ...makeSeries('b_attr', '#ec4899', 1.8), value: fmtExp3 },
+    { ...makeSeries('b_meas_recomputed', '#f59e0b', 0), points: { show: true, size: 5, stroke: '#f59e0b', fill: '#f59e0b' }, value: fmtExp3 },
     {
       ...makeSeries('B appris (counter delta)', '#8b5cf6', 0),
       points: { show: true, size: 6, stroke: '#8b5cf6', fill: '#8b5cf6' },
@@ -5726,11 +5733,12 @@ function initTuningChart() {
   if (!el || el.clientWidth === 0) return;
   tuningChartInitialized = true;
 
+  const taFmtT = (u, v) => v == null ? '—' : v.toFixed(2) + ' °C';
   const taSeries = [
-    makeSeries('T_in (\u00b0C)', '#3b82f6', 2),
-    makeSeries('Consigne (\u00b0C)', '#06b6d4', 1.5, [6, 3]),
-    makeSeries('T\u0302 twin (\u00b0C)', '#94a3b8', 1.5, [3, 2]),
-    { ...makeSeries('Puissance (%)', '#f97316', 1.5, [4,2]), scale: 'power', fill: 'rgba(249,115,22,0.08)', paths: uPlot.paths.stepped({ align: -1 }) },
+    { ...makeSeries('T_in (\u00b0C)', '#3b82f6', 2), value: taFmtT },
+    { ...makeSeries('Consigne (\u00b0C)', '#06b6d4', 1.5, [6, 3]), value: taFmtT },
+    { ...makeSeries('T\u0302 twin (\u00b0C)', '#94a3b8', 1.5, [3, 2]), value: taFmtT },
+    { ...makeSeries('Puissance (%)', '#f97316', 1.5, [4,2]), scale: 'power', fill: 'rgba(249,115,22,0.08)', paths: uPlot.paths.stepped({ align: -1 }), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
   ];
   const opts = makeOpts(el, taSeries, '\u00b0C', null, TUNING_CHART_HEIGHT);
   if (opts.axes && opts.axes.length >= 2) {
@@ -5742,6 +5750,7 @@ function initTuningChart() {
       grid: { show: false },
       ticks: { stroke: 'rgba(249,115,22,0.4)', width: 1 },
       font: '11px JetBrains Mono',
+      label: '%',
       size: 45,
     });
     opts.axes[0].font = '13px JetBrains Mono';
@@ -6174,6 +6183,7 @@ function initPerfChart() {
   const errSeries = [
     { ...makeSeries('Erreur (°C)', '#3b82f6', 2),
       fill: 'rgba(59,130,246,0.10)',
+      value: (u, v) => v == null ? '—' : v.toFixed(2) + ' °C',
     },
   ];
   const opts = makeOpts(el, errSeries, '°C', null, 260);
