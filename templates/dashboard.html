@@ -36,6 +36,10 @@
     --glow-cyan: rgba(6, 182, 212, 0.12);
     --glow-green: rgba(34, 197, 94, 0.12);
     --glow-red: rgba(239, 68, 68, 0.12);
+    /* SCADA industrial theme */
+    --sc-bg: #050505;
+    --sc-bg-panel: #0a0a0a;
+    --sc-flow-speed: 1.5s;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -348,6 +352,67 @@
     word-break: break-all;
   }
 
+  /* ─── SCADA Supervision Tab ────────────────────────────── */
+  #tab-scada { background: var(--sc-bg); }
+
+  .sc-synoptic-wrap {
+    position: relative; background: var(--sc-bg); border: 1px solid #1a1a1a;
+    border-radius: 8px; padding: 12px; margin-bottom: 2px; min-height: 260px; overflow: auto;
+  }
+  .sc-synoptic-wrap::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; border-radius: 8px;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.006) 2px, rgba(255,255,255,0.006) 4px);
+  }
+  .sc-synoptic-wrap svg { display: block; width: 100%; height: auto; }
+  .sc-loading { text-align: center; color: var(--text-dim); padding: 60px 0; font-family: 'JetBrains Mono', monospace; }
+
+  @keyframes sc-flow-dash { from { stroke-dashoffset: 28; } to { stroke-dashoffset: 0; } }
+  @keyframes sc-led-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
+  @keyframes sc-led-pulse { 0%,100% { box-shadow: 0 0 4px currentColor; } 50% { box-shadow: 0 0 14px currentColor; } }
+
+  .sc-instruments {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px;
+  }
+  .sc-card {
+    background: var(--sc-bg-panel); border: 1px solid #1a1a1a; border-radius: 8px; padding: 14px;
+  }
+  .sc-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .sc-card-icon { font-size: 16px; }
+  .sc-card-title { font: 600 13px 'JetBrains Mono', monospace; color: var(--text-bright); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .sc-gauges-card { grid-column: 1 / -1; }
+  .sc-gauges { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; }
+  .sc-gauge-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sc-gauge-label { font: 500 11px 'JetBrains Mono', monospace; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .sc-bargraph-wrap { height: 110px; position: relative; }
+  .sc-bargraph-wrap svg { width: 100%; height: 100%; }
+
+  .sc-status-grid { display: flex; flex-direction: column; gap: 6px; }
+  .sc-led-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; border-bottom: 1px solid rgba(30,41,59,0.2); }
+  .sc-led-row:last-child { border-bottom: none; }
+  .sc-led {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: #333; transition: all 0.3s;
+  }
+  .sc-led.sc-green { background: var(--accent-green); box-shadow: 0 0 8px rgba(34,197,94,0.5); color: var(--accent-green); }
+  .sc-led.sc-orange { background: var(--accent-orange); box-shadow: 0 0 8px rgba(249,115,22,0.5); color: var(--accent-orange); }
+  .sc-led.sc-red { background: var(--accent-red); box-shadow: 0 0 8px rgba(239,68,68,0.5); color: var(--accent-red); }
+  .sc-led.sc-blue { background: var(--accent-blue); box-shadow: 0 0 8px rgba(59,130,246,0.5); color: var(--accent-blue); }
+  .sc-led.sc-yellow { background: var(--accent-yellow); box-shadow: 0 0 8px rgba(234,179,8,0.5); color: var(--accent-yellow); }
+  .sc-led.sc-blink { animation: sc-led-blink 0.8s ease-in-out infinite; }
+  .sc-led.sc-pulse { animation: sc-led-pulse 1.5s ease-in-out infinite; }
+  .sc-led-label { font: 400 12px 'JetBrains Mono', monospace; color: var(--text-dim); min-width: 80px; }
+  .sc-led-value { font: 500 12px 'JetBrains Mono', monospace; color: var(--text-bright); }
+
+  .sc-sparklines-card { grid-column: 1 / -1; }
+  .sc-sparklines { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .sc-spark-item {}
+  .sc-spark-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .sc-spark-label { font: 400 11px 'JetBrains Mono', monospace; color: var(--text-dim); }
+  .sc-spark-val { font: 600 13px 'JetBrains Mono', monospace; color: var(--accent-cyan); }
+  .sc-spark-chart { width: 100%; height: 60px; background: #080808; border: 1px solid #1a1a1a; border-radius: 4px; overflow: hidden; }
+
   /* ─── Scrollbar styling ────────────────────────────────── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -359,6 +424,9 @@
     .hero-metric .hm-value { font-size: 26px; }
     .groups-grid { grid-template-columns: 1fr; }
     .topbar h1 { font-size: 16px; }
+    .sc-instruments { grid-template-columns: 1fr; }
+    .sc-sparklines { grid-template-columns: 1fr; }
+    .sc-synoptic-wrap { min-height: 180px; }
   }
 
   /* ─── Animations ───────────────────────────────────────── */
@@ -1531,6 +1599,7 @@
   <button class="tab-btn" data-tab="tab-events">📍 Événements</button>
   <button class="tab-btn" data-tab="tab-alerts">🚨 Alertes</button>
   <button class="tab-btn" data-tab="tab-perf">🧪 Consigne vs Réalisé</button>
+  <button class="tab-btn" data-tab="tab-scada">🏭 Supervision</button>
   <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
 </nav>
 
@@ -1690,6 +1759,94 @@
         <div class="pf-empty">En attente de données d'historique...</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB: SCADA Supervision                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-scada">
+  <!-- Row 1: Process Flow Synoptic -->
+  <div class="sc-synoptic-wrap" id="sc-synoptic">
+    <p class="sc-loading" id="sc-loading">Chargement du synoptique...</p>
+  </div>
+
+  <!-- Row 2: Instrument Panel -->
+  <div class="sc-instruments">
+
+    <!-- Circular Gauges -->
+    <div class="sc-card sc-gauges-card">
+      <div class="sc-card-header">
+        <span class="sc-card-icon">🌡️</span>
+        <span class="sc-card-title">Températures & Puissance</span>
+      </div>
+      <div class="sc-gauges">
+        <div class="sc-gauge-item">
+          <svg id="sc-gauge-tin" viewBox="0 0 120 120" width="120" height="120"></svg>
+          <div class="sc-gauge-label">T intérieure</div>
+        </div>
+        <div class="sc-gauge-item">
+          <svg id="sc-gauge-text" viewBox="0 0 120 120" width="120" height="120"></svg>
+          <div class="sc-gauge-label">T extérieure</div>
+        </div>
+        <div class="sc-gauge-item">
+          <svg id="sc-gauge-sp" viewBox="0 0 120 120" width="120" height="120"></svg>
+          <div class="sc-gauge-label">Consigne</div>
+        </div>
+        <div class="sc-gauge-item">
+          <svg id="sc-gauge-power" viewBox="0 0 120 120" width="120" height="120"></svg>
+          <div class="sc-gauge-label">Puissance</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stacked Bargraph -->
+    <div class="sc-card">
+      <div class="sc-card-header">
+        <span class="sc-card-icon">📊</span>
+        <span class="sc-card-title">Décomposition Commande</span>
+      </div>
+      <div class="sc-bargraph-wrap" id="sc-bargraph"></div>
+    </div>
+
+    <!-- Status Indicators -->
+    <div class="sc-card">
+      <div class="sc-card-header">
+        <span class="sc-card-icon">💡</span>
+        <span class="sc-card-title">État du Système</span>
+      </div>
+      <div class="sc-status-grid" id="sc-status-grid">
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-regime"></span><span class="sc-led-label">Régime</span><span class="sc-led-value" id="sc-val-regime">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-phase"></span><span class="sc-led-label">Phase</span><span class="sc-led-value" id="sc-val-phase">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-ff"></span><span class="sc-led-label">FF Gate</span><span class="sc-led-value" id="sc-val-ff">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-calib"></span><span class="sc-led-label">Calibration</span><span class="sc-led-value" id="sc-val-calib">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-guard"></span><span class="sc-led-label">Guard</span><span class="sc-led-value" id="sc-val-guard">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-model"></span><span class="sc-led-label">Modèle</span><span class="sc-led-value" id="sc-val-model">--</span></div>
+      </div>
+    </div>
+
+    <!-- Sparklines -->
+    <div class="sc-card sc-sparklines-card">
+      <div class="sc-card-header">
+        <span class="sc-card-icon">📈</span>
+        <span class="sc-card-title">Tendances 30 min</span>
+      </div>
+      <div class="sc-sparklines">
+        <div class="sc-spark-item">
+          <div class="sc-spark-head"><span class="sc-spark-label">T_in / Consigne</span><span class="sc-spark-val" id="sc-spark-val-temp">--</span></div>
+          <div class="sc-spark-chart" id="sc-spark-temp"></div>
+        </div>
+        <div class="sc-spark-item">
+          <div class="sc-spark-head"><span class="sc-spark-label">Commande</span><span class="sc-spark-val" id="sc-spark-val-cmd">--</span></div>
+          <div class="sc-spark-chart" id="sc-spark-cmd"></div>
+        </div>
+        <div class="sc-spark-item">
+          <div class="sc-spark-head"><span class="sc-spark-label">Erreur</span><span class="sc-spark-val" id="sc-spark-val-err">--</span></div>
+          <div class="sc-spark-chart" id="sc-spark-err"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2321,6 +2478,25 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
         if (historyData && historyData.length) updateTuningChart(historyData);
         if (currentState) updateTuningAssistant(currentState);
+      }, 50);
+    }
+    // Lazy-init SCADA supervision tab
+    if (btn.dataset.tab === 'tab-scada') {
+      setTimeout(() => {
+        if (!scadaSynopticBuilt) renderScadaSynoptic();
+        if (!scadaChartsInit) {
+          initScadaSparklines();
+        } else {
+          ['scTemp', 'scCmd', 'scErr'].forEach(k => {
+            const c = charts[k];
+            if (c) {
+              const el = c.root.parentElement;
+              if (el && el.clientWidth > 0) c.setSize({ width: el.clientWidth, height: 60 });
+            }
+          });
+        }
+        if (currentState) updateScada(currentState);
+        if (historyData && historyData.length) updateScadaTrends(historyData);
       }, 50);
     }
   });
@@ -6121,6 +6297,580 @@ function updatePerformance(history) {
   container.innerHTML = html;
 }
 
+// ─── SCADA Supervision Tab ──────────────────────────────────────
+let scadaChartsInit = false;
+let scadaSynopticBuilt = false;
+
+const SC_BLOCKS = [
+  { id: 'sc-b-text',  label: 'T_ext',      x: 20,  y: 80, w: 110, h: 65, attr: 'smartpi_t_ext', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
+  { id: 'sc-b-bat',   label: 'Bâtiment',   x: 190, y: 60, w: 120, h: 95, attr: 'current_temperature', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
+  { id: 'sc-b-cap',   label: 'Capteur',    x: 370, y: 80, w: 100, h: 65, attr: 'current_temperature', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
+  { id: 'sc-b-err',   label: 'Erreur Σ',   x: 525, y: 80, w: 80,  h: 65, attr: 'smartpi_error_p', unit: '°C', fmt: v => v?.toFixed(2) ?? '—' },
+  { id: 'sc-b-pi',    label: 'Régul. PI',  x: 660, y: 60, w: 110, h: 95, attr: 'smartpi_u_pi', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
+  { id: 'sc-b-gov',   label: 'Gouverneur', x: 825, y: 80, w: 105, h: 65, attr: 'smartpi_u_cmd', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
+  { id: 'sc-b-act',   label: 'Chauffage',  x: 985, y: 80, w: 100, h: 65, attr: 'on_percent', unit: '%', fmt: v => v?.toFixed(0) ?? '—' },
+  { id: 'sc-b-ff',    label: 'Feedforward', x: 525, y: 210, w: 120, h: 50, attr: 'smartpi_ff_u_ff', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
+];
+
+const SC_FLOWS = [
+  { from: [130, 112], to: [190, 112], color: 'var(--accent-green)' },
+  { from: [310, 112], to: [370, 112], color: 'var(--accent-blue)' },
+  { from: [470, 112], to: [525, 112], color: 'var(--accent-blue)' },
+  { from: [605, 112], to: [660, 112], color: 'var(--accent-blue)' },
+  { from: [770, 112], to: [825, 112], color: 'var(--signal-main)' },
+  { from: [930, 112], to: [985, 112], color: 'var(--signal-main)' },
+];
+
+function renderScadaSynoptic() {
+  if (scadaSynopticBuilt) return;
+  scadaSynopticBuilt = true;
+  const container = document.getElementById('sc-synoptic');
+  if (!container) return;
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 1120 290');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  // Defs: arrow markers
+  const defs = document.createElementNS(ns, 'defs');
+  ['#06b6d4', '#3b82f6', '#22c55e', '#f97316'].forEach((c, i) => {
+    const marker = document.createElementNS(ns, 'marker');
+    marker.setAttribute('id', 'sc-arrow-' + i);
+    marker.setAttribute('viewBox', '0 0 10 7');
+    marker.setAttribute('refX', '10'); marker.setAttribute('refY', '3.5');
+    marker.setAttribute('markerWidth', '8'); marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('orient', 'auto-start-reverse');
+    const poly = document.createElementNS(ns, 'polygon');
+    poly.setAttribute('points', '0 0, 10 3.5, 0 7');
+    poly.setAttribute('fill', c);
+    marker.appendChild(poly);
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  // Flow lines (animated dashed)
+  SC_FLOWS.forEach(f => {
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', f.from[0]); line.setAttribute('y1', f.from[1]);
+    line.setAttribute('x2', f.to[0]); line.setAttribute('y2', f.to[1]);
+    line.setAttribute('stroke', f.color); line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-dasharray', '8 6');
+    line.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+    // Arrow marker
+    const ci = f.color.includes('green') ? 2 : f.color.includes('orange') ? 3 : f.color.includes('main') ? 1 : 0;
+    line.setAttribute('marker-end', `url(#sc-arrow-${ci})`);
+    svg.appendChild(line);
+  });
+
+  // Feedback loop (bottom path): Chauffage -> Bâtiment
+  const fbPath = document.createElementNS(ns, 'path');
+  fbPath.setAttribute('d', 'M1085,145 L1085,268 L190,268 L190,155');
+  fbPath.setAttribute('fill', 'none');
+  fbPath.setAttribute('stroke', 'var(--signal-feedback)');
+  fbPath.setAttribute('stroke-width', '1.5');
+  fbPath.setAttribute('stroke-dasharray', '8 6');
+  fbPath.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+  fbPath.setAttribute('marker-end', 'url(#sc-arrow-3)');
+  svg.appendChild(fbPath);
+
+  // FF branch: FF block -> merge into error/regulator
+  const ffLine = document.createElementNS(ns, 'line');
+  ffLine.setAttribute('x1', '585'); ffLine.setAttribute('y1', '210');
+  ffLine.setAttribute('x2', '585'); ffLine.setAttribute('y2', '145');
+  ffLine.setAttribute('stroke', 'var(--signal-ff)');
+  ffLine.setAttribute('stroke-width', '1.5');
+  ffLine.setAttribute('stroke-dasharray', '6 4');
+  ffLine.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+  ffLine.setAttribute('marker-end', 'url(#sc-arrow-0)');
+  svg.appendChild(ffLine);
+
+  // Blocks
+  SC_BLOCKS.forEach(b => {
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('id', b.id);
+
+    const rect = document.createElementNS(ns, 'rect');
+    rect.setAttribute('x', b.x); rect.setAttribute('y', b.y);
+    rect.setAttribute('width', b.w); rect.setAttribute('height', b.h);
+    rect.setAttribute('rx', '6'); rect.setAttribute('ry', '6');
+    rect.setAttribute('fill', '#0c0c0c');
+    rect.setAttribute('stroke', '#333'); rect.setAttribute('stroke-width', '1.5');
+    g.appendChild(rect);
+
+    // Label
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', b.x + b.w / 2); lbl.setAttribute('y', b.y + 16);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('fill', '#64748b');
+    lbl.setAttribute('font-family', 'JetBrains Mono, monospace');
+    lbl.setAttribute('font-size', '10'); lbl.setAttribute('font-weight', '500');
+    lbl.textContent = b.label;
+    g.appendChild(lbl);
+
+    // Value
+    const val = document.createElementNS(ns, 'text');
+    val.setAttribute('x', b.x + b.w / 2); val.setAttribute('y', b.y + b.h / 2 + 8);
+    val.setAttribute('text-anchor', 'middle');
+    val.setAttribute('fill', '#e2e8f0');
+    val.setAttribute('font-family', 'JetBrains Mono, monospace');
+    val.setAttribute('font-size', '16'); val.setAttribute('font-weight', '700');
+    val.setAttribute('class', 'sc-bval');
+    val.textContent = '—';
+    g.appendChild(val);
+
+    // Unit
+    const unit = document.createElementNS(ns, 'text');
+    unit.setAttribute('x', b.x + b.w / 2); unit.setAttribute('y', b.y + b.h - 8);
+    unit.setAttribute('text-anchor', 'middle');
+    unit.setAttribute('fill', '#475569');
+    unit.setAttribute('font-family', 'JetBrains Mono, monospace');
+    unit.setAttribute('font-size', '9');
+    unit.textContent = b.unit;
+    g.appendChild(unit);
+
+    svg.appendChild(g);
+  });
+
+  const loading = document.getElementById('sc-loading');
+  if (loading) loading.remove();
+  container.appendChild(svg);
+}
+
+function scBlockColor(blockId, value) {
+  if (value == null) return '#333';
+  if (blockId === 'sc-b-text') {
+    if (value < 0) return '#3b82f6';
+    if (value < 10) return '#06b6d4';
+    if (value < 25) return '#22c55e';
+    if (value < 35) return '#f97316';
+    return '#ef4444';
+  }
+  if (blockId === 'sc-b-err') {
+    const a = Math.abs(value);
+    if (a < 0.3) return '#22c55e';
+    if (a < 1.0) return '#f97316';
+    return '#ef4444';
+  }
+  if (blockId === 'sc-b-act') {
+    if (value < 50) return '#22c55e';
+    if (value < 80) return '#f97316';
+    return '#ef4444';
+  }
+  if (blockId === 'sc-b-ff') {
+    return value !== 0 ? '#06b6d4' : '#333';
+  }
+  // Default: temperature-related blocks (bat, cap) use error proximity
+  return '#3b82f6';
+}
+
+function updateScadaSynoptic(attrs) {
+  if (!scadaSynopticBuilt) return;
+  SC_BLOCKS.forEach(b => {
+    const g = document.getElementById(b.id);
+    if (!g) return;
+    const raw = attrs[b.attr];
+    const valEl = g.querySelector('.sc-bval');
+    if (valEl) valEl.textContent = b.fmt(raw);
+    const rectEl = g.querySelector('rect');
+    if (rectEl) {
+      const color = scBlockColor(b.id, raw);
+      rectEl.setAttribute('stroke', color);
+      rectEl.style.filter = `drop-shadow(0 0 6px ${color}40)`;
+    }
+  });
+
+  // Update batiment/capteur color based on error
+  const errP = attrs.smartpi_error_p;
+  if (errP != null) {
+    const absErr = Math.abs(errP);
+    const c = absErr < 0.5 ? '#22c55e' : absErr < 1.5 ? '#f97316' : '#ef4444';
+    ['sc-b-bat', 'sc-b-cap'].forEach(id => {
+      const rect = document.querySelector(`#${id} rect`);
+      if (rect) { rect.setAttribute('stroke', c); rect.style.filter = `drop-shadow(0 0 6px ${c}40)`; }
+    });
+  }
+}
+
+// ─── Circular Gauges ─────────────────────────────────────────
+function scGaugeArc(cx, cy, r, startDeg, endDeg) {
+  const rad = d => d * Math.PI / 180;
+  const sx = cx + r * Math.cos(rad(startDeg));
+  const sy = cy + r * Math.sin(rad(startDeg));
+  const ex = cx + r * Math.cos(rad(endDeg));
+  const ey = cy + r * Math.sin(rad(endDeg));
+  const sweep = endDeg - startDeg;
+  const large = sweep > 180 ? 1 : 0;
+  return `M ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey}`;
+}
+
+function renderScadaGauge(svgId, value, min, max, color, unit) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const cx = 60, cy = 60, r = 48;
+  const startDeg = 135, totalDeg = 270;
+  const pct = value != null ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0;
+  const endDeg = startDeg + totalDeg * pct;
+
+  svg.innerHTML = '';
+
+  // Background track
+  const bgArc = document.createElementNS(ns, 'path');
+  bgArc.setAttribute('d', scGaugeArc(cx, cy, r, startDeg, startDeg + totalDeg));
+  bgArc.setAttribute('fill', 'none'); bgArc.setAttribute('stroke', '#1a1a1a'); bgArc.setAttribute('stroke-width', '8');
+  bgArc.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(bgArc);
+
+  // Value arc
+  if (pct > 0.005) {
+    const valArc = document.createElementNS(ns, 'path');
+    valArc.setAttribute('d', scGaugeArc(cx, cy, r, startDeg, endDeg));
+    valArc.setAttribute('fill', 'none'); valArc.setAttribute('stroke', color); valArc.setAttribute('stroke-width', '8');
+    valArc.setAttribute('stroke-linecap', 'round');
+    valArc.style.filter = `drop-shadow(0 0 6px ${color}80)`;
+    svg.appendChild(valArc);
+  }
+
+  // Center value
+  const vText = document.createElementNS(ns, 'text');
+  vText.setAttribute('x', cx); vText.setAttribute('y', cy - 2);
+  vText.setAttribute('text-anchor', 'middle'); vText.setAttribute('dominant-baseline', 'middle');
+  vText.setAttribute('fill', '#e2e8f0');
+  vText.setAttribute('font-family', 'JetBrains Mono, monospace');
+  vText.setAttribute('font-size', '18'); vText.setAttribute('font-weight', '700');
+  vText.textContent = value != null ? (Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(1)) : '—';
+  svg.appendChild(vText);
+
+  // Unit
+  const uText = document.createElementNS(ns, 'text');
+  uText.setAttribute('x', cx); uText.setAttribute('y', cy + 18);
+  uText.setAttribute('text-anchor', 'middle');
+  uText.setAttribute('fill', '#475569');
+  uText.setAttribute('font-family', 'JetBrains Mono, monospace');
+  uText.setAttribute('font-size', '11');
+  uText.textContent = unit;
+  svg.appendChild(uText);
+
+  // Min/Max labels
+  const mText = document.createElementNS(ns, 'text');
+  mText.setAttribute('x', 18); mText.setAttribute('y', 108);
+  mText.setAttribute('text-anchor', 'middle');
+  mText.setAttribute('fill', '#333'); mText.setAttribute('font-size', '8');
+  mText.setAttribute('font-family', 'JetBrains Mono, monospace');
+  mText.textContent = min;
+  svg.appendChild(mText);
+
+  const MText = document.createElementNS(ns, 'text');
+  MText.setAttribute('x', 102); MText.setAttribute('y', 108);
+  MText.setAttribute('text-anchor', 'middle');
+  MText.setAttribute('fill', '#333'); MText.setAttribute('font-size', '8');
+  MText.setAttribute('font-family', 'JetBrains Mono, monospace');
+  MText.textContent = max;
+  svg.appendChild(MText);
+}
+
+function updateScadaGauges(attrs) {
+  const tIn = attrs.current_temperature;
+  const tTarget = attrs.target_temperature ?? attrs.temperature;
+  const tExt = attrs.smartpi_t_ext;
+  const power = attrs.on_percent;
+
+  // T_in gauge
+  const errAbs = (tIn != null && tTarget != null) ? Math.abs(tIn - tTarget) : 99;
+  const cIn = errAbs <= 0.5 ? '#22c55e' : errAbs <= 1.5 ? '#f97316' : '#ef4444';
+  renderScadaGauge('sc-gauge-tin', tIn, 10, 35, cIn, '°C');
+
+  // T_ext gauge
+  const cExt = tExt == null ? '#333' : tExt < 0 ? '#3b82f6' : tExt < 10 ? '#06b6d4' : tExt < 25 ? '#22c55e' : tExt < 35 ? '#f97316' : '#ef4444';
+  renderScadaGauge('sc-gauge-text', tExt, -20, 45, cExt, '°C');
+
+  // Consigne gauge
+  renderScadaGauge('sc-gauge-sp', tTarget, 10, 35, '#06b6d4', '°C');
+
+  // Puissance gauge
+  const cPow = power == null ? '#333' : power < 50 ? '#22c55e' : power < 80 ? '#f97316' : '#ef4444';
+  renderScadaGauge('sc-gauge-power', power, 0, 100, cPow, '%');
+}
+
+// ─── Stacked Bargraph ────────────────────────────────────────
+function updateScadaBargraph(attrs) {
+  const container = document.getElementById('sc-bargraph');
+  if (!container) return;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const uPi = (attrs.smartpi_u_pi ?? 0) * 100;
+  const uFf = (attrs.smartpi_u_ff ?? attrs.smartpi_ff_u_ff ?? 0) * 100;
+  const uCmd = (attrs.smartpi_u_cmd ?? 0) * 100;
+  const uApplied = attrs.on_percent ?? 0;
+
+  const W = 400, H = 100, pad = 50, barW = W - pad;
+
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  // Label: Décomposition
+  const lbl1 = document.createElementNS(ns, 'text');
+  lbl1.setAttribute('x', '2'); lbl1.setAttribute('y', '14');
+  lbl1.setAttribute('fill', '#475569'); lbl1.setAttribute('font-size', '9');
+  lbl1.setAttribute('font-family', 'JetBrains Mono, monospace');
+  lbl1.textContent = 'Décomposition';
+  svg.appendChild(lbl1);
+
+  // Bar 1: u_pi + u_ff
+  const maxVal = Math.max(uCmd, uApplied, 100);
+  const scale = barW / maxVal;
+
+  const piW = Math.max(0, uPi * scale);
+  const ffW = Math.max(0, uFf * scale);
+
+  // u_pi rect
+  const rPi = document.createElementNS(ns, 'rect');
+  rPi.setAttribute('x', pad); rPi.setAttribute('y', '20');
+  rPi.setAttribute('width', piW); rPi.setAttribute('height', '22');
+  rPi.setAttribute('fill', '#3b82f6'); rPi.setAttribute('rx', '3');
+  rPi.style.filter = 'drop-shadow(0 0 4px rgba(59,130,246,0.4))';
+  svg.appendChild(rPi);
+
+  // u_ff rect
+  const rFf = document.createElementNS(ns, 'rect');
+  rFf.setAttribute('x', pad + piW); rFf.setAttribute('y', '20');
+  rFf.setAttribute('width', ffW); rFf.setAttribute('height', '22');
+  rFf.setAttribute('fill', '#06b6d4'); rFf.setAttribute('rx', '3');
+  rFf.style.filter = 'drop-shadow(0 0 4px rgba(6,182,212,0.4))';
+  svg.appendChild(rFf);
+
+  // Labels on bar 1
+  if (piW > 30) {
+    const tPi = document.createElementNS(ns, 'text');
+    tPi.setAttribute('x', pad + piW / 2); tPi.setAttribute('y', '35');
+    tPi.setAttribute('text-anchor', 'middle'); tPi.setAttribute('fill', '#fff');
+    tPi.setAttribute('font-size', '9'); tPi.setAttribute('font-family', 'JetBrains Mono, monospace');
+    tPi.textContent = `PI ${uPi.toFixed(1)}`;
+    svg.appendChild(tPi);
+  }
+  if (ffW > 25) {
+    const tFf = document.createElementNS(ns, 'text');
+    tFf.setAttribute('x', pad + piW + ffW / 2); tFf.setAttribute('y', '35');
+    tFf.setAttribute('text-anchor', 'middle'); tFf.setAttribute('fill', '#fff');
+    tFf.setAttribute('font-size', '9'); tFf.setAttribute('font-family', 'JetBrains Mono, monospace');
+    tFf.textContent = `FF ${uFf.toFixed(1)}`;
+    svg.appendChild(tFf);
+  }
+
+  // Label: Appliquée
+  const lbl2 = document.createElementNS(ns, 'text');
+  lbl2.setAttribute('x', '2'); lbl2.setAttribute('y', '64');
+  lbl2.setAttribute('fill', '#475569'); lbl2.setAttribute('font-size', '9');
+  lbl2.setAttribute('font-family', 'JetBrains Mono, monospace');
+  lbl2.textContent = 'Appliquée';
+  svg.appendChild(lbl2);
+
+  // Bar 2: u_applied
+  const appW = Math.max(0, uApplied * scale);
+  const rApp = document.createElementNS(ns, 'rect');
+  rApp.setAttribute('x', pad); rApp.setAttribute('y', '55');
+  rApp.setAttribute('width', appW); rApp.setAttribute('height', '22');
+  rApp.setAttribute('fill', '#f97316'); rApp.setAttribute('rx', '3');
+  rApp.style.filter = 'drop-shadow(0 0 4px rgba(249,115,22,0.4))';
+  svg.appendChild(rApp);
+
+  if (appW > 30) {
+    const tApp = document.createElementNS(ns, 'text');
+    tApp.setAttribute('x', pad + appW / 2); tApp.setAttribute('y', '70');
+    tApp.setAttribute('text-anchor', 'middle'); tApp.setAttribute('fill', '#fff');
+    tApp.setAttribute('font-size', '9'); tApp.setAttribute('font-family', 'JetBrains Mono, monospace');
+    tApp.textContent = `${uApplied.toFixed(1)}%`;
+    svg.appendChild(tApp);
+  }
+
+  // u_cmd dashed marker on bar 2
+  const cmdX = pad + uCmd * scale;
+  const cmdLine = document.createElementNS(ns, 'line');
+  cmdLine.setAttribute('x1', cmdX); cmdLine.setAttribute('y1', '52');
+  cmdLine.setAttribute('x2', cmdX); cmdLine.setAttribute('y2', '80');
+  cmdLine.setAttribute('stroke', '#ec4899'); cmdLine.setAttribute('stroke-width', '1.5');
+  cmdLine.setAttribute('stroke-dasharray', '3 2');
+  svg.appendChild(cmdLine);
+
+  const cmdLbl = document.createElementNS(ns, 'text');
+  cmdLbl.setAttribute('x', cmdX); cmdLbl.setAttribute('y', '90');
+  cmdLbl.setAttribute('text-anchor', 'middle'); cmdLbl.setAttribute('fill', '#ec4899');
+  cmdLbl.setAttribute('font-size', '8'); cmdLbl.setAttribute('font-family', 'JetBrains Mono, monospace');
+  cmdLbl.textContent = `cmd ${uCmd.toFixed(1)}`;
+  svg.appendChild(cmdLbl);
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+// ─── Status Indicators (LEDs) ────────────────────────────────
+function scLed(ledId, valId, value, colorMap, defaultCls) {
+  const ledEl = document.getElementById(ledId);
+  const valEl = document.getElementById(valId);
+  if (!ledEl || !valEl) return;
+  valEl.textContent = value || '--';
+  const str = String(value || '').toLowerCase();
+  let cls = defaultCls || '';
+  for (const [k, v] of Object.entries(colorMap)) {
+    if (str === k.toLowerCase() || str.includes(k.toLowerCase())) { cls = v; break; }
+  }
+  ledEl.className = 'sc-led ' + cls;
+}
+
+function scLedDirect(ledId, valId, text, cls) {
+  const ledEl = document.getElementById(ledId);
+  const valEl = document.getElementById(valId);
+  if (!ledEl || !valEl) return;
+  valEl.textContent = text;
+  ledEl.className = 'sc-led ' + cls;
+}
+
+function updateScadaStatus(attrs) {
+  scLed('sc-led-regime', 'sc-val-regime', attrs.smartpi_regime, {
+    'nominal': 'sc-green', 'heat': 'sc-green', 'cool': 'sc-blue',
+    'perturb': 'sc-orange', 'transition': 'sc-yellow sc-pulse',
+    'stop': 'sc-red', 'frost': 'sc-blue sc-pulse',
+  }, 'sc-orange');
+
+  scLed('sc-led-phase', 'sc-val-phase', attrs.smartpi_phase, {
+    'stable': 'sc-green', 'idle': 'sc-green',
+    'heating': 'sc-red', 'cooling': 'sc-blue',
+    'preheat': 'sc-orange sc-pulse', 'precool': 'sc-blue sc-pulse',
+  }, 'sc-orange');
+
+  scLed('sc-led-ff', 'sc-val-ff', attrs.smartpi_ff_gate, {
+    'ff_active': 'sc-green', 'warmup_ok': 'sc-green', 'active': 'sc-green',
+    'warmup': 'sc-orange sc-pulse',
+    'ff_none': 'sc-red', 'disabled': 'sc-red', 'none': 'sc-red',
+  }, 'sc-red');
+
+  const calibState = attrs.smartpi_autocalib_state;
+  const degraded = attrs.smartpi_autocalib_model_degraded;
+  scLed('sc-led-calib', 'sc-val-calib', calibState, {
+    'idle': 'sc-green', 'ok': 'sc-green', 'calibrated': 'sc-green',
+    'running': 'sc-blue sc-pulse', 'calibrating': 'sc-blue sc-pulse',
+    'triggered': 'sc-orange sc-pulse',
+  }, degraded ? 'sc-red' : 'sc-green');
+
+  const guardActive = attrs.smartpi_guard_cut_active || attrs.smartpi_thermal_guard_active;
+  scLedDirect('sc-led-guard', 'sc-val-guard',
+    guardActive ? 'ACTIVE' : 'Off',
+    guardActive ? 'sc-red sc-blink' : 'sc-green');
+
+  const rmse = attrs.smartpi_twin_rmse;
+  let modelCls = 'sc-green';
+  let modelVal = '--';
+  if (rmse != null) {
+    modelVal = `RMSE ${rmse.toFixed(2)}°C`;
+    modelCls = rmse > 1.0 ? 'sc-red' : rmse > 0.5 ? 'sc-orange' : 'sc-green';
+  }
+  scLedDirect('sc-led-model', 'sc-val-model', modelVal, modelCls);
+}
+
+// ─── SCADA Sparklines (uPlot) ────────────────────────────────
+function initScadaSparklines() {
+  if (scadaChartsInit || !window.uPlot) return;
+  const tempEl = document.getElementById('sc-spark-temp');
+  const cmdEl = document.getElementById('sc-spark-cmd');
+  const errEl = document.getElementById('sc-spark-err');
+  if (!tempEl || tempEl.clientWidth === 0) return;
+  scadaChartsInit = true;
+
+  function sparkOpts(el, seriesDefs, yRange) {
+    return {
+      width: el.clientWidth || 200,
+      height: 60,
+      cursor: { show: false },
+      legend: { show: false },
+      select: { show: false },
+      series: [{}, ...seriesDefs],
+      axes: [
+        { show: false },
+        { show: false, range: yRange || ((u, dmin, dmax) => [dmin - 0.2, dmax + 0.2]) },
+      ],
+      scales: { x: { time: true } },
+      padding: [4, 4, 4, 4],
+    };
+  }
+
+  charts.scTemp = new uPlot(
+    sparkOpts(tempEl, [
+      { stroke: '#3b82f6', width: 1.5, points: { show: false } },
+      { stroke: '#06b6d4', width: 1, dash: [4, 3], points: { show: false } },
+    ]),
+    [[], [], []], tempEl
+  );
+
+  charts.scCmd = new uPlot(
+    sparkOpts(cmdEl, [
+      { stroke: '#f97316', width: 1.5, fill: 'rgba(249,115,22,0.08)', points: { show: false } },
+    ], [0, 105]),
+    [[], []], cmdEl
+  );
+
+  charts.scErr = new uPlot(
+    sparkOpts(errEl, [
+      { stroke: '#ef4444', width: 1.5, points: { show: false } },
+    ]),
+    [[], []], errEl
+  );
+
+  // ResizeObservers
+  [{ el: tempEl, k: 'scTemp' }, { el: cmdEl, k: 'scCmd' }, { el: errEl, k: 'scErr' }].forEach(({ el, k }) => {
+    new ResizeObserver(() => {
+      const w = el.clientWidth;
+      if (w > 0 && charts[k]) charts[k].setSize({ width: w, height: 60 });
+    }).observe(el);
+  });
+}
+
+function updateScadaTrends(history) {
+  if (!scadaChartsInit || !history || !history.length) return;
+  const now = Date.now();
+  const cutoff = now - 30 * 60 * 1000;
+  const recent = history.filter(p => {
+    const t = new Date(p.ts).getTime();
+    return t >= cutoff && !isNaN(t);
+  });
+  if (recent.length < 2) return;
+
+  const ts = recent.map(p => new Date(p.ts).getTime() / 1000);
+
+  if (charts.scTemp) {
+    charts.scTemp.setData([ts, recent.map(p => p.t_in), recent.map(p => p.t_target)]);
+    const last = recent[recent.length - 1];
+    const el = document.getElementById('sc-spark-val-temp');
+    if (el && last.t_in != null) el.textContent = last.t_in.toFixed(1) + '°C';
+  }
+  if (charts.scCmd) {
+    charts.scCmd.setData([ts, recent.map(p => p.on_percent ?? (p.u_applied != null ? p.u_applied * 100 : null))]);
+    const last = recent[recent.length - 1];
+    const el = document.getElementById('sc-spark-val-cmd');
+    if (el) {
+      const v = last.on_percent ?? (last.u_applied != null ? last.u_applied * 100 : null);
+      el.textContent = v != null ? v.toFixed(1) + '%' : '--';
+    }
+  }
+  if (charts.scErr) {
+    charts.scErr.setData([ts, recent.map(p => p.error_p)]);
+    const last = recent[recent.length - 1];
+    const el = document.getElementById('sc-spark-val-err');
+    if (el && last.error_p != null) el.textContent = last.error_p.toFixed(2) + '°C';
+  }
+}
+
+// ─── Master SCADA update ─────────────────────────────────────
+function updateScada(data) {
+  const attrs = data.raw_attributes || {};
+  updateScadaSynoptic(attrs);
+  updateScadaGauges(attrs);
+  updateScadaBargraph(attrs);
+  updateScadaStatus(attrs);
+}
+
 // ─── Main polling loop ───────────────────────────────────────
 async function fetchState() {
   try {
@@ -6141,6 +6891,7 @@ async function fetchState() {
     updateModelHealth(data);
     updateTuningAssistant(data);
     updateAlerts(data);
+    updateScada(data);
 
     if (data.last_update) {
       const d = new Date(data.last_update);
@@ -6279,6 +7030,7 @@ async function fetchHistory() {
       updatePerformance(historyData);
       updateTuningChart(historyData);
       updateModelHealthDiagnostics(historyData);
+      updateScadaTrends(historyData);
       if (currentState) updateTuningAssistant(currentState);
     };
     const historySpanHours = (hist) => {
