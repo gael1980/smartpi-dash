@@ -6312,14 +6312,15 @@ let scadaChartsInit = false;
 let scadaSynopticBuilt = false;
 
 const SC_BLOCKS = [
-  { id: 'sc-b-text',  label: 'T_ext',      x: 20,  y: 80, w: 110, h: 65, attr: 'smartpi_t_ext', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
+  { id: 'sc-b-text',  label: 'T_ext',      x: 20,  y: 80, w: 110, h: 65, get: a => a.smartpi_t_ext ?? a.current_external_temperature, unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
   { id: 'sc-b-bat',   label: 'Bâtiment',   x: 190, y: 60, w: 120, h: 95, attr: 'current_temperature', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
   { id: 'sc-b-cap',   label: 'Capteur',    x: 370, y: 80, w: 100, h: 65, attr: 'current_temperature', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
+  { id: 'sc-b-sp',    label: 'Consigne',   x: 515, y: 10, w: 100, h: 50, get: a => a.smartpi_sp_brut ?? a.target_temperature ?? a.temperature, unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
   { id: 'sc-b-err',   label: 'Erreur Σ',   x: 525, y: 80, w: 80,  h: 65, attr: 'smartpi_error_p', unit: '°C', fmt: v => v?.toFixed(2) ?? '—' },
   { id: 'sc-b-pi',    label: 'Régul. PI',  x: 660, y: 60, w: 110, h: 95, attr: 'smartpi_u_pi', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
   { id: 'sc-b-gov',   label: 'Gouverneur', x: 825, y: 80, w: 105, h: 65, attr: 'smartpi_u_cmd', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
   { id: 'sc-b-act',   label: 'Chauffage',  x: 985, y: 80, w: 100, h: 65, attr: 'on_percent', unit: '%', fmt: v => v?.toFixed(0) ?? '—' },
-  { id: 'sc-b-ff',    label: 'Feedforward', x: 525, y: 210, w: 120, h: 50, attr: 'smartpi_ff_u_ff', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
+  { id: 'sc-b-ff',    label: 'Feedforward', x: 525, y: 210, w: 120, h: 50, get: a => a.smartpi_ff_u_ff ?? a.smartpi_u_ff, unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
 ];
 
 const SC_FLOWS = [
@@ -6384,7 +6385,40 @@ function renderScadaSynoptic() {
   fbPath.setAttribute('marker-end', 'url(#sc-arrow-3)');
   svg.appendChild(fbPath);
 
-  // FF branch: FF block -> merge into error/regulator
+  // Setpoint to error summing node
+  const spToErr = document.createElementNS(ns, 'line');
+  spToErr.setAttribute('x1', '565'); spToErr.setAttribute('y1', '60');
+  spToErr.setAttribute('x2', '565'); spToErr.setAttribute('y2', '80');
+  spToErr.setAttribute('stroke', 'var(--accent-blue)');
+  spToErr.setAttribute('stroke-width', '1.5');
+  spToErr.setAttribute('stroke-dasharray', '6 4');
+  spToErr.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+  spToErr.setAttribute('marker-end', 'url(#sc-arrow-1)');
+  svg.appendChild(spToErr);
+
+  // T_ext branch into feedforward
+  const textToFf = document.createElementNS(ns, 'path');
+  textToFf.setAttribute('d', 'M130,112 L130,235 L525,235');
+  textToFf.setAttribute('fill', 'none');
+  textToFf.setAttribute('stroke', 'var(--signal-ff)');
+  textToFf.setAttribute('stroke-width', '1.5');
+  textToFf.setAttribute('stroke-dasharray', '6 4');
+  textToFf.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+  textToFf.setAttribute('marker-end', 'url(#sc-arrow-0)');
+  svg.appendChild(textToFf);
+
+  // Setpoint branch into feedforward
+  const spToFf = document.createElementNS(ns, 'path');
+  spToFf.setAttribute('d', 'M615,35 L690,35 L690,235 L645,235');
+  spToFf.setAttribute('fill', 'none');
+  spToFf.setAttribute('stroke', 'var(--signal-ff)');
+  spToFf.setAttribute('stroke-width', '1.5');
+  spToFf.setAttribute('stroke-dasharray', '6 4');
+  spToFf.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+  spToFf.setAttribute('marker-end', 'url(#sc-arrow-0)');
+  svg.appendChild(spToFf);
+
+  // FF output branch: FF block -> merge into error/regulator
   const ffLine = document.createElementNS(ns, 'line');
   ffLine.setAttribute('x1', '585'); ffLine.setAttribute('y1', '210');
   ffLine.setAttribute('x2', '585'); ffLine.setAttribute('y2', '145');
@@ -6470,6 +6504,9 @@ function scBlockColor(blockId, value) {
   if (blockId === 'sc-b-ff') {
     return value !== 0 ? '#06b6d4' : '#333';
   }
+  if (blockId === 'sc-b-sp') {
+    return '#06b6d4';
+  }
   // Default: temperature-related blocks (bat, cap) use error proximity
   return '#3b82f6';
 }
@@ -6479,7 +6516,7 @@ function updateScadaSynoptic(attrs) {
   SC_BLOCKS.forEach(b => {
     const g = document.getElementById(b.id);
     if (!g) return;
-    const raw = attrs[b.attr];
+    const raw = typeof b.get === 'function' ? b.get(attrs) : attrs[b.attr];
     const valEl = g.querySelector('.sc-bval');
     if (valEl) valEl.textContent = b.fmt(raw);
     const rectEl = g.querySelector('rect');
@@ -6583,8 +6620,8 @@ function renderScadaGauge(svgId, value, min, max, color, unit) {
 
 function updateScadaGauges(attrs) {
   const tIn = attrs.current_temperature;
-  const tTarget = attrs.target_temperature ?? attrs.temperature;
-  const tExt = attrs.smartpi_t_ext;
+  const tTarget = attrs.smartpi_sp_brut ?? attrs.target_temperature ?? attrs.temperature;
+  const tExt = attrs.smartpi_t_ext ?? attrs.current_external_temperature;
   const power = attrs.on_percent;
 
   // T_in gauge
@@ -6611,7 +6648,7 @@ function updateScadaBargraph(attrs) {
   const ns = 'http://www.w3.org/2000/svg';
 
   const uPi = (attrs.smartpi_u_pi ?? 0) * 100;
-  const uFf = (attrs.smartpi_u_ff ?? attrs.smartpi_ff_u_ff ?? 0) * 100;
+  const uFf = (attrs.smartpi_ff_u_ff ?? attrs.smartpi_u_ff ?? 0) * 100;
   const uCmd = (attrs.smartpi_u_cmd ?? 0) * 100;
   const uApplied = attrs.on_percent ?? 0;
 
