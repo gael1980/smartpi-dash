@@ -6,17 +6,19 @@ Tableau de bord temps réel pour le régulateur SmartPI (Versatile Thermostat / 
 
 ```
 smartpi-dash/
-├── app.py                    # Routes Flask, sécurité, point d'entrée
+├── app.py                    # Routes Flask, rate limiting, sécurité, point d'entrée
 ├── config.py                 # Variables d'env, logging, state_store, validation
 ├── transforms.py             # Transformations de données (flatten, extract, snapshot)
 ├── ha_client.py              # Client REST Home Assistant + découverte d'entités
 ├── ws_listener.py            # Listener WebSocket HA + thread
+├── import.py                 # Utilitaire : migration config Claude Code → ChatGPT project
 ├── setup_diagram.py          # Extraction SVG du schéma de bloc
+├── mcp.json                  # Configuration MCP (CodeGraphContext)
 ├── .env.example              # Template de configuration
 ├── .gitignore                # Fichiers exclus du dépôt
 ├── pyproject.toml            # Dépendances Python (uv)
 ├── templates/
-│   └── dashboard.html        # Frontend (HTML + CSS + uPlot + JS)
+│   └── dashboard.html        # Frontend (HTML + CSS + uPlot + JS, ~7200 lignes)
 └── static/
     ├── block_diagram.svg     # Schéma de bloc interactif (généré)
     ├── uPlot.iife.min.js     # Librairie de graphiques (bundlée)
@@ -27,12 +29,14 @@ smartpi-dash/
 - Se connecte à Home Assistant via **WebSocket** pour recevoir les changements d'état en temps réel
 - **Auto-découverte** de tous les thermostats SmartPI (multi-entité)
 - Expose une **API REST** pour le frontend :
-  - `GET /api/entities` — Liste des entités SmartPI découvertes
-  - `GET /api/state?entity_id=...` — État courant groupé par catégorie SmartPI
+  - `GET /api/entities` — Liste des entités SmartPI découvertes (10 req/min)
+  - `GET /api/state?entity_id=...` — État courant groupé ; supporte ETag / `If-None-Match` (60 req/min)
   - `GET /api/history?entity_id=...` — Historique en mémoire (rolling 500 points)
-  - `GET /api/ha-history?entity_id=...&hours=24` — Historique depuis l'API REST de HA
+  - `GET /api/ha-history?entity_id=...&hours=24` — Historique HA REST (cache 60s, 10 req/min)
   - `GET /api/config` — Configuration des groupes de données
   - `GET /api/block-diagram` — Métadonnées du schéma de bloc
+  - `GET /health` — Health check pour monitoring / load balancer (exempt de rate limit)
+- **Rate limiting** par IP via `flask-limiter` (200 req/heure par défaut)
 
 ### Frontend
 - **Sélecteur d'entité** : choix du thermostat SmartPI à superviser (persisté en localStorage)
@@ -47,6 +51,7 @@ smartpi-dash/
 - **Onglet Événements** : timeline chronologique des transitions d'état (régime, phase, FF gate, saturation, deadband, autocalib, guard) avec filtres
 - **Onglet Alertes** : 9 règles d'alerte (RMSE, innovation, deadtime, tau, modèle dégradé, guard cut, CUSUM, erreur T°, snapshot age) avec seuils configurables (persistés en localStorage)
 - **Onglet Consigne vs Réalisé** : métriques de performance (erreur moy/max, % deadband/near-band, overshoot, IAE), graphique d'erreur avec bandes colorées, tableau de sessions par changement de consigne
+- **Onglet Supervision** : synoptique industriel style SCADA avec indicateurs de flux animés
 - **Onglet Attributs bruts** : dump JSON complet
 
 ## Installation
@@ -98,10 +103,10 @@ Le dashboard regroupe automatiquement les attributs SmartPI en catégories :
 | ⚡ Régulation PI | Kp, Ki, erreurs, composantes u_p/u_i/u_ff |
 | 🏠 Modèle Thermique | a, b, τ, deadtimes, compteurs d'apprentissage |
 | 🔬 Thermal Twin | T̂, innovation, d̂_ema, RMSE, CUSUM, ETA |
-| 🛡️ Gouvernance | Régime, phase, action governance, état intégrateur |
-| 🎯 Feedforward | K_ff, u_ff, warmup, gate |
-| 🔧 Calibration | État FSM, AutoCalib, retry count |
-| 📐 Filtre Consigne | SP_brut, SP_for_P, mode filtre |
+| 🛡️ Gouvernance & Sécurité | Régime, phase, action governance, guards, état intégrateur |
+| 🎯 Feedforward | K_ff, u_ff, warmup, gate, scale |
+| 🔧 Calibration & AutoCalib | État FSM, AutoCalib, retry count, snapshot age |
+| 📐 Filtre de Consigne | SP_brut, SP_for_P, mode filtre |
 | ⏱️ Cycle PWM | Cycle min, état cycle, min_on/min_off |
 
 Les attributs SmartPI non mappés apparaissent automatiquement dans "Autres attributs".
