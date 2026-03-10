@@ -28,6 +28,7 @@ from ws_listener import start_ws_thread
 # Keyed by (entity_id, hours) → (timestamp, points)
 _ha_history_cache: dict = {}
 HA_HISTORY_CACHE_TTL = 60  # seconds
+_HA_HISTORY_CACHE_MAX = 50  # max entries to prevent unbounded growth
 
 # Static responses computed once on first request
 _config_data: dict | None = None
@@ -187,6 +188,16 @@ def api_ha_history():
             attrs = flatten_smartpi_attrs(raw_attrs)
             points.append(snapshot_for_history(attrs))
             points[-1]["ts"] = ensure_utc_iso(entry.get("last_changed"))
+        # Evict expired entries if cache is full
+        if len(_ha_history_cache) >= _HA_HISTORY_CACHE_MAX:
+            now = time.monotonic()
+            expired = [k for k, v in _ha_history_cache.items() if now - v[0] >= HA_HISTORY_CACHE_TTL]
+            for k in expired:
+                del _ha_history_cache[k]
+            # If still full, drop the oldest entry
+            if len(_ha_history_cache) >= _HA_HISTORY_CACHE_MAX:
+                oldest = min(_ha_history_cache, key=lambda k: _ha_history_cache[k][0])
+                del _ha_history_cache[oldest]
         _ha_history_cache[cache_key] = (time.monotonic(), points)
 
     return jsonify({

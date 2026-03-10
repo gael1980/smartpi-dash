@@ -77,7 +77,11 @@ async def _ws_listener():
 
                 # Phase 4: Listen for events
                 async for raw in ws:
-                    msg = json.loads(raw)
+                    try:
+                        msg = json.loads(raw)
+                    except (json.JSONDecodeError, TypeError):
+                        log.warning("Skipping malformed WS message")
+                        continue
                     if msg.get("type") != "event":
                         continue
 
@@ -125,8 +129,8 @@ async def _ws_listener():
             log.warning("WebSocket connection closed, reconnecting in 5s...")
             state_store["connected"] = False
             await asyncio.sleep(5)
-        except Exception as e:
-            log.error("WebSocket error: %s, reconnecting in 10s...", e)
+        except Exception:
+            log.exception("WebSocket error, reconnecting in 10s...")
             state_store["connected"] = False
             await asyncio.sleep(10)
 
