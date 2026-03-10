@@ -21,6 +21,7 @@ smartpi-dash/
 │   └── dashboard.html        # Frontend (HTML + CSS + uPlot + JS, ~7200 lignes)
 └── static/
     ├── block_diagram.svg     # Schéma de bloc interactif (généré)
+    ├── smartpi_block_diagram_v2.html  # Source HTML du schéma bloc
     ├── uPlot.iife.min.js     # Librairie de graphiques (bundlée)
     └── uPlot.min.css         # Styles uPlot
 ```
@@ -44,12 +45,12 @@ smartpi-dash/
 - **Onglet Données** : tous les attributs SmartPI groupés (régulation, modèle, twin, governance, feedforward, calibration, filtre, cycle)
 - **Onglet Historique** : graphiques uPlot temps réel (température, puissance, twin diagnostics) avec sélecteur de plage (1–48h)
 - **Onglet Schéma Bloc** : SVG interactif du schéma de régulation avec valeurs live
-- **Onglet Chaîne U** : décomposition de la commande (waterfall u_applied / u_ff / u_pi) + time-series
-- **Onglet Feedforward** : état FF, pipeline de calcul, warmup, K_ff, graphiques
-- **Onglet Santé Modèle** : score de santé global, drapeaux de fiabilité, autocalib, twin quality, progression apprentissage, paramètres du modèle
-- **Onglet Tuning Assistant** : jauge d'aptitude au tuning (score 0–100%), paramètres PI & modèle avec badges fiabilité, contexte d'observabilité (RMSE, innovation, CUSUM avec sparklines de tendance), références théoriques PI (SIMC/IMC), maturité du modèle (apprentissage, autocalib, snapshot), fenêtre de stabilité (durée régime/phase), analyse de la réponse récente (montée, dépassement, stabilisation, verdict), recommandations enrichies en lecture seule
+- **Onglet Chaîne U** : décomposition de la commande (waterfall `u_applied / u_cmd / u_pi / u_ff_eff`) + détail FFv2 et time-series
+- **Onglet FFv2** : état runtime, chaîne `ff_raw -> u_ff_ab -> u_ff_base -> u_ff_eff`, warmup/fiabilité, K_ff, trim/taper, hold estimator, graphiques
+- **Onglet Santé Modèle** : score de santé global, drapeaux de fiabilité, autocalib, twin quality, diagnostics FFv2, progression apprentissage, paramètres du modèle
+- **Onglet Tuning Assistant** : jauge d'aptitude au tuning (score 0–100%) tenant compte de l'état opératoire, paramètres PI & modèle avec badges fiabilité, contexte d'observabilité (RMSE, innovation, CUSUM avec sparklines de tendance), références théoriques PI (SIMC/IMC), maturité du modèle (apprentissage, autocalib, snapshot), fenêtre de stabilité (durée régime/phase), analyse de la réponse récente (montée, dépassement, stabilisation, verdict), recommandations enrichies en lecture seule
 - **Onglet Événements** : timeline chronologique des transitions d'état (régime, phase, FF gate, saturation, deadband, autocalib, guard) avec filtres
-- **Onglet Alertes** : 9 règles d'alerte (RMSE, innovation, deadtime, tau, modèle dégradé, guard cut, CUSUM, erreur T°, snapshot age) avec seuils configurables (persistés en localStorage)
+- **Onglet Alertes** : règles d'alerte sur RMSE, innovation, deadtimes, tau, modèle dégradé, protections, CUSUM, erreur T°, snapshot age et diagnostics FFv2, avec seuils configurables (persistés en localStorage)
 - **Onglet Consigne vs Réalisé** : métriques de performance (erreur moy/max, % deadband/near-band, overshoot, IAE), graphique d'erreur avec bandes colorées, tableau de sessions par changement de consigne
 - **Onglet Supervision** : synoptique industriel style SCADA avec indicateurs de flux animés
 - **Onglet Attributs bruts** : dump JSON complet
@@ -76,7 +77,7 @@ uv run setup_diagram.py static/smartpi_block_diagram_v2.html
 uv run app.py
 ```
 
-Le dashboard est accessible sur `http://localhost:5000`.
+Le dashboard est accessible sur `http://localhost:<FLASK_PORT>` (`5000` par défaut).
 
 ## Configuration (.env)
 
@@ -100,11 +101,11 @@ Le dashboard regroupe automatiquement les attributs SmartPI en catégories :
 
 | Groupe | Contenu |
 |---|---|
-| ⚡ Régulation PI | Kp, Ki, erreurs, composantes u_p/u_i/u_ff |
+| ⚡ Régulation PI | Kp, Ki, erreurs, composantes `u_p/u_i/u_pi/u_ff_eff/u_cmd` |
 | 🏠 Modèle Thermique | a, b, τ, deadtimes, compteurs d'apprentissage |
 | 🔬 Thermal Twin | T̂, innovation, d̂_ema, RMSE, CUSUM, ETA |
-| 🛡️ Gouvernance & Sécurité | Régime, phase, action governance, guards, état intégrateur |
-| 🎯 Feedforward | K_ff, u_ff, warmup, gate, scale |
+| 🛡️ Gouvernance & Sécurité | Régime, phase, action governance, protections, état intégrateur |
+| 🎯 Feedforward FFv2 | `K_ff`, `ff_raw`, `u_ff_ab`, `u_ff_base`, `u_ff_eff`, warmup, trim/taper, hold estimator, gate, confidence/coherence |
 | 🔧 Calibration & AutoCalib | État FSM, AutoCalib, retry count, snapshot age |
 | 📐 Filtre de Consigne | SP_brut, SP_for_P, mode filtre |
 | ⏱️ Cycle PWM | Cycle min, état cycle, min_on/min_off |

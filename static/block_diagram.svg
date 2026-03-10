@@ -112,7 +112,7 @@
 <g class="block" data-tip="summer_pi">
   <circle cx="558" cy="254" r="16" fill="#141b2d" stroke="#4a9eff" stroke-width="1.5" filter="url(#gl)"/>
   <text x="558" y="258" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="#4a9eff" font-weight="700">Σ</text>
-  <text x="569" y="278" font-family="JetBrains Mono" font-size="7" fill="#26de81">+u_ff</text>
+  <text x="569" y="278" font-family="JetBrains Mono" font-size="7" fill="#26de81">+u_ff_eff</text>
 </g>
 
 <!-- PI Σ → Governance -->
@@ -122,8 +122,8 @@
 <!-- Governance -->
 <g class="block" data-tip="governance">
   <rect x="630" y="224" width="110" height="60" rx="6" fill="#141b2d" stroke="#ff8c42" stroke-width="1.5" filter="url(#bs)"/>
-  <text x="685" y="244" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#e8f0fe" font-weight="500">Governance</text>
-  <text x="685" y="258" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#ff8c42">Safety-First · 8 regimes</text>
+  <text x="685" y="244" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#e8f0fe" font-weight="500">Gouvernance</text>
+  <text x="685" y="258" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#ff8c42">Safety-First · 8 régimes</text>
   <text x="685" y="272" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">ADAPT_ON | FREEZE</text>
   <text x="685" y="281" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">HARD_FREEZE | SOFT↓</text>
 </g>
@@ -242,10 +242,10 @@
 <!-- ====================================================================== -->
 <g class="block" data-tip="feedforward">
   <rect x="540" y="410" width="130" height="64" rx="6" fill="#141b2d" stroke="#00d4aa" stroke-width="1.5" filter="url(#bs)"/>
-  <text x="605" y="430" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#e8f0fe" font-weight="500">Feedforward</text>
-  <text x="605" y="444" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#00d4aa">u_ff = K_ff·(SP−T_ext)</text>
-  <text x="605" y="457" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">K_ff = b/a · warmup</text>
-  <text x="605" y="468" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">hard gate: cut if T > SP+NB</text>
+  <text x="605" y="430" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#e8f0fe" font-weight="500">Feedforward FFv2</text>
+  <text x="605" y="444" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#00d4aa">ff_raw → u_ff_ab → u_ff_base</text>
+  <text x="605" y="457" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">trim + taper → u_ff_eff</text>
+  <text x="605" y="468" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">AB conf. · hold · coherence</text>
 </g>
 <!-- T_ext → FF -->
 <circle cx="1290" cy="166" r="3" fill="#00d4aa"/>
@@ -258,7 +258,7 @@
 <text x="300" y="434" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#00d4aa">SP_filt</text>
 <!-- FF → PI Σ -->
 <line x1="605" y1="410" x2="558" y2="270" stroke="#00d4aa" stroke-width="1.5" marker-end="url(#arr-cyan)"/>
-<text x="590" y="344" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#00d4aa">u_ff</text>
+<text x="590" y="344" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#00d4aa">u_ff_eff</text>
 
 <!-- ====================================================================== -->
 <!--  DEADBAND + GUARDS + PHASE (above main loop)                            -->
@@ -278,7 +278,7 @@
 <!-- Guards -->
 <g class="block" data-tip="guards">
   <rect x="700" y="100" width="120" height="56" rx="5" fill="#141b2d" stroke="#ff4757" stroke-width="1.2" filter="url(#bs)"/>
-  <text x="760" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#e8f0fe" font-weight="500">Guards</text>
+  <text x="760" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#e8f0fe" font-weight="500">Protections</text>
   <text x="760" y="133" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#ff4757">guard cut (force 0%)</text>
   <text x="760" y="144" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">guard kick (restart)</text>
   <text x="760" y="153" text-anchor="middle" font-family="JetBrains Mono" font-size="6.5" fill="#6b7d99">thermal guard (SP↓)</text>
