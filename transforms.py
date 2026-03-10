@@ -119,7 +119,7 @@ SMARTPI_GROUPS = {
         "keys": [
             "smartpi_cycle_min", "smartpi_cycle_state",
             "smartpi_min_on_s", "smartpi_min_off_s",
-            "smartpi_rate_limit",
+            "smartpi_rate_limit", "smartpi_hysteresis_state",
         ],
     },
 }
@@ -367,20 +367,20 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
                 pred.get("twin_cusum"),
             )
 
-        # ETA: use whichever is available
-        eta = pred.get("eta_heat_100_s") or pred.get("eta_cool_0_s")
+        # ETA: use whichever is available (avoid `or` — 0 is a valid ETA)
+        eta = _first_not_none(pred.get("eta_heat_100_s"), pred.get("eta_cool_0_s"))
         if eta is not None:
             flat["smartpi_twin_eta_s"] = eta
 
-    # Compatibility aliases used by older tabs while FFv2 is rolled out.
-    flat["smartpi_ff_u_ff"] = _first_not_none(
+    # Compatibility aliases: keep both smartpi_ff_u_ff and smartpi_u_ff in sync.
+    # Resolve once, then assign to both keys to avoid circular fallback.
+    _resolved_u_ff = _first_not_none(
         flat.get("smartpi_ff_u_ff"),
         flat.get("smartpi_u_ff"),
     )
-    flat["smartpi_u_ff"] = _first_not_none(
-        flat.get("smartpi_u_ff"),
-        flat.get("smartpi_ff_u_ff"),
-    )
+    if _resolved_u_ff is not None:
+        flat["smartpi_ff_u_ff"] = _resolved_u_ff
+        flat["smartpi_u_ff"] = _resolved_u_ff
 
     # Also bring target_temperature to top level if missing
     if flat.get("target_temperature") is None:

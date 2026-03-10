@@ -66,7 +66,7 @@ def set_security_headers(response):
         "img-src 'self' data:; "
         "connect-src 'self'"
     )
-    if request.path.startswith("/api/"):
+    if request.path.startswith("/api/") and "Cache-Control" not in response.headers:
         response.headers["Cache-Control"] = "no-store, private"
     return response
 
@@ -143,6 +143,7 @@ def api_state():
 
 
 @app.route("/api/history")
+@limiter.limit("60/minute")
 def api_history():
     """Return the rolling in-memory history."""
     entity_id = _resolve_entity_id()

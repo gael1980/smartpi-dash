@@ -3183,7 +3183,10 @@ async function loadBlockDiagram() {
     </p>`;
 }
 
+let _diagramInteractionsReady = false;
 function setupDiagramInteractions() {
+  if (_diagramInteractionsReady) return;
+  _diagramInteractionsReady = true;
   const tooltip = document.getElementById('svg-tooltip');
   const blocks = document.querySelectorAll('#diagram-container .block');
 
@@ -3251,7 +3254,7 @@ function dcPct(val) {
   return v.toFixed(1);
 }
 function dcPctNum(val) {
-  if (val == null) return null;
+  if (val == null || typeof val !== 'number') return null;
   return (Math.abs(val) <= 1.01) ? val * 100 : val;
 }
 
