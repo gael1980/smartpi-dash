@@ -322,9 +322,11 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     if not isinstance(spi, dict):
         return flat
 
-    for src, dst in _SMARTPI_MAPPING.items():
-        val = spi.get(src)
-        if val is not None:
+    # Iterate spi keys (typically 30-50) and look up in mapping (O(1))
+    # instead of iterating all 138 mapping entries
+    for src_key, val in spi.items():
+        dst = _SMARTPI_MAPPING.get(src_key)
+        if dst is not None and val is not None:
             flat[dst] = val
 
     # Compatibility fallbacks for SmartPI variants
@@ -355,9 +357,9 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     # Pred / twin data is nested one more level
     pred = spi.get("pred", {})
     if isinstance(pred, dict):
-        for src, dst in _PRED_MAPPING.items():
-            val = pred.get(src)
-            if val is not None:
+        for src_key, val in pred.items():
+            dst = _PRED_MAPPING.get(src_key)
+            if dst is not None and val is not None:
                 flat[dst] = val
 
         # Legacy dashboard code expects a single cusum channel.
@@ -416,11 +418,9 @@ def extract_smartpi_data(attrs: dict) -> dict:
                 val = attrs.get(short)
             grouped[gid]["values"][key] = val
 
-    # Also collect any extra smartpi_ attributes not in our mapping
-    extras = {}
-    for k, v in attrs.items():
-        if k.startswith("smartpi_") and k not in ALL_SMARTPI_KEYS:
-            extras[k] = v
+    # Collect extra smartpi_ attributes not in any group (single pass over attrs)
+    extras = {k: v for k, v in attrs.items()
+              if k.startswith("smartpi_") and k not in ALL_SMARTPI_KEYS}
     if extras:
         grouped["extras"] = {
             "label": "Autres attributs SmartPI",

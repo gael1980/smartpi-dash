@@ -2379,6 +2379,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
 
+    // Refresh state-dependent content for the newly active tab
+    if (currentState) {
+      if (btn.dataset.tab === 'tab-data')   updateGroups(currentState.groups);
+      if (btn.dataset.tab === 'tab-raw')    updateRaw(currentState.raw_attributes);
+      if (btn.dataset.tab === 'tab-scada')  updateScada(currentState);
+    }
+
     // Lazy-load diagram
     if (btn.dataset.tab === 'tab-diagram' && !document.querySelector('#diagram-container svg')) {
       loadBlockDiagram();
@@ -2818,36 +2825,56 @@ function updateHero(data) {
 }
 
 // ─── Update Data Groups ──────────────────────────────────────
+let _groupsDomBuilt = false;
 function updateGroups(groups) {
   const container = document.getElementById('groups-grid');
-  container.innerHTML = '';
 
+  if (!_groupsDomBuilt) {
+    // First call: build the full DOM structure once
+    container.innerHTML = '';
+    for (const [gid, grp] of Object.entries(groups)) {
+      const div = document.createElement('div');
+      div.className = 'data-group';
+      div.id = `group-${gid}`;
+
+      let rowsHtml = '';
+      for (const [key, val] of Object.entries(grp.values)) {
+        const f = fmtVal(val);
+        previousValues[`${gid}.${key}`] = val;
+        rowsHtml += `
+          <div class="data-row" data-gkey="${gid}.${key}">
+            <span class="dr-key" title="${key}">${prettyKey(key)}</span>
+            <span class="dr-val ${f.cls}">${f.text}</span>
+          </div>`;
+      }
+
+      div.innerHTML = `
+        <div class="dg-header">
+          <span class="dg-icon">${grp.icon}</span>
+          <span class="dg-title">${grp.label}</span>
+        </div>
+        ${rowsHtml}`;
+      container.appendChild(div);
+    }
+    _groupsDomBuilt = true;
+    return;
+  }
+
+  // Subsequent calls: only update changed values (no DOM rebuild)
   for (const [gid, grp] of Object.entries(groups)) {
-    const div = document.createElement('div');
-    div.className = 'data-group';
-    div.id = `group-${gid}`;
-
-    let rowsHtml = '';
     for (const [key, val] of Object.entries(grp.values)) {
-      const f = fmtVal(val);
       const prevKey = `${gid}.${key}`;
-      const changed = previousValues[prevKey] !== undefined && previousValues[prevKey] !== val;
+      if (previousValues[prevKey] === val) continue; // unchanged — skip
       previousValues[prevKey] = val;
 
-      rowsHtml += `
-        <div class="data-row">
-          <span class="dr-key" title="${key}">${prettyKey(key)}</span>
-          <span class="dr-val ${f.cls}${changed ? ' updated' : ''}">${f.text}</span>
-        </div>`;
+      const row = container.querySelector(`[data-gkey="${prevKey}"]`);
+      if (!row) continue;
+      const valEl = row.querySelector('.dr-val');
+      if (!valEl) continue;
+      const f = fmtVal(val);
+      valEl.textContent = f.text;
+      valEl.className = `dr-val ${f.cls} updated`;
     }
-
-    div.innerHTML = `
-      <div class="dg-header">
-        <span class="dg-icon">${grp.icon}</span>
-        <span class="dg-title">${grp.label}</span>
-      </div>
-      ${rowsHtml}`;
-    container.appendChild(div);
   }
 }
 
@@ -3047,12 +3074,20 @@ function initCharts() {
   }
 }
 
+// Pre-parse timestamps and sort history once (called when data arrives)
+function _prepareHistory(data) {
+  for (const p of data) {
+    if (p.ts && !p._tsMs) p._tsMs = new Date(p.ts).getTime();
+  }
+  data.sort((a, b) => (a._tsMs || 0) - (b._tsMs || 0));
+  return data;
+}
+
 function _filterHistory(history) {
   const rangeHours = parseInt(document.getElementById('chart-range').value) || 12;
   const cutoff = Date.now() - rangeHours * 3600 * 1000;
-  const filtered = history.filter(p => p.ts && new Date(p.ts).getTime() > cutoff);
-  filtered.sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  return filtered;
+  // History is already sorted by _prepareHistory — just filter
+  return history.filter(p => p._tsMs > cutoff);
 }
 
 function updateCharts(history) {
@@ -3061,53 +3096,75 @@ function updateCharts(history) {
   const filtered = _filterHistory(history);
   if (!filtered.length) return;
 
-  const ts = filtered.map(p => new Date(p.ts).getTime() / 1000);
+  const needTemp = !!charts.temp, needPow = !!charts.power, needTwin = !!charts.twin;
+  const needCu = !!charts.cuU, needFf = !!charts.ff;
+  if (!needTemp && !needPow && !needTwin && !needCu && !needFf) return;
 
-  // Main charts (Historique tab) — only if initialized
-  if (charts.temp) {
-    const tIn = filtered.map(p => p.t_in != null ? p.t_in : null);
-    const tTarget = filtered.map(p => p.t_target != null ? p.t_target : null);
-    const tExt = filtered.map(p => p.t_ext != null ? p.t_ext : null);
-    const twinTHat = filtered.map(p => p.twin_t_hat != null ? p.twin_t_hat : null);
-    const nbAbove = filtered.map(p => p.near_band_above != null && p.t_target != null ? p.t_target + p.near_band_above : null);
-    const nbBelow = filtered.map(p => p.near_band_below != null && p.t_target != null ? p.t_target - p.near_band_below : null);
-    charts.temp.setData([ts, tIn, tTarget, tExt, twinTHat, nbAbove, nbBelow]);
+  // Single-pass extraction: build all chart arrays in one loop
+  const n = filtered.length;
+  const ts = new Array(n);
+  const tIn = needTemp ? new Array(n) : null;
+  const tTarget = needTemp ? new Array(n) : null;
+  const tExt = needTemp ? new Array(n) : null;
+  const twinTHat = needTemp ? new Array(n) : null;
+  const nbAbove = needTemp ? new Array(n) : null;
+  const nbBelow = needTemp ? new Array(n) : null;
+  const uApplied = needPow ? new Array(n) : null;
+  const uFfPow = needPow ? new Array(n) : null;
+  const innovation = needTwin ? new Array(n) : null;
+  const dHat = needTwin ? new Array(n) : null;
+  const cuApp = needCu ? new Array(n) : null;
+  const cuPi = needCu ? new Array(n) : null;
+  const cuFf = needCu ? new Array(n) : null;
+  const cuCmd = needCu ? new Array(n) : null;
+  const cuP = needCu ? new Array(n) : null;
+  const cuI = needCu ? new Array(n) : null;
+  const ffRaw = needFf ? new Array(n) : null;
+  const ffAb = needFf ? new Array(n) : null;
+  const ffBase = needFf ? new Array(n) : null;
+  const ffEff = needFf ? new Array(n) : null;
+
+  for (let i = 0; i < n; i++) {
+    const p = filtered[i];
+    ts[i] = (p._tsMs || 0) / 1000;
+
+    if (needTemp) {
+      tIn[i] = p.t_in ?? null;
+      tTarget[i] = p.t_target ?? null;
+      tExt[i] = p.t_ext ?? null;
+      twinTHat[i] = p.twin_t_hat ?? null;
+      nbAbove[i] = (p.near_band_above != null && p.t_target != null) ? p.t_target + p.near_band_above : null;
+      nbBelow[i] = (p.near_band_below != null && p.t_target != null) ? p.t_target - p.near_band_below : null;
+    }
+    if (needPow) {
+      uApplied[i] = smartpiPowerPct(p.u_applied ?? p.on_percent);
+      uFfPow[i] = smartpiPowerPct(p.u_ff);
+    }
+    if (needTwin) {
+      innovation[i] = p.twin_innovation ?? null;
+      dHat[i] = p.twin_d_hat ?? null;
+    }
+    if (needCu) {
+      cuApp[i] = smartpiPowerPct(p.u_applied ?? p.on_percent);
+      cuPi[i] = smartpiPowerPct(p.u_pi);
+      cuFf[i] = smartpiPowerPct(p.u_ff);
+      cuCmd[i] = smartpiPowerPct(p.u_cmd);
+      cuP[i] = smartpiPowerPct(p.u_p);
+      cuI[i] = smartpiPowerPct(p.u_i);
+    }
+    if (needFf) {
+      ffRaw[i] = smartpiPowerPct(p.ff_raw);
+      ffAb[i] = smartpiPowerPct(p.u_ff_ab);
+      ffBase[i] = smartpiPowerPct(p.u_ff_base);
+      ffEff[i] = smartpiPowerPct(p.u_ff);
+    }
   }
 
-  if (charts.power) {
-    const uApplied = filtered.map(p => {
-      const v = p.u_applied != null ? p.u_applied : p.on_percent;
-      return smartpiPowerPct(v);
-    });
-    const uFf = filtered.map(p => smartpiPowerPct(p.u_ff));
-    charts.power.setData([ts, uApplied, uFf]);
-  }
-
-  if (charts.twin) {
-    const innovation = filtered.map(p => p.twin_innovation != null ? p.twin_innovation : null);
-    const dHat = filtered.map(p => p.twin_d_hat != null ? p.twin_d_hat : null);
-    charts.twin.setData([ts, innovation, dHat]);
-  }
-
-  // U components chart (Chaîne U tab) — independent of main charts
-  if (charts.cuU) {
-    const cuUApplied = filtered.map(p => smartpiPowerPct(p.u_applied != null ? p.u_applied : p.on_percent));
-    const cuUPi = filtered.map(p => smartpiPowerPct(p.u_pi));
-    const cuUFf = filtered.map(p => smartpiPowerPct(p.u_ff));
-    const cuUCmd = filtered.map(p => smartpiPowerPct(p.u_cmd));
-    const cuUP = filtered.map(p => smartpiPowerPct(p.u_p));
-    const cuUI = filtered.map(p => smartpiPowerPct(p.u_i));
-    charts.cuU.setData([ts, cuUApplied, cuUPi, cuUFf, cuUCmd, cuUP, cuUI]);
-  }
-
-  // FF chart (Feedforward tab)
-  if (charts.ff) {
-    const ffRaw = filtered.map(p => smartpiPowerPct(p.ff_raw));
-    const ffAb = filtered.map(p => smartpiPowerPct(p.u_ff_ab));
-    const ffBase = filtered.map(p => smartpiPowerPct(p.u_ff_base));
-    const ffEff = filtered.map(p => smartpiPowerPct(p.u_ff));
-    charts.ff.setData([ts, ffRaw, ffAb, ffBase, ffEff]);
-  }
+  if (needTemp) charts.temp.setData([ts, tIn, tTarget, tExt, twinTHat, nbAbove, nbBelow]);
+  if (needPow)  charts.power.setData([ts, uApplied, uFfPow]);
+  if (needTwin) charts.twin.setData([ts, innovation, dHat]);
+  if (needCu)   charts.cuU.setData([ts, cuApp, cuPi, cuFf, cuCmd, cuP, cuI]);
+  if (needFf)   charts.ff.setData([ts, ffRaw, ffAb, ffBase, ffEff]);
 }
 
 document.getElementById('chart-range').addEventListener('change', () => updateCharts(historyData));
@@ -3927,16 +3984,15 @@ function mhNum(v) {
 }
 
 function mhSortHistory(history) {
-  const sorted = (history || []).filter(p => p && p.ts).slice();
-  sorted.sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  return sorted;
+  // History is pre-sorted by _prepareHistory — just filter valid entries
+  return (history || []).filter(p => p && p._tsMs);
 }
 
 function mhFilterHistoryByHours(history, hours) {
   const sorted = mhSortHistory(history);
   if (!sorted.length) return sorted;
   const cutoff = Date.now() - (hours * 3600 * 1000);
-  return sorted.filter(p => new Date(p.ts).getTime() >= cutoff);
+  return sorted.filter(p => (p._tsMs || 0) >= cutoff);
 }
 
 function mhMedian(nums) {
@@ -4023,7 +4079,7 @@ function mhRegimeFromU(uNorm) {
 function mhBuildCandidateSegments(h24, cadenceSec) {
   const points = h24.map((p, i) => ({
     idx: i,
-    tsSec: new Date(p.ts).getTime() / 1000,
+    tsSec: (p._tsMs || 0) / 1000,
     regime: mhRegimeFromU(mhNormPower(p.u_applied)),
   })).filter(p => Number.isFinite(p.tsSec));
   const candidates = [];
@@ -4810,7 +4866,7 @@ function updateModelHealthDiagnostics(history) {
   const h24 = mhFilterHistoryByHours(history, MH_SLOPE_DIAG_HOURS);
 
   // Timeline apprentissage (12h) reconstructed from counter deltas.
-  const ts12 = h12.map(p => new Date(p.ts).getTime() / 1000);
+  const ts12 = h12.map(p => (p._tsMs || 0) / 1000);
   const okEvents = h12.map(() => null);
   const skipEvents = h12.map(() => null);
   const deadtimeBand = h12.map(() => null);
@@ -4953,7 +5009,7 @@ function updateModelHealthDiagnostics(history) {
   if (charts.mhB.setSeries) charts.mhB.setSeries(2, { show: hasBEma });
 
   // Pentes apprentissage (24h) — reconstruction stricte ON/OFF.
-  const ts24 = h24.map(p => new Date(p.ts).getTime() / 1000);
+  const ts24 = h24.map(p => (p._tsMs || 0) / 1000);
   const cadence24Sec = mhEstimateCadenceSec(h24);
   const dTdtOn = h24.map(() => null);
   const dTdtOff = h24.map(() => null);
@@ -6110,11 +6166,11 @@ function updateTuningChart(history) {
 
   // Use last 6 hours for tuning context
   const cutoff = Date.now() - 6 * 3600 * 1000;
-  const filtered = history.filter(p => p.ts && new Date(p.ts).getTime() > cutoff);
-  filtered.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  // History is pre-sorted by _prepareHistory — just filter
+  const filtered = history.filter(p => (p._tsMs || 0) > cutoff);
   if (filtered.length < 1) return;
 
-  const ts = filtered.map(p => new Date(p.ts).getTime() / 1000);
+  const ts = filtered.map(p => (p._tsMs || 0) / 1000);
   const fallbackSP = currentSetpointFallback();
   const tTarget = filtered.map(p => numOrNull(p.t_target) ?? fallbackSP);
   const tIn = filtered.map((p, i) => sanitizeTuneTemp(p.t_in, tTarget[i]));
@@ -6601,7 +6657,7 @@ function updatePerformance(history) {
 
   // Update error chart
   if (charts.perfErr && metrics.valid.length > 1) {
-    const ts = metrics.valid.map(p => new Date(p.ts).getTime() / 1000);
+    const ts = metrics.valid.map(p => (p._tsMs || 0) / 1000);
     charts.perfErr.setData([ts, metrics.errors]);
   }
 
@@ -7229,13 +7285,10 @@ function updateScadaTrends(history) {
   if (!scadaChartsInit || !history || !history.length) return;
   const now = Date.now();
   const cutoff = now - 30 * 60 * 1000;
-  const recent = history.filter(p => {
-    const t = new Date(p.ts).getTime();
-    return t >= cutoff && !isNaN(t);
-  });
+  const recent = history.filter(p => (p._tsMs || 0) >= cutoff);
   if (recent.length < 2) return;
 
-  const ts = recent.map(p => new Date(p.ts).getTime() / 1000);
+  const ts = recent.map(p => (p._tsMs || 0) / 1000);
 
   if (charts.scTemp) {
     charts.scTemp.setData([ts, recent.map(p => p.t_in), recent.map(p => p.t_target)]);
@@ -7282,14 +7335,17 @@ async function fetchState() {
     currentState = data;
     updateConnectionStatus(data.connected);
     updateHero(data);
-    updateGroups(data.groups);
-    updateRaw(data.raw_attributes);
-    updateDebugChain(data);
-    updateFeedforward(data);
-    updateModelHealth(data);
-    updateTuningAssistant(data);
-    updateAlerts(data);
-    updateScada(data);
+
+    // Only update the active tab to save CPU (important on Raspberry Pi)
+    const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+    if (activeTab === 'tab-data')         updateGroups(data.groups);
+    if (activeTab === 'tab-raw')          updateRaw(data.raw_attributes);
+    if (activeTab === 'tab-debug-chain')  { updateDebugChain(data); updateWaterfallChart(data.raw_attributes || {}); }
+    if (activeTab === 'tab-feedforward')  updateFeedforward(data);
+    if (activeTab === 'tab-model-health') updateModelHealth(data);
+    if (activeTab === 'tab-tuning')       updateTuningAssistant(data);
+    if (activeTab === 'tab-alerts')       updateAlerts(data);
+    if (activeTab === 'tab-scada')        updateScada(data);
 
     if (data.last_update) {
       const d = new Date(data.last_update);
@@ -7429,19 +7485,20 @@ document.querySelectorAll('.ev-filter-btn').forEach(btn => {
 async function fetchHistory() {
   try {
     const updateAllHistoryViews = () => {
+      // Always update charts (lightweight with pre-sorted data)
       updateCharts(historyData);
-      updateEvents(historyData);
-      updatePerformance(historyData);
-      updateTuningChart(historyData);
-      updateModelHealthDiagnostics(historyData);
-      updateScadaTrends(historyData);
-      if (currentState) updateTuningAssistant(currentState);
+      // Only update heavy diagnostic tabs if they are visible
+      const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+      if (activeTab === 'tab-events')       updateEvents(historyData);
+      if (activeTab === 'tab-perf')         updatePerformance(historyData);
+      if (activeTab === 'tab-tuning')       { updateTuningChart(historyData); if (currentState) updateTuningAssistant(currentState); }
+      if (activeTab === 'tab-model-health') updateModelHealthDiagnostics(historyData);
+      if (activeTab === 'tab-scada')        updateScadaTrends(historyData);
     };
     const historySpanHours = (hist) => {
       if (!hist || hist.length < 2) return 0;
-      const sorted = mhSortHistory(hist);
-      const t0 = new Date(sorted[0].ts).getTime();
-      const t1 = new Date(sorted[sorted.length - 1].ts).getTime();
+      const t0 = hist[0]._tsMs || 0;
+      const t1 = hist[hist.length - 1]._tsMs || 0;
       if (!(t1 > t0)) return 0;
       return (t1 - t0) / 3600000;
     };
@@ -7450,7 +7507,7 @@ async function fetchHistory() {
     let resp = await fetch(`/api/history?${entityParam()}`);
     let data = await resp.json();
     if (data.ok && data.count > 5) {
-      historyData = data.data;
+      historyData = _prepareHistory(data.data);
       updateAllHistoryViews();
       if (historySpanHours(historyData) >= MH_REQUIRED_HISTORY_HOURS) return;
     }
@@ -7461,7 +7518,7 @@ async function fetchHistory() {
     resp = await fetch(`/api/ha-history?${entityParam()}&hours=${hours}`);
     data = await resp.json();
     if (data.ok) {
-      historyData = data.data;
+      historyData = _prepareHistory(data.data);
       updateAllHistoryViews();
     }
   } catch (e) {
@@ -7502,6 +7559,7 @@ async function loadEntitySelector() {
     // Reset state and re-fetch
     currentState = null;
     previousValues = {};
+    _groupsDomBuilt = false;
     historyData = [];
     lastStateETag = null; // force full reload for new entity
     fetchState();
