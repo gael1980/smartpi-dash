@@ -79,6 +79,37 @@ uv run app.py
 
 Le dashboard est accessible sur `http://localhost:<FLASK_PORT>` (`5000` par défaut).
 
+## Tests
+
+Une suite complète de **133 tests pytest** couvre les transformations de données, la gestion d'état et les routes Flask.
+
+```bash
+# Lancer tous les tests
+uv run pytest tests/ -v
+
+# Tests d'un module spécifique
+uv run pytest tests/test_transforms.py -v
+uv run pytest tests/test_config.py -v
+uv run pytest tests/test_app.py -v
+
+# Test d'une classe ou fonction unique
+uv run pytest tests/test_transforms.py::TestFlattenSmartpiAttrs -v
+uv run pytest tests/test_app.py::TestApiState::test_state_returns_200_for_known_entity -v
+
+# Avec rapport de couverture (nécessite pytest-cov)
+uv run pytest tests/ --cov --cov-report=term-missing
+```
+
+### Structure des tests
+
+| Fichier | Tests | Couvre |
+|---------|-------|--------|
+| `test_transforms.py` | 79 | Aplatissement d'attributs, dérivations (ff_enabled, ff_k_ff), groupage, snapshots |
+| `test_config.py` | 21 | Validation regex entity ID, initialisation state_store, limite deque (500 points) |
+| `test_app.py` | 33 | Routes Flask, ETag caching, 304 Not Modified, headers de sécurité, validation d'entrée |
+
+**Focus sécurité :** Tests d'injection (path traversal, shell commands, header injection) sur la validation entity ID.
+
 ## Configuration (.env)
 
 | Variable | Description | Exemple |
