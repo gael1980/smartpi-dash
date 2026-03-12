@@ -69,6 +69,8 @@ def check_ha_token():
     if not HA_TOKEN:
         log.critical("HA_TOKEN is empty or not set. Set it in .env or as an environment variable.")
         raise SystemExit(1)
-    if len(HA_TOKEN) < 20:
-        log.critical("HA_TOKEN appears too short to be a valid HA token. Check .env configuration.")
+    # HA long-lived access tokens are JWTs: three base64url segments separated by dots
+    parts = HA_TOKEN.split(".")
+    if len(parts) != 3 or not all(len(p) > 0 for p in parts):
+        log.critical("HA_TOKEN does not look like a valid JWT (expected 3 dot-separated segments). Check .env configuration.")
         raise SystemExit(1)

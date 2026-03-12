@@ -3240,8 +3240,17 @@ async function loadBlockDiagram() {
       const parser = new DOMParser();
       const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
       const svgEl = svgDoc.documentElement;
-      // Sanitize: remove scripts and event handlers to prevent XSS via compromised SVG
-      svgEl.querySelectorAll('script, [onload], [onerror], [onclick], [onmouseover]').forEach(n => n.remove());
+      // Sanitize: remove scripts, all event handlers, and javascript: URIs
+      svgEl.querySelectorAll('script').forEach(n => n.remove());
+      svgEl.querySelectorAll('*').forEach(el => {
+        Array.from(el.attributes)
+          .filter(a => a.name.startsWith('on'))
+          .forEach(a => el.removeAttribute(a.name));
+        for (const attr of ['href', 'xlink:href', 'src', 'action']) {
+          const val = el.getAttribute(attr);
+          if (val && /^\s*javascript:/i.test(val)) el.removeAttribute(attr);
+        }
+      });
       const diagContainer = document.getElementById('diagram-container');
       diagContainer.innerHTML = '';
       diagContainer.appendChild(document.importNode(svgEl, true));
@@ -3961,7 +3970,7 @@ function updateModelHealth(data) {
   const acAgeClass = acAge == null ? '' : (acAge <= 24 ? 'mh-ok' : acAge <= 48 ? 'mh-warn' : 'mh-error');
   const acRetryClass = acRetry == null ? '' : (acRetry === 0 ? 'mh-ok' : acRetry <= 2 ? 'mh-warn' : 'mh-error');
   document.getElementById('mh-autocalib-container').innerHTML = `
-    <div class="mh-param-row"><span class="mh-param-key">État FSM</span><span class="mh-badge ${acStateClass}">${acState}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">État FSM</span><span class="mh-badge ${acStateClass}">${escapeHtml(acState)}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">Retry count</span><span class="mh-badge ${acRetryClass}">${acRetry != null ? acRetry : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">Snapshot age</span><span class="mh-badge ${acAgeClass}">${acAge != null ? acAge.toFixed(1) + ' h' : '—'}</span></div>`;
 
@@ -3981,8 +3990,8 @@ function updateModelHealth(data) {
     <div class="mh-param-row"><span class="mh-param-key">Innovation</span><span class="mh-param-val" style="color:${innovColor}">${innovation != null ? innovation.toFixed(3) + ' °C' : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">CUSUM</span><span class="mh-badge ${cusumClass}">${cusum != null ? cusum.toFixed(2) : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">T_steady</span><span class="mh-param-val">${tSteady != null ? tSteady.toFixed(2) + ' °C' : '—'}</span></div>
-    <div class="mh-param-row"><span class="mh-param-key">AB confidence</span><span class="mh-badge ${abConfidence === 'ab_ok' ? 'mh-ok' : abConfidence === 'ab_bad' ? 'mh-error' : 'mh-warn'}">${abConfidence || '—'}</span></div>
-    <div class="mh-param-row"><span class="mh-param-key">FF coherence</span><span class="mh-badge ${ffCoherence === 'ok' ? 'mh-ok' : ffCoherence === 'bad' ? 'mh-error' : 'mh-warn'}">${ffCoherence || '—'}</span></div>`;
+    <div class="mh-param-row"><span class="mh-param-key">AB confidence</span><span class="mh-badge ${abConfidence === 'ab_ok' ? 'mh-ok' : abConfidence === 'ab_bad' ? 'mh-error' : 'mh-warn'}">${escapeHtml(abConfidence || '—')}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">FF coherence</span><span class="mh-badge ${ffCoherence === 'ok' ? 'mh-ok' : ffCoherence === 'bad' ? 'mh-error' : 'mh-warn'}">${escapeHtml(ffCoherence || '—')}</span></div>`;
 
   // 5. Learning Progress
   const countA = a.smartpi_learn_ok_count_a || 0;

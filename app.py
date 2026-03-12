@@ -208,6 +208,7 @@ def api_ha_history():
 
 
 @app.route("/api/config")
+@limiter.exempt
 def api_config():
     """Return the dashboard configuration (groups, keys)."""
     global _config_data
@@ -226,6 +227,7 @@ def api_config():
 
 
 @app.route("/api/block-diagram")
+@limiter.exempt
 def api_block_diagram():
     """Return the SVG block diagram metadata (tooltip data)."""
     global _block_diagram_data
@@ -297,6 +299,12 @@ if __name__ == "__main__":
 
     # Start Flask
     FLASK_HOST = os.getenv("FLASK_HOST", "127.0.0.1")
+    if FLASK_HOST not in ("127.0.0.1", "localhost", "::1"):
+        log.warning(
+            "SECURITY: FLASK_HOST=%s exposes the dashboard beyond localhost. "
+            "There is no authentication — restrict network access externally.",
+            FLASK_HOST,
+        )
     app.run(
         host=FLASK_HOST,
         port=FLASK_PORT,
