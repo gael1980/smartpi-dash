@@ -171,12 +171,27 @@
   .hero-metric.eta::after { background: var(--accent-pink); }
 
   /* ─── Tab Navigation ──────────────────────────────────── */
+  .tab-bar-wrap {
+    position: relative;
+  }
+  .tab-bar-wrap::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 1px; /* 1px = border-bottom */
+    width: 56px;
+    background: linear-gradient(to right, transparent, var(--bg-panel));
+    pointer-events: none;
+    z-index: 5;
+  }
   .tab-bar {
     display: flex; gap: 0;
     border-bottom: 1px solid var(--border);
     background: var(--bg-panel);
     overflow-x: auto;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none;
   }
+  .tab-bar::-webkit-scrollbar { display: none; }
   .tab-btn {
     padding: 10px 20px;
     font-family: 'JetBrains Mono', monospace;
@@ -192,6 +207,17 @@
     color: var(--accent-cyan);
     border-bottom-color: var(--accent-cyan);
     background: rgba(6,182,212,0.05);
+  }
+
+  /* ─── Alert count badge on tab button ─────────────────── */
+  .tab-alert-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; border-radius: 9px;
+    background: var(--accent-red); color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 0 4px; margin-left: 4px;
+    vertical-align: middle; line-height: 1;
+    animation: pulse-glow 2s ease-in-out infinite;
   }
 
   /* ─── Tab Content ─────────────────────────────────────── */
@@ -477,22 +503,23 @@
   }
   .cu-full { grid-column: 1 / -1; }
 
-  .cu-card {
+  /* ─── Shared card pattern (cu / ff / mh) ──────────────── */
+  :is(.cu-card, .ff-card, .mh-card) {
     background: var(--bg-panel);
     padding: 16px 20px;
     transition: background 0.2s;
   }
-  .cu-card:hover { background: rgba(17,24,39,0.9); }
-  .cu-card-header {
+  :is(.cu-card, .ff-card, .mh-card):hover { background: rgba(17,24,39,0.9); }
+  :is(.cu-card-header, .ff-card-header, .mh-card-header) {
     display: flex; align-items: center; gap: 8px;
     margin-bottom: 12px; padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
   }
-  .cu-card-title {
+  :is(.cu-card-title, .ff-card-title, .mh-card-title) {
     font: 600 15px 'JetBrains Mono', monospace;
     color: var(--text-bright); letter-spacing: 0.5px;
   }
-  .cu-card-icon { font-size: 18px; }
+  :is(.cu-card-icon, .ff-card-icon, .mh-card-icon) { font-size: 18px; }
 
   /* Progress bar */
   .cu-power-bar { margin-bottom: 16px; }
@@ -645,23 +672,7 @@
   }
   .ff-full { grid-column: 1 / -1; }
 
-  /* Reuse cu-card pattern */
-  .ff-card {
-    background: var(--bg-panel);
-    padding: 16px 20px;
-    transition: background 0.2s;
-  }
-  .ff-card:hover { background: rgba(17,24,39,0.9); }
-  .ff-card-header {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px; padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .ff-card-title {
-    font: 600 15px 'JetBrains Mono', monospace;
-    color: var(--text-bright); letter-spacing: 0.5px;
-  }
-  .ff-card-icon { font-size: 18px; }
+  /* ff-card: shared styles via :is(.cu-card,.ff-card,.mh-card) above */
 
   /* Status bar */
   .ff-status {
@@ -837,18 +848,9 @@
     font: 500 13px 'JetBrains Mono', monospace;
     color: var(--text);
   }
-  .mh-card {
-    background: var(--bg-panel);
-    padding: 16px 20px; transition: background 0.2s;
-  }
+  /* mh-card: shared styles via :is(.cu-card,.ff-card,.mh-card) above */
   .mh-card.mh-full { grid-column: 1 / -1; }
-  .mh-card:hover { background: rgba(17,24,39,0.9); }
-  .mh-card-header {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px; padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .mh-card-icon { font-size: 18px; }
+  /* mh-card-title uses 14px vs 15px for the other cards */
   .mh-card-title {
     font: 600 14px 'JetBrains Mono', monospace;
     color: var(--text-bright); letter-spacing: 0.5px;
@@ -1588,6 +1590,7 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- TAB NAVIGATION                                                 -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tab-bar-wrap">
 <nav class="tab-bar">
   <button class="tab-btn active" data-tab="tab-data">📊 Données</button>
   <button class="tab-btn" data-tab="tab-charts">📈 Historique</button>
@@ -1597,11 +1600,12 @@
   <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
   <button class="tab-btn" data-tab="tab-tuning">🎛️ Tuning Assistant</button>
   <button class="tab-btn" data-tab="tab-events">📍 Événements</button>
-  <button class="tab-btn" data-tab="tab-alerts">🚨 Alertes</button>
+  <button class="tab-btn" data-tab="tab-alerts">🚨 Alertes <span id="tab-alerts-badge" class="tab-alert-badge" style="display:none">0</span></button>
   <button class="tab-btn" data-tab="tab-perf">🧪 Consigne vs Réalisé</button>
   <button class="tab-btn" data-tab="tab-scada">🏭 Supervision</button>
   <button class="tab-btn" data-tab="tab-raw">🗂️ Attributs bruts</button>
 </nav>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- TAB: Data Groups                                               -->
@@ -2316,6 +2320,12 @@
 // ═══════════════════════════════════════════════════════════════
 
 const POLL_INTERVAL = 3000; // ms between API polls
+let lastHistoryFetchAt = 0;
+const HISTORY_STALE_MS = 30000; // re-fetch history if > 30s old when switching tabs
+
+function maybeRefreshHistory() {
+  if (Date.now() - lastHistoryFetchAt > HISTORY_STALE_MS) fetchHistory();
+}
 const DEFAULT_ENTITY = {{ climate_entity | tojson }};
 
 let selectedEntity = localStorage.getItem('smartpi_selected_entity') || DEFAULT_ENTITY;
@@ -2441,6 +2451,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     }
     // Lazy-init Santé Modèle charts (a, b, diagnostic)
     if (btn.dataset.tab === 'tab-model-health') {
+      maybeRefreshHistory();
       setTimeout(() => {
         if (!modelHealthChartsInitialized) {
           initModelHealthCharts();
@@ -2452,6 +2463,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     }
     // Render events timeline when Events tab opens
     if (btn.dataset.tab === 'tab-events') {
+      maybeRefreshHistory();
       setTimeout(() => {
         if (historyData && historyData.length) updateEvents(historyData);
       }, 50);
@@ -2463,6 +2475,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     }
     // Lazy-init performance tab
     if (btn.dataset.tab === 'tab-perf') {
+      maybeRefreshHistory();
       setTimeout(() => {
         if (!perfChartInitialized) initPerfChart();
         else if (charts.perfErr) {
@@ -2474,6 +2487,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     }
     // Lazy-init tuning chart + render tuning assistant on demand
     if (btn.dataset.tab === 'tab-tuning') {
+      maybeRefreshHistory();
       setTimeout(() => {
         if (!charts.tuning) {
           initTuningChart();
@@ -2489,6 +2503,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     }
     // Lazy-init SCADA supervision tab
     if (btn.dataset.tab === 'tab-scada') {
+      maybeRefreshHistory();
       setTimeout(() => {
         if (!scadaSynopticBuilt) renderScadaSynoptic();
         if (!scadaChartsInit) {
@@ -3167,7 +3182,7 @@ function updateCharts(history) {
   if (needFf)   charts.ff.setData([ts, ffRaw, ffAb, ffBase, ffEff]);
 }
 
-document.getElementById('chart-range').addEventListener('change', () => updateCharts(historyData));
+document.getElementById('chart-range').addEventListener('change', () => { updateCharts(historyData); fetchHistory(); });
 
 // ─── Block Diagram (inline SVG from original) ───────────────
 const BLOCK_TIPS = {
@@ -3228,6 +3243,7 @@ async function loadBlockDiagram() {
       diagContainer.innerHTML = '';
       diagContainer.appendChild(document.importNode(svgEl, true));
       setupDiagramInteractions();
+      if (currentState) updateDiagramOverlays(currentState.raw_attributes || {});
       return;
     }
   } catch(e) {}
@@ -3292,6 +3308,51 @@ function setupDiagramInteractions() {
       }
     }
   });
+}
+
+// ─── Diagram Live Overlays ───────────────────────────────────
+// Injects live <text> values directly into SVG blocks using BLOCK_ATTRS mapping.
+function updateDiagramOverlays(attrs) {
+  const svg = document.querySelector('#diagram-container svg');
+  if (!svg) return;
+
+  const ns = 'http://www.w3.org/2000/svg';
+
+  for (const [blockKey, attrKey] of Object.entries(BLOCK_ATTRS)) {
+    const block = svg.querySelector(`.block[data-tip="${blockKey}"]`);
+    if (!block) continue;
+
+    const rect = block.querySelector('rect');
+    if (!rect) continue;
+
+    const val = attrs[attrKey];
+    const textContent = val != null ? fmtVal(val).text : null;
+
+    const elId = `blv-${blockKey}`;
+    let textEl = svg.getElementById(elId);
+
+    if (!textContent) {
+      if (textEl) textEl.remove();
+      continue;
+    }
+
+    if (!textEl) {
+      textEl = document.createElementNS(ns, 'text');
+      textEl.setAttribute('id', elId);
+      textEl.setAttribute('class', 'block-live-val');
+      textEl.setAttribute('text-anchor', 'middle');
+      textEl.setAttribute('pointer-events', 'none');
+      block.appendChild(textEl);
+    }
+
+    const rx = parseFloat(rect.getAttribute('x') || 0);
+    const ry = parseFloat(rect.getAttribute('y') || 0);
+    const rw = parseFloat(rect.getAttribute('width') || 60);
+    const rh = parseFloat(rect.getAttribute('height') || 30);
+    textEl.setAttribute('x', rx + rw / 2);
+    textEl.setAttribute('y', ry + rh - 4);
+    textEl.textContent = textContent;
+  }
 }
 
 // ─── Debug Chain U ───────────────────────────────────────────
@@ -6446,6 +6507,17 @@ function renderAlerts(alerts) {
 
   countEl.textContent = alerts.length;
 
+  // Tab button badge (always visible regardless of active tab)
+  const tabBadge = document.getElementById('tab-alerts-badge');
+  if (tabBadge) {
+    if (alerts.length > 0) {
+      tabBadge.textContent = alerts.length;
+      tabBadge.style.display = '';
+    } else {
+      tabBadge.style.display = 'none';
+    }
+  }
+
   // Summary dots
   const errors = alerts.filter(a => a.severity === 'error').length;
   const warnings = alerts.filter(a => a.severity === 'warning').length;
@@ -7345,6 +7417,7 @@ async function fetchState() {
     if (activeTab === 'tab-model-health') updateModelHealth(data);
     if (activeTab === 'tab-tuning')       updateTuningAssistant(data);
     if (activeTab === 'tab-alerts')       updateAlerts(data);
+    if (activeTab === 'tab-diagram')      updateDiagramOverlays(data.raw_attributes || {});
     if (activeTab === 'tab-scada')        updateScada(data);
 
     if (data.last_update) {
@@ -7445,22 +7518,42 @@ function renderEvents() {
     return;
   }
 
-  // Render most recent first
+  // Render most recent first — use DocumentFragment to avoid full innerHTML churn
   const typeLabels = { ...Object.fromEntries(Object.entries(EV_TYPES).map(([k, v]) => [k, v.label])), saturation: 'Saturation' };
-  let html = '';
+  const frag = document.createDocumentFragment();
   for (let i = filtered.length - 1; i >= 0; i--) {
     const e = filtered[i];
-    html += `<div class="ev-item" data-type="${escapeHtml(e.type)}">`;
-    html += `  <span class="ev-time">${escapeHtml(fmtEvTime(e.ts))}</span>`;
-    html += `  <span class="ev-badge" data-type="${escapeHtml(e.type)}">${escapeHtml(typeLabels[e.type] || e.type)}</span>`;
-    html += `  <span class="ev-desc">`;
-    html += `    <span class="ev-val-old">${escapeHtml(e.prev)}</span>`;
-    html += `    <span class="ev-arrow">→</span>`;
-    html += `    <span class="ev-val-new">${escapeHtml(e.value)}</span>`;
-    html += `  </span>`;
-    html += `</div>`;
+    const item = document.createElement('div');
+    item.className = 'ev-item';
+    item.dataset.type = e.type;
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'ev-time';
+    timeEl.textContent = fmtEvTime(e.ts);
+
+    const badgeEl = document.createElement('span');
+    badgeEl.className = 'ev-badge';
+    badgeEl.dataset.type = e.type;
+    badgeEl.textContent = typeLabels[e.type] || e.type;
+
+    const descEl = document.createElement('span');
+    descEl.className = 'ev-desc';
+    const oldEl = document.createElement('span');
+    oldEl.className = 'ev-val-old';
+    oldEl.textContent = e.prev;
+    const arrowEl = document.createElement('span');
+    arrowEl.className = 'ev-arrow';
+    arrowEl.textContent = '→';
+    const newEl = document.createElement('span');
+    newEl.className = 'ev-val-new';
+    newEl.textContent = e.value;
+    descEl.append(oldEl, arrowEl, newEl);
+
+    item.append(timeEl, badgeEl, descEl);
+    frag.appendChild(item);
   }
-  container.innerHTML = html;
+  container.textContent = '';
+  container.appendChild(frag);
 }
 
 function updateEvents(history) {
@@ -7521,6 +7614,7 @@ async function fetchHistory() {
       historyData = _prepareHistory(data.data);
       updateAllHistoryViews();
     }
+    lastHistoryFetchAt = Date.now();
   } catch (e) {
     console.error('Fetch history error:', e);
   }
