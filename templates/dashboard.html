@@ -2430,8 +2430,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           }
         }
         if (historyData && historyData.length) updateCharts(historyData);
-        // Re-render waterfall with current data
-        if (currentState) updateWaterfallChart(currentState.raw_attributes || {});
+        // Re-render waterfall and chain data with current state
+        if (currentState) {
+          updateDebugChain(currentState);
+          updateWaterfallChart(currentState.raw_attributes || {});
+        }
       }, 50);
     }
     // Lazy-init FF chart when Feedforward tab opens
