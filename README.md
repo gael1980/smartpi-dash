@@ -82,6 +82,9 @@ Le dashboard est accessible sur `http://localhost:<FLASK_PORT>` (`5000` par déf
 
 Une suite complète de **133 tests pytest** couvre les transformations de données, la gestion d'état et les routes Flask.
 
+Utiliser le venv du projet via `uv` pour lancer les tests. La commande de référence est `uv run pytest -v`.
+Un `pytest` global peut utiliser un autre interpréteur Python et manquer des dépendances du projet.
+
 ```bash
 # Lancer tous les tests
 uv run pytest tests/ -v
