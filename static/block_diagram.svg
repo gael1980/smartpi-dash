@@ -242,10 +242,10 @@
 <!-- ====================================================================== -->
 <g class="block" data-tip="feedforward">
   <rect x="540" y="410" width="130" height="64" rx="6" fill="#141b2d" stroke="#00d4aa" stroke-width="1.5" filter="url(#bs)"/>
-  <text x="605" y="430" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#e8f0fe" font-weight="500">Feedforward FFv2</text>
-  <text x="605" y="444" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#00d4aa">ff_raw → u_ff_ab → u_ff_base</text>
-  <text x="605" y="457" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">trim + taper → u_ff_eff</text>
-  <text x="605" y="468" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">AB conf. · hold · coherence</text>
+  <text x="605" y="430" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#e8f0fe" font-weight="500">Feedforward FF2 + FF3</text>
+  <text x="605" y="444" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#00d4aa">ff_raw → u_ff1 → u_ff2 → u_ff_final</text>
+  <text x="605" y="457" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">+ u_ff3 prédictif → u_ff_eff</text>
+  <text x="605" y="468" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#6b7d99">AB conf. · hold · coherence · twin</text>
 </g>
 <!-- T_ext → FF -->
 <circle cx="1290" cy="166" r="3" fill="#00d4aa"/>

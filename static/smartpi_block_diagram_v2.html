@@ -65,14 +65,14 @@
 
 <div class="header">
   <h1>SmartPI — Boucle de Régulation Complète</h1>
-  <span class="version">v2.1 — FOPDT + IMC + Dual-Track</span>
+  <span class="version">v3.0 — FOPDT + Dual-Track + FF3</span>
   <span class="subtitle">Versatile Thermostat · Home Assistant</span>
 </div>
 
 <div class="legend-bar">
   <div class="legend-item"><div class="legend-line main"></div>Commande principale</div>
   <div class="legend-item"><div class="legend-line feedback"></div>Retour mesure</div>
-  <div class="legend-item"><div class="legend-line ff"></div>Feedforward FFv2</div>
+  <div class="legend-item"><div class="legend-line ff"></div>Feedforward FF2 + FF3</div>
   <div class="legend-item"><div class="legend-line learn"></div>Apprentissage</div>
   <div class="legend-item"><div class="legend-line bump"></div>Bumpless transfers</div>
   <div class="legend-item"><div class="legend-line diag"></div>Diagnostics (twin)</div>
@@ -325,10 +325,10 @@
 <!-- ====================================================================== -->
 <g class="block" data-tip="feedforward">
   <rect x="540" y="410" width="130" height="64" rx="6" fill="var(--bg-block)" stroke="var(--accent-cyan)" stroke-width="1.5" filter="url(#bs)"/>
-  <text x="605" y="430" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">Feedforward FFv2</text>
-  <text x="605" y="444" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-cyan)">ff_raw → u_ff_ab → u_ff_base</text>
-  <text x="605" y="457" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">trim + taper → u_ff_eff</text>
-  <text x="605" y="468" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">AB conf. · hold · coherence</text>
+  <text x="605" y="430" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-bright)" font-weight="500">Feedforward FF2 + FF3</text>
+  <text x="605" y="444" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--accent-cyan)">ff_raw → u_ff1 → u_ff2 → u_ff_final</text>
+  <text x="605" y="457" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">+ u_ff3 prédictif → u_ff_eff</text>
+  <text x="605" y="468" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="var(--text-dim)">AB conf. · hold · coherence · twin</text>
 </g>
 <!-- T_ext → FF -->
 <circle cx="1290" cy="166" r="3" fill="var(--signal-ff)"/>
@@ -525,7 +525,7 @@
 
 <div class="footer">
   <span>dT/dt = a·u(t−L) − b·(T − T_ext) + d(t)  |  τ = 1/b  |  IMC: Kp = 1/(2a·L/60), Ki = Kp/τ</span>
-  <span>SmartPI v2 · Versatile Thermostat · Home Assistant · Fév. 2026</span>
+  <span>SmartPI v3 · Versatile Thermostat · Home Assistant · Mars 2026</span>
 </div>
 
 <div id="tooltip" class="tooltip"></div>
@@ -562,7 +562,7 @@ const tips = {
   },
   summer_pi: {
     title: 'Σ — Sommation PI + FF',
-    text: 'La commande runtime additionne la voie PI et le feedforward effectif FFv2. Puis gouvernance, rate limit et timing agissent sur u_cmd/u_applied.',
+    text: 'La commande runtime additionne la voie PI et le feedforward effectif après FF2 + FF3. Puis gouvernance, rate limit et timing agissent sur u_cmd/u_applied.',
     eq: 'u_cmd = clamp(u_pi + u_ff_eff, 0, 1)',
   },
   governance: {
@@ -597,9 +597,9 @@ const tips = {
     text: 'Température extérieure. Utilisée par le feedforward et le modèle thermique. Politique hold_last si indisponible. Si None → Governance regime DEGRADED.',
   },
   feedforward: {
-    title: 'Feedforward FFv2 — Compensation pertes (feedforward.py)',
-    text: 'Chaîne FFv2 complète :\n• ff_raw / u_ff_ab : principal issu de a,b ou fallback AB\n• u_ff_trim : correction lente bornée\n• u_ff_base = clamp(u_ff_ab + u_ff_trim)\n• u_ff_eff = taper(u_ff_base)\n\nLe hold estimator apprend u_hold_emp, ABConfidence décide d\'un fallback, et FFCoherence surveille l\'écart durable entre u_hold_emp et u_ff_ab. La sortie runtime de référence est u_ff_eff.',
-    eq: 'u_ff_eff = taper(clamp(u_ff_ab + u_ff_trim))\nu_ff_ab = clamp(K_ff·(SP−T_ext), 0, 1) · warmup_scale',
+    title: 'Feedforward FF2 + FF3 — Compensation pertes (feedforward.py)',
+    text: 'Chaîne FF actuelle :\n• ff_raw / u_ff1 : branche structurelle issue de a,b ou fallback AB\n• u_ff2 : correction lente de biais\n• u_ff_final = clamp(u_ff1 + u_ff2)\n• u_ff3 : correction prédictive courte basée sur le twin\n• u_ff_eff = clamp(u_ff_final + u_ff3)\n\nLe hold estimator apprend u_hold_emp, ABConfidence arbitre les fallbacks, FFCoherence surveille la dérive, et FF3 n\'est activé que si le twin est exploitable.',
+    eq: 'u_ff_eff = clamp(u_ff_final + u_ff3)\nu_ff_final = clamp(u_ff1 + u_ff2)',
   },
   antiwindup: {
     title: 'Anti-Windup — Tracking + Cascade (controller.py)',

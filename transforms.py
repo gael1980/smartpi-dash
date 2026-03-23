@@ -42,6 +42,13 @@ SMARTPI_GROUPS = {
             "smartpi_learn_diag_a_mad_over_med", "smartpi_learn_diag_b_mad_over_med",
             "smartpi_learn_diag_ab_bootstrap",
             "smartpi_learn_diag_ab_points", "smartpi_learn_diag_ab_mode_effective",
+            "smartpi_bootstrap_progress", "smartpi_bootstrap_state",
+            "smartpi_a_drift_state", "smartpi_b_drift_state",
+            "smartpi_a_drift_buffer_count", "smartpi_b_drift_buffer_count",
+            "smartpi_a_drift_last_reason", "smartpi_b_drift_last_reason",
+            "smartpi_t_int_raw", "smartpi_t_int_lp", "smartpi_t_int_clean",
+            "smartpi_sigma_t_int", "smartpi_adaptive_tint_update",
+            "smartpi_adaptive_tint_hold_duration_s",
         ],
     },
     "twin": {
@@ -56,6 +63,16 @@ SMARTPI_GROUPS = {
             "smartpi_twin_model_reliable", "smartpi_twin_perturbation_dtdt",
             "smartpi_twin_external_gain", "smartpi_twin_external_loss",
             "smartpi_twin_setpoint_reachable", "smartpi_twin_emitter_saturated",
+            "smartpi_twin_status", "smartpi_twin_t_steady_reliable",
+            "smartpi_twin_t_steady_max", "smartpi_twin_t_steady_immediate",
+            "smartpi_twin_t_steady_passive", "smartpi_twin_setpoint_reachable_max",
+            "smartpi_twin_cooling_model_available", "smartpi_twin_d_hat_fresh",
+            "smartpi_twin_warming_up", "smartpi_twin_u_eff",
+            "smartpi_twin_deadtime_s", "smartpi_twin_dead_steps",
+            "smartpi_twin_t_hat_error", "smartpi_twin_rmse_pure",
+            "smartpi_twin_innovation_bias", "smartpi_twin_bias_warning",
+            "smartpi_twin_auto_reset_triggered", "smartpi_twin_reset_count",
+            "smartpi_twin_eta_u",
         ],
     },
     "governance": {
@@ -74,12 +91,16 @@ SMARTPI_GROUPS = {
         ],
     },
     "feedforward": {
-        "label": "Feedforward FFv2",
+        "label": "Feedforward & FF3",
         "icon": "🎯",
         "keys": [
             "smartpi_ff_enabled", "smartpi_ff_k_ff",
             "smartpi_ff_u_ff", "smartpi_ff_raw",
             "smartpi_ff_u_ff_ab", "smartpi_ff_u_ff_base", "smartpi_ff_u_ff_trim",
+            "smartpi_u_ff1", "smartpi_u_ff2", "smartpi_u_ff_final",
+            "smartpi_u_ff3", "smartpi_u_db_nominal", "smartpi_u_hold",
+            "smartpi_ff_delta_hold", "smartpi_ff2_authority",
+            "smartpi_ff2_frozen", "smartpi_ff2_freeze_reason",
             "smartpi_ff_hold_emp", "smartpi_ff_hold_meas", "smartpi_ff_hold_confidence",
             "smartpi_ff_ab_confidence_state", "smartpi_ff_coherence_state",
             "smartpi_ff_coherence_error", "smartpi_ff_taper_alpha",
@@ -87,6 +108,10 @@ SMARTPI_GROUPS = {
             "smartpi_ff_bumpless_requested_delta", "smartpi_ff_bumpless_applied_delta",
             "smartpi_ff_bumpless_clamped", "smartpi_ff_warmup", "smartpi_ff_warmup_ok_count",
             "smartpi_ff_gate", "smartpi_ff_scale", "smartpi_ff_scale_unreliable_max",
+            "smartpi_ff3_enabled", "smartpi_ff3_reason_disabled",
+            "smartpi_ff3_candidate_scores", "smartpi_ff3_selected_candidate",
+            "smartpi_ff3_horizon_cycles", "smartpi_ff3_twin_usable",
+            "smartpi_deadband_power_source",
         ],
     },
     "calibration": {
@@ -105,12 +130,15 @@ SMARTPI_GROUPS = {
         ],
     },
     "setpoint_filter": {
-        "label": "Filtre de Consigne",
+        "label": "Consigne & Servo",
         "icon": "📐",
         "keys": [
             "smartpi_sp_brut", "smartpi_sp_for_p",
             "smartpi_filter_mode", "smartpi_filter_tau_f",
             "smartpi_setpoint_boost_active",
+            "smartpi_setpoint_servo_active", "smartpi_setpoint_servo_phase",
+            "smartpi_setpoint_servo_step_amplitude",
+            "smartpi_setpoint_servo_landing_zone",
         ],
     },
     "cycle": {
@@ -120,6 +148,7 @@ SMARTPI_GROUPS = {
             "smartpi_cycle_min", "smartpi_cycle_state",
             "smartpi_min_on_s", "smartpi_min_off_s",
             "smartpi_rate_limit", "smartpi_hysteresis_state",
+            "smartpi_calculated_on_percent", "smartpi_committed_on_percent",
         ],
     },
 }
@@ -146,6 +175,7 @@ _SMARTPI_MAPPING = {
     "Kp": "smartpi_kp",
     "Ki": "smartpi_ki",
     "error_p": "smartpi_error_p",
+    "error": "smartpi_error",
     "integral_error": "smartpi_error_i",
     "error_filtered": "smartpi_error_filtered",
     "u_pi": "smartpi_u_pi",
@@ -153,8 +183,10 @@ _SMARTPI_MAPPING = {
     "u_applied": "smartpi_u_applied",
     "u_limited": "smartpi_u_limited",
     "u_ff": "smartpi_u_ff",
+    "u_ff_eff": "smartpi_ff_u_ff",
     "u_p": "smartpi_u_p",
     "u_i": "smartpi_u_i",
+    "u_hold": "smartpi_u_hold",
     "aw_du": "smartpi_aw_du",
     "on_percent": "smartpi_on_percent",
     # We also keep the top-level target from filtered_setpoint
@@ -211,6 +243,14 @@ _SMARTPI_MAPPING = {
     "learn_u_cv": "smartpi_learn_u_cv",
     "learn_u_std": "smartpi_learn_u_std",
     "learn_time_remaining": "smartpi_learn_time_remaining",
+    "bootstrap_progress": "smartpi_bootstrap_progress",
+    "bootstrap_state": "smartpi_bootstrap_state",
+    "a_drift_state": "smartpi_a_drift_state",
+    "b_drift_state": "smartpi_b_drift_state",
+    "a_drift_buffer_count": "smartpi_a_drift_buffer_count",
+    "b_drift_buffer_count": "smartpi_b_drift_buffer_count",
+    "a_drift_last_reason": "smartpi_a_drift_last_reason",
+    "b_drift_last_reason": "smartpi_b_drift_last_reason",
     # Governance
     "governance_regime": "smartpi_regime",
     "phase": "smartpi_phase",
@@ -239,6 +279,15 @@ _SMARTPI_MAPPING = {
     "u_ff_trim": "smartpi_ff_u_ff_trim",
     "u_ff_base": "smartpi_ff_u_ff_base",
     "u_ff_eff": "smartpi_ff_u_ff",
+    "u_ff1": "smartpi_u_ff1",
+    "u_ff2": "smartpi_u_ff2",
+    "u_ff_final": "smartpi_u_ff_final",
+    "u_ff3": "smartpi_u_ff3",
+    "u_db_nominal": "smartpi_u_db_nominal",
+    "delta_hold": "smartpi_ff_delta_hold",
+    "ff2_authority": "smartpi_ff2_authority",
+    "ff2_frozen": "smartpi_ff2_frozen",
+    "ff2_freeze_reason": "smartpi_ff2_freeze_reason",
     "ff_taper_alpha": "smartpi_ff_taper_alpha",
     "u_hold_emp": "smartpi_ff_hold_emp",
     "u_hold_meas": "smartpi_ff_hold_meas",
@@ -251,6 +300,13 @@ _SMARTPI_MAPPING = {
     "bumpless_requested_delta": "smartpi_ff_bumpless_requested_delta",
     "bumpless_applied_delta": "smartpi_ff_bumpless_applied_delta",
     "bumpless_clamped": "smartpi_ff_bumpless_clamped",
+    "ff3_enabled": "smartpi_ff3_enabled",
+    "ff3_reason_disabled": "smartpi_ff3_reason_disabled",
+    "ff3_candidate_scores": "smartpi_ff3_candidate_scores",
+    "ff3_selected_candidate": "smartpi_ff3_selected_candidate",
+    "ff3_horizon_cycles": "smartpi_ff3_horizon_cycles",
+    "ff3_twin_usable": "smartpi_ff3_twin_usable",
+    "deadband_power_source": "smartpi_deadband_power_source",
     # Note: ff_enabled is derived from ff_reason != "ff_none"
     # Calibration
     "calibration_state": "smartpi_calibration_state",
@@ -269,6 +325,10 @@ _SMARTPI_MAPPING = {
     "regulation_mode": "smartpi_filter_mode",
     "setpoint_boost_active": "smartpi_setpoint_boost_active",
     "boost_active": "smartpi_setpoint_boost_active",
+    "setpoint_servo_active": "smartpi_setpoint_servo_active",
+    "setpoint_servo_phase": "smartpi_setpoint_servo_phase",
+    "setpoint_servo_step_amplitude": "smartpi_setpoint_servo_step_amplitude",
+    "setpoint_servo_landing_zone": "smartpi_setpoint_servo_landing_zone",
     "kp_near_factor": "smartpi_kp_near_factor",
     "ki_near_factor": "smartpi_ki_near_factor",
     "sign_flip_leak": "smartpi_sign_flip_leak",
@@ -279,6 +339,17 @@ _SMARTPI_MAPPING = {
     "sat": "smartpi_cycle_state",
     "forced_by_timing": "smartpi_rate_limit",
     "hysteresis_state": "smartpi_hysteresis_state",
+    "calculated_on_percent": "smartpi_calculated_on_percent",
+    "committed_on_percent": "smartpi_committed_on_percent",
+    # Sensor filtering
+    "t_int_raw": "smartpi_t_int_raw",
+    "t_int_lp": "smartpi_t_int_lp",
+    "t_int_clean": "smartpi_t_int_clean",
+    "sigma_t_int": "smartpi_sigma_t_int",
+    "adaptive_tint_update": "smartpi_adaptive_tint_update",
+    "adaptive_tint_hold_duration_s": "smartpi_adaptive_tint_hold_duration_s",
+    # Twin
+    "twin_status": "smartpi_twin_status",
 }
 
 _PRED_MAPPING = {
@@ -296,7 +367,26 @@ _PRED_MAPPING = {
     "twin_external_loss": "smartpi_twin_external_loss",
     "twin_setpoint_reachable": "smartpi_twin_setpoint_reachable",
     "twin_emitter_saturated": "smartpi_twin_emitter_saturated",
+    "twin_T_steady_reliable": "smartpi_twin_t_steady_reliable",
+    "twin_T_steady_max": "smartpi_twin_t_steady_max",
+    "twin_T_steady_immediate": "smartpi_twin_t_steady_immediate",
+    "twin_T_steady_passive": "smartpi_twin_t_steady_passive",
+    "twin_setpoint_reachable_max": "smartpi_twin_setpoint_reachable_max",
+    "twin_cooling_model_available": "smartpi_twin_cooling_model_available",
+    "twin_d_hat_fresh": "smartpi_twin_d_hat_fresh",
+    "twin_warming_up": "smartpi_twin_warming_up",
+    "twin_u_eff": "smartpi_twin_u_eff",
+    "twin_deadtime_s": "smartpi_twin_deadtime_s",
+    "twin_dead_steps": "smartpi_twin_dead_steps",
+    "twin_T_hat_error": "smartpi_twin_t_hat_error",
+    "twin_rmse_pure": "smartpi_twin_rmse_pure",
+    "twin_innovation_bias": "smartpi_twin_innovation_bias",
+    "twin_bias_warning": "smartpi_twin_bias_warning",
+    "twin_auto_reset_triggered": "smartpi_twin_auto_reset_triggered",
+    "twin_reset_count": "smartpi_twin_reset_count",
+    "eta_u": "smartpi_twin_eta_u",
     "eta_reason": "smartpi_twin_eta_reason",
+    "eta_s": "smartpi_twin_eta_s",
 }
 
 
@@ -350,9 +440,10 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     if a_val and b_val and a_val != 0:
         flat["smartpi_ff_k_ff"] = b_val / a_val
 
-    # sp_brut from top-level temperature
-    if "temperature" in raw_attrs:
-        flat["smartpi_sp_brut"] = raw_attrs["temperature"]
+    # sp_brut from top-level target setpoint
+    sp_brut = _first_not_none(raw_attrs.get("temperature"), raw_attrs.get("target_temperature"))
+    if sp_brut is not None:
+        flat["smartpi_sp_brut"] = sp_brut
 
     # Pred / twin data is nested one more level
     pred = spi.get("pred", {})
@@ -383,6 +474,26 @@ def flatten_smartpi_attrs(raw_attrs: dict) -> dict:
     if _resolved_u_ff is not None:
         flat["smartpi_ff_u_ff"] = _resolved_u_ff
         flat["smartpi_u_ff"] = _resolved_u_ff
+
+    # FF chain compatibility aliases for older dashboard code.
+    if flat.get("smartpi_ff_u_ff_ab") is None and flat.get("smartpi_u_ff1") is not None:
+        flat["smartpi_ff_u_ff_ab"] = flat["smartpi_u_ff1"]
+    if flat.get("smartpi_ff_u_ff_trim") is None and flat.get("smartpi_u_ff2") is not None:
+        flat["smartpi_ff_u_ff_trim"] = flat["smartpi_u_ff2"]
+    if flat.get("smartpi_ff_u_ff_base") is None and flat.get("smartpi_u_ff1") is not None:
+        flat["smartpi_ff_u_ff_base"] = flat["smartpi_u_ff1"]
+    if flat.get("smartpi_ff_raw") is None and flat.get("smartpi_u_ff1") is not None:
+        flat["smartpi_ff_raw"] = flat["smartpi_u_ff1"]
+
+    # Power aliases: keep a top-level on_percent for existing charts/widgets.
+    resolved_on_percent = _first_not_none(
+        flat.get("on_percent"),
+        flat.get("smartpi_on_percent"),
+        flat.get("smartpi_committed_on_percent"),
+        flat.get("smartpi_calculated_on_percent"),
+    )
+    if resolved_on_percent is not None:
+        flat["on_percent"] = resolved_on_percent
 
     # Also bring target_temperature to top level if missing
     if flat.get("target_temperature") is None:
@@ -498,12 +609,29 @@ def snapshot_for_history(attrs: dict) -> dict:
         ),
         "t_ext": _first_not_none(attrs.get("smartpi_t_ext"), attrs.get("current_external_temperature")),
         "on_percent": attrs.get("on_percent"),
+        "calculated_on_percent": attrs.get("smartpi_calculated_on_percent"),
+        "committed_on_percent": attrs.get("smartpi_committed_on_percent"),
         "u_applied": attrs.get("smartpi_u_applied"),
         "u_ff": _first_not_none(attrs.get("smartpi_ff_u_ff"), attrs.get("smartpi_u_ff")),
         "ff_raw": attrs.get("smartpi_ff_raw"),
+        "u_ff1": _first_not_none(attrs.get("smartpi_u_ff1"), attrs.get("smartpi_ff_u_ff_ab")),
+        "u_ff2": _first_not_none(attrs.get("smartpi_u_ff2"), attrs.get("smartpi_ff_u_ff_trim")),
+        "u_ff_final": attrs.get("smartpi_u_ff_final"),
+        "u_ff3": attrs.get("smartpi_u_ff3"),
+        "u_db_nominal": attrs.get("smartpi_u_db_nominal"),
+        "u_hold": attrs.get("smartpi_u_hold"),
         "u_ff_ab": attrs.get("smartpi_ff_u_ff_ab"),
         "u_ff_base": attrs.get("smartpi_ff_u_ff_base"),
         "u_ff_trim": attrs.get("smartpi_ff_u_ff_trim"),
+        "delta_hold": attrs.get("smartpi_ff_delta_hold"),
+        "ff2_authority": attrs.get("smartpi_ff2_authority"),
+        "ff2_frozen": attrs.get("smartpi_ff2_frozen"),
+        "ff2_freeze_reason": attrs.get("smartpi_ff2_freeze_reason"),
+        "ff3_enabled": attrs.get("smartpi_ff3_enabled"),
+        "ff3_reason_disabled": attrs.get("smartpi_ff3_reason_disabled"),
+        "ff3_selected_candidate": attrs.get("smartpi_ff3_selected_candidate"),
+        "ff3_horizon_cycles": attrs.get("smartpi_ff3_horizon_cycles"),
+        "ff3_twin_usable": attrs.get("smartpi_ff3_twin_usable"),
         "u_hold_emp": attrs.get("smartpi_ff_hold_emp"),
         "u_hold_meas": attrs.get("smartpi_ff_hold_meas"),
         "u_pi": attrs.get("smartpi_u_pi"),
@@ -516,12 +644,21 @@ def snapshot_for_history(attrs: dict) -> dict:
         "twin_innovation": attrs.get("smartpi_twin_innovation"),
         "twin_d_hat": attrs.get("smartpi_twin_d_hat_ema"),
         "twin_eta_s": attrs.get("smartpi_twin_eta_s"),
+        "twin_eta_u": attrs.get("smartpi_twin_eta_u"),
         "twin_rmse": attrs.get("smartpi_twin_rmse"),
+        "twin_status": attrs.get("smartpi_twin_status"),
         "twin_cusum": _first_not_none(attrs.get("smartpi_twin_cusum"), attrs.get("smartpi_twin_cusum_pos")),
         "twin_cusum_pos": attrs.get("smartpi_twin_cusum_pos"),
         "twin_cusum_neg": attrs.get("smartpi_twin_cusum_neg"),
         "twin_model_reliable": attrs.get("smartpi_twin_model_reliable"),
+        "twin_t_steady": attrs.get("smartpi_twin_t_steady"),
+        "twin_t_steady_reliable": attrs.get("smartpi_twin_t_steady_reliable"),
+        "twin_t_steady_max": attrs.get("smartpi_twin_t_steady_max"),
+        "twin_setpoint_reachable_max": attrs.get("smartpi_twin_setpoint_reachable_max"),
+        "twin_bias_warning": attrs.get("smartpi_twin_bias_warning"),
+        "twin_reset_count": attrs.get("smartpi_twin_reset_count"),
         "error_p": attrs.get("smartpi_error_p"),
+        "error": _first_not_none(attrs.get("smartpi_error"), attrs.get("smartpi_error_p")),
         "error_filtered": attrs.get("smartpi_error_filtered"),
         "kp": attrs.get("smartpi_kp"),
         "ki": attrs.get("smartpi_ki"),
@@ -538,6 +675,7 @@ def snapshot_for_history(attrs: dict) -> dict:
         "near_band_below": attrs.get("smartpi_near_band_below_deg"),
         "near_band_source": attrs.get("smartpi_near_band_source"),
         "in_deadband": attrs.get("smartpi_in_deadband"),
+        "deadband_power_source": attrs.get("smartpi_deadband_power_source"),
         "ff_gate": attrs.get("smartpi_ff_gate"),
         "ff_scale": attrs.get("smartpi_ff_scale"),
         "ff_k_ff": attrs.get("smartpi_ff_k_ff"),
@@ -561,6 +699,8 @@ def snapshot_for_history(attrs: dict) -> dict:
         "learn_ok_count": attrs.get("smartpi_learn_ok_count"),
         "learn_skip_count": attrs.get("smartpi_learn_skip_count"),
         "learn_progress_percent": attrs.get("smartpi_learn_progress_percent"),
+        "bootstrap_progress": attrs.get("smartpi_bootstrap_progress"),
+        "bootstrap_state": attrs.get("smartpi_bootstrap_state"),
         "learn_u_avg": attrs.get("smartpi_learn_u_avg"),
         "learn_u_cv": attrs.get("smartpi_learn_u_cv"),
         "learn_u_std": attrs.get("smartpi_learn_u_std"),
@@ -571,6 +711,12 @@ def snapshot_for_history(attrs: dict) -> dict:
         "deadtime_skip_count_b": attrs.get("smartpi_deadtime_skip_count_b"),
         "learn_ok_count_a": attrs.get("smartpi_learn_ok_count_a"),
         "learn_ok_count_b": attrs.get("smartpi_learn_ok_count_b"),
+        "a_drift_state": attrs.get("smartpi_a_drift_state"),
+        "b_drift_state": attrs.get("smartpi_b_drift_state"),
+        "a_drift_buffer_count": attrs.get("smartpi_a_drift_buffer_count"),
+        "b_drift_buffer_count": attrs.get("smartpi_b_drift_buffer_count"),
+        "a_drift_last_reason": attrs.get("smartpi_a_drift_last_reason"),
+        "b_drift_last_reason": attrs.get("smartpi_b_drift_last_reason"),
         "autocalib_state": attrs.get("smartpi_autocalib_state"),
         "autocalib_waiting_reason": attrs.get("smartpi_autocalib_waiting_reason"),
         "autocalib_model_degraded": attrs.get("smartpi_autocalib_model_degraded"),
@@ -585,4 +731,14 @@ def snapshot_for_history(attrs: dict) -> dict:
         "governance_diag_code": attrs.get("smartpi_governance_diag_code"),
         "freeze_reason_gains": attrs.get("smartpi_governance_freeze_reason_gains"),
         "freeze_reason_thermal": attrs.get("smartpi_governance_freeze_reason_thermal"),
+        "setpoint_servo_active": attrs.get("smartpi_setpoint_servo_active"),
+        "setpoint_servo_phase": attrs.get("smartpi_setpoint_servo_phase"),
+        "setpoint_servo_step_amplitude": attrs.get("smartpi_setpoint_servo_step_amplitude"),
+        "setpoint_servo_landing_zone": attrs.get("smartpi_setpoint_servo_landing_zone"),
+        "t_int_raw": attrs.get("smartpi_t_int_raw"),
+        "t_int_lp": attrs.get("smartpi_t_int_lp"),
+        "t_int_clean": attrs.get("smartpi_t_int_clean"),
+        "sigma_t_int": attrs.get("smartpi_sigma_t_int"),
+        "adaptive_tint_update": attrs.get("smartpi_adaptive_tint_update"),
+        "adaptive_tint_hold_duration_s": attrs.get("smartpi_adaptive_tint_hold_duration_s"),
     }

@@ -157,7 +157,33 @@ class TestFlattenSmartpiAttrs:
     def test_u_ff_alias_sync(self):
         """smartpi_ff_u_ff and smartpi_u_ff should point to the same value."""
         result = flatten_smartpi_attrs(MINIMAL_HA_ATTRS)
+        assert result.get("smartpi_ff_u_ff") == 0.05
         assert result.get("smartpi_ff_u_ff") == result.get("smartpi_u_ff")
+
+    def test_ff_chain_compatibility_aliases_from_v3_fields(self):
+        result = flatten_smartpi_attrs(MINIMAL_HA_ATTRS)
+        assert result["smartpi_u_ff1"] == 0.18
+        assert result["smartpi_u_ff2"] == 0.04
+        assert result["smartpi_ff_u_ff_ab"] == 0.18
+        assert result["smartpi_ff_u_ff_trim"] == 0.04
+        assert result["smartpi_ff_u_ff_base"] == 0.18
+
+    def test_on_percent_alias_promoted_to_top_level(self):
+        result = flatten_smartpi_attrs(MINIMAL_HA_ATTRS)
+        assert result["smartpi_on_percent"] == 0.22
+        assert result["on_percent"] == 0.22
+
+    def test_new_servo_and_tint_fields_are_mapped(self):
+        result = flatten_smartpi_attrs(MINIMAL_HA_ATTRS)
+        assert result["smartpi_setpoint_servo_phase"] == "landing"
+        assert result["smartpi_t_int_clean"] == 19.4
+        assert result["smartpi_sigma_t_int"] == 0.031
+
+    def test_advanced_twin_fields_are_mapped(self):
+        result = flatten_smartpi_attrs(MINIMAL_HA_ATTRS)
+        assert result["smartpi_twin_status"] == "ok"
+        assert result["smartpi_twin_t_steady_max"] == 21.4
+        assert result["smartpi_twin_eta_u"] == 0.68
 
     def test_regime_fallback_from_regime_key(self):
         attrs = {"specific_states": {"smart_pi": {"regime": "safe"}}}
@@ -270,6 +296,35 @@ class TestSnapshotForHistory:
         snap = snapshot_for_history(self.attrs)
         assert snap["a"] == 0.8
         assert snap["b"] == 0.2
+
+    def test_snapshot_ff3_chain(self):
+        snap = snapshot_for_history(self.attrs)
+        assert snap["u_ff1"] == 0.18
+        assert snap["u_ff2"] == 0.04
+        assert snap["u_ff3"] == -0.02
+        assert snap["u_db_nominal"] == 0.22
+        assert snap["ff3_enabled"] is True
+
+    def test_snapshot_power_and_servo_fields(self):
+        snap = snapshot_for_history(self.attrs)
+        assert snap["on_percent"] == 0.22
+        assert snap["calculated_on_percent"] == 0.24
+        assert snap["committed_on_percent"] == 0.22
+        assert snap["setpoint_servo_phase"] == "landing"
+
+    def test_snapshot_model_filter_and_drift(self):
+        snap = snapshot_for_history(self.attrs)
+        assert snap["t_int_clean"] == 19.4
+        assert snap["sigma_t_int"] == 0.031
+        assert snap["a_drift_state"] == "stable"
+        assert snap["b_drift_last_reason"] == "variance"
+
+    def test_snapshot_advanced_twin_fields(self):
+        snap = snapshot_for_history(self.attrs)
+        assert snap["twin_status"] == "ok"
+        assert snap["twin_t_steady_max"] == 21.4
+        assert snap["twin_eta_u"] == 0.68
+        assert snap["twin_reset_count"] == 1
 
     def test_snapshot_empty_attrs(self):
         snap = snapshot_for_history({})

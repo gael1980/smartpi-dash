@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SmartPI Dashboard — Régulation Temps Réel</title>
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1073,6 +1074,10 @@
   .ev-filter-btn[data-type="regime"].active  { background: #a855f7; }
   .ev-filter-btn[data-type="phase"].active   { background: #3b82f6; }
   .ev-filter-btn[data-type="ff_gate"].active { background: #06b6d4; }
+  .ev-filter-btn[data-type="ff3"].active { background: #0ea5e9; }
+  .ev-filter-btn[data-type="servo"].active { background: #8b5cf6; }
+  .ev-filter-btn[data-type="drift"].active { background: #f43f5e; }
+  .ev-filter-btn[data-type="twin"].active { background: #64748b; }
   .ev-filter-btn[data-type="saturation"].active { background: #f97316; }
   .ev-filter-btn[data-type="deadband"].active { background: #22c55e; }
   .ev-filter-btn[data-type="autocalib"].active { background: #eab308; }
@@ -1106,6 +1111,10 @@
   .ev-item[data-type="regime"]::before     { background: #a855f7; }
   .ev-item[data-type="phase"]::before      { background: #3b82f6; }
   .ev-item[data-type="ff_gate"]::before    { background: #06b6d4; }
+  .ev-item[data-type="ff3"]::before        { background: #0ea5e9; }
+  .ev-item[data-type="servo"]::before      { background: #8b5cf6; }
+  .ev-item[data-type="drift"]::before      { background: #f43f5e; }
+  .ev-item[data-type="twin"]::before       { background: #64748b; }
   .ev-item[data-type="saturation"]::before { background: #f97316; }
   .ev-item[data-type="deadband"]::before   { background: #22c55e; }
   .ev-item[data-type="autocalib"]::before  { background: #eab308; }
@@ -1124,6 +1133,10 @@
   .ev-badge[data-type="regime"]     { background: rgba(168,85,247,0.2); color: #c084fc; }
   .ev-badge[data-type="phase"]      { background: rgba(59,130,246,0.2); color: #93c5fd; }
   .ev-badge[data-type="ff_gate"]    { background: rgba(6,182,212,0.2); color: #67e8f9; }
+  .ev-badge[data-type="ff3"]        { background: rgba(14,165,233,0.2); color: #7dd3fc; }
+  .ev-badge[data-type="servo"]      { background: rgba(139,92,246,0.2); color: #c4b5fd; }
+  .ev-badge[data-type="drift"]      { background: rgba(244,63,94,0.2); color: #fda4af; }
+  .ev-badge[data-type="twin"]       { background: rgba(100,116,139,0.2); color: #cbd5e1; }
   .ev-badge[data-type="saturation"] { background: rgba(249,115,22,0.2); color: #fdba74; }
   .ev-badge[data-type="deadband"]   { background: rgba(34,197,94,0.2); color: #86efac; }
   .ev-badge[data-type="autocalib"]  { background: rgba(234,179,8,0.2); color: #fde047; }
@@ -1530,7 +1543,7 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <header class="topbar">
   <h1>SmartPI Dashboard</h1>
-  <span class="badge badge-version">v2 — FOPDT + IMC</span>
+  <span class="badge badge-version">v3 — Dual-Track + FF3</span>
   <span class="badge badge-status" id="conn-status">
     <span class="live-dot" id="live-dot"></span>
     <span id="conn-text">Connexion...</span>
@@ -1596,7 +1609,7 @@
   <button class="tab-btn" data-tab="tab-charts">📈 Historique</button>
   <button class="tab-btn" data-tab="tab-diagram">🔄 Schéma Bloc</button>
   <button class="tab-btn" data-tab="tab-debug-chain">🔗 Chaîne U</button>
-  <button class="tab-btn" data-tab="tab-feedforward">🎯 FFv2</button>
+  <button class="tab-btn" data-tab="tab-feedforward">🎯 Feedforward & FF3</button>
   <button class="tab-btn" data-tab="tab-model-health">🩺 Santé Modèle</button>
   <button class="tab-btn" data-tab="tab-tuning">🎛️ Tuning Assistant</button>
   <button class="tab-btn" data-tab="tab-events">📍 Événements</button>
@@ -1665,6 +1678,10 @@
       <button class="ev-filter-btn active" data-type="regime">Régime <span class="ev-count" id="ev-cnt-regime">0</span></button>
       <button class="ev-filter-btn active" data-type="phase">Phase <span class="ev-count" id="ev-cnt-phase">0</span></button>
       <button class="ev-filter-btn active" data-type="ff_gate">FF Gate <span class="ev-count" id="ev-cnt-ff_gate">0</span></button>
+      <button class="ev-filter-btn active" data-type="ff3">FF3 <span class="ev-count" id="ev-cnt-ff3">0</span></button>
+      <button class="ev-filter-btn active" data-type="servo">Servo <span class="ev-count" id="ev-cnt-servo">0</span></button>
+      <button class="ev-filter-btn active" data-type="drift">Drift <span class="ev-count" id="ev-cnt-drift">0</span></button>
+      <button class="ev-filter-btn active" data-type="twin">Twin <span class="ev-count" id="ev-cnt-twin">0</span></button>
       <button class="ev-filter-btn active" data-type="saturation">Saturation <span class="ev-count" id="ev-cnt-saturation">0</span></button>
       <button class="ev-filter-btn active" data-type="deadband">Deadband <span class="ev-count" id="ev-cnt-deadband">0</span></button>
       <button class="ev-filter-btn active" data-type="autocalib">AutoCalib <span class="ev-count" id="ev-cnt-autocalib">0</span></button>
@@ -1822,10 +1839,10 @@
       <div class="sc-status-grid" id="sc-status-grid">
         <div class="sc-led-row"><span class="sc-led" id="sc-led-regime"></span><span class="sc-led-label">Régime</span><span class="sc-led-value" id="sc-val-regime">--</span></div>
         <div class="sc-led-row"><span class="sc-led" id="sc-led-phase"></span><span class="sc-led-label">Phase</span><span class="sc-led-value" id="sc-val-phase">--</span></div>
-        <div class="sc-led-row"><span class="sc-led" id="sc-led-ff"></span><span class="sc-led-label">Porte FF</span><span class="sc-led-value" id="sc-val-ff">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-ff"></span><span class="sc-led-label">FF / FF3</span><span class="sc-led-value" id="sc-val-ff">--</span></div>
         <div class="sc-led-row"><span class="sc-led" id="sc-led-calib"></span><span class="sc-led-label">Calibration</span><span class="sc-led-value" id="sc-val-calib">--</span></div>
         <div class="sc-led-row"><span class="sc-led" id="sc-led-guard"></span><span class="sc-led-label">Protection</span><span class="sc-led-value" id="sc-val-guard">--</span></div>
-        <div class="sc-led-row"><span class="sc-led" id="sc-led-model"></span><span class="sc-led-label">Modèle</span><span class="sc-led-value" id="sc-val-model">--</span></div>
+        <div class="sc-led-row"><span class="sc-led" id="sc-led-model"></span><span class="sc-led-label">Twin</span><span class="sc-led-value" id="sc-val-model">--</span></div>
       </div>
     </div>
 
@@ -1876,6 +1893,8 @@
     <div class="dc-badge" id="dc-thermal-guard">Thermal guard: off</div>
     <div class="dc-badge" id="dc-deadband">Deadband: --</div>
     <div class="dc-badge" id="dc-near-band">Near-band: --</div>
+    <div class="dc-badge" id="dc-servo">Servo: --</div>
+    <div class="dc-badge" id="dc-ff3">FF3: --</div>
   </div>
 
   <div class="cu-layout">
@@ -1931,7 +1950,7 @@
     <div class="cu-card">
       <div class="cu-card-header">
         <span class="cu-card-icon">&#127919;</span>
-        <span class="cu-card-title">Feedforward FFv2 &mdash; d&eacute;tail</span>
+        <span class="cu-card-title">Feedforward FF2/FF3 &mdash; d&eacute;tail</span>
       </div>
       <table class="cu-table">
         <thead>
@@ -1990,7 +2009,7 @@
     <div class="ff-card ff-full">
       <div class="ff-card-header">
         <span class="ff-card-icon">&#127919;</span>
-        <span class="ff-card-title">Feedforward FFv2 &mdash; &Eacute;tat</span>
+        <span class="ff-card-title">Feedforward FF2/FF3 &mdash; &Eacute;tat</span>
       </div>
       <div class="ff-status">
         <div class="ff-status-main">
@@ -2047,7 +2066,7 @@
     <div class="ff-card ff-full">
       <div class="ff-card-header">
         <span class="ff-card-icon">&#128200;</span>
-        <span class="ff-card-title">Historique FFv2</span>
+        <span class="ff-card-title">Historique FF2 + FF3</span>
       </div>
       <div class="chart-canvas-wrap" id="ff-chart" style="height:260px"></div>
     </div>
@@ -2377,6 +2396,31 @@ let mhSlope24Meta = {
   bRejectReason: [],
 };
 
+async function parseApiJson(resp, context) {
+  const raw = await resp.text();
+  let data = null;
+
+  if (raw) {
+    try {
+      data = JSON.parse(raw);
+    } catch (_err) {
+      const err = new Error(`${context}: réponse non JSON (${resp.status})`);
+      err.status = resp.status;
+      err.body = raw.slice(0, 160);
+      throw err;
+    }
+  }
+
+  if (!resp.ok) {
+    const err = new Error(data?.description || data?.message || `${context}: HTTP ${resp.status}`);
+    err.status = resp.status;
+    err.payload = data;
+    throw err;
+  }
+
+  return data || {};
+}
+
 function entityParam() {
   return `entity_id=${encodeURIComponent(selectedEntity)}`;
 }
@@ -2569,11 +2613,13 @@ const PRETTY_KEY_LABELS = {
   smartpi_sign_flip_leak: 'Leak sign flip',
   smartpi_u_p: 'Commande P',
   smartpi_u_i: 'Commande I',
-  smartpi_u_ff: 'Commande FFv2 effective',
+  smartpi_error: 'Erreur instantanée',
+  smartpi_u_ff: 'Commande FF effective',
   smartpi_u_pi: 'Commande PI',
   smartpi_u_cmd: 'Commande gouvernée',
   smartpi_u_applied: 'Commande appliquée',
   smartpi_u_limited: 'Commande limitée',
+  smartpi_u_hold: 'Puissance hold deadband',
   smartpi_aw_du: 'Correction anti-windup',
   smartpi_a: 'Gain thermique a',
   smartpi_b: 'Pertes thermiques b',
@@ -2611,6 +2657,20 @@ const PRETTY_KEY_LABELS = {
   smartpi_learn_diag_ab_bootstrap: 'Bootstrap AB',
   smartpi_learn_diag_ab_points: 'Points AB',
   smartpi_learn_diag_ab_mode_effective: 'Mode AB effectif',
+  smartpi_bootstrap_progress: 'Progression bootstrap',
+  smartpi_bootstrap_state: 'État bootstrap',
+  smartpi_a_drift_state: 'Drift a',
+  smartpi_b_drift_state: 'Drift b',
+  smartpi_a_drift_buffer_count: 'Taille buffer drift a',
+  smartpi_b_drift_buffer_count: 'Taille buffer drift b',
+  smartpi_a_drift_last_reason: 'Dernière raison drift a',
+  smartpi_b_drift_last_reason: 'Dernière raison drift b',
+  smartpi_t_int_raw: 'T_int brute',
+  smartpi_t_int_lp: 'T_int filtrée LP',
+  smartpi_t_int_clean: 'T_int nettoyée',
+  smartpi_sigma_t_int: 'Sigma T_int',
+  smartpi_adaptive_tint_update: 'Publication adaptive T_int',
+  smartpi_adaptive_tint_hold_duration_s: 'Durée hold T_int',
   smartpi_twin_t_hat: 'T_hat twin',
   smartpi_twin_innovation: 'Innovation twin',
   smartpi_twin_d_hat_ema: 'd_hat EMA',
@@ -2628,6 +2688,25 @@ const PRETTY_KEY_LABELS = {
   smartpi_twin_external_loss: 'Perte externe détectée',
   smartpi_twin_setpoint_reachable: 'Consigne atteignable',
   smartpi_twin_emitter_saturated: 'Émetteur saturé',
+  smartpi_twin_status: 'Statut twin',
+  smartpi_twin_t_steady_reliable: 'T_steady fiable',
+  smartpi_twin_t_steady_max: 'T_steady max',
+  smartpi_twin_t_steady_immediate: 'T_steady immédiate',
+  smartpi_twin_t_steady_passive: 'T_steady passive',
+  smartpi_twin_setpoint_reachable_max: 'Consigne max atteignable',
+  smartpi_twin_cooling_model_available: 'Modèle froid disponible',
+  smartpi_twin_d_hat_fresh: 'd_hat récent',
+  smartpi_twin_warming_up: 'Twin en warmup',
+  smartpi_twin_u_eff: 'u_eff twin',
+  smartpi_twin_deadtime_s: 'Deadtime twin',
+  smartpi_twin_dead_steps: 'Pas de deadtime twin',
+  smartpi_twin_t_hat_error: 'Erreur T_hat twin',
+  smartpi_twin_rmse_pure: 'RMSE pure twin',
+  smartpi_twin_innovation_bias: 'Biais innovation twin',
+  smartpi_twin_bias_warning: 'Alerte biais twin',
+  smartpi_twin_auto_reset_triggered: 'Auto-reset twin',
+  smartpi_twin_reset_count: 'Compteur reset twin',
+  smartpi_twin_eta_u: 'ETA u twin',
   smartpi_regime: 'Régime',
   smartpi_phase: 'Phase',
   smartpi_governance_action: 'Action gouvernance',
@@ -2644,16 +2723,25 @@ const PRETTY_KEY_LABELS = {
   smartpi_regime_prev: 'Régime précédent',
   smartpi_cycles_since_reset: 'Cycles depuis reset',
   smartpi_sat_persistent_cycles: 'Cycles saturation persistante',
-  smartpi_ff_enabled: 'FFv2 activé',
+  smartpi_ff_enabled: 'Feedforward activé',
   smartpi_ff_k_ff: 'K_ff',
   smartpi_ff_u_ff: 'u_ff_eff',
   smartpi_ff_raw: 'ff_raw',
   smartpi_ff_u_ff_ab: 'u_ff_ab',
   smartpi_ff_u_ff_base: 'u_ff_base',
   smartpi_ff_u_ff_trim: 'u_ff_trim',
+  smartpi_u_ff1: 'u_ff1 structural',
+  smartpi_u_ff2: 'u_ff2 trim',
+  smartpi_u_ff_final: 'u_ff_final',
+  smartpi_u_ff3: 'u_ff3 prédictif',
+  smartpi_u_db_nominal: 'u_db_nominal',
   smartpi_ff_hold_emp: 'u_hold_emp',
   smartpi_ff_hold_meas: 'u_hold_meas',
   smartpi_ff_hold_confidence: 'Confiance hold',
+  smartpi_ff_delta_hold: 'delta_hold',
+  smartpi_ff2_authority: 'Autorité FF2',
+  smartpi_ff2_frozen: 'FF2 gelé',
+  smartpi_ff2_freeze_reason: 'Raison gel FF2',
   smartpi_ff_ab_confidence_state: 'État AB confidence',
   smartpi_ff_coherence_state: 'État FF coherence',
   smartpi_ff_coherence_error: 'Erreur FF coherence',
@@ -2668,6 +2756,13 @@ const PRETTY_KEY_LABELS = {
   smartpi_ff_gate: 'Porte FF',
   smartpi_ff_scale: 'Échelle warmup',
   smartpi_ff_scale_unreliable_max: 'Cap warmup non fiable',
+  smartpi_ff3_enabled: 'FF3 activé',
+  smartpi_ff3_reason_disabled: 'Raison arrêt FF3',
+  smartpi_ff3_candidate_scores: 'Scores candidats FF3',
+  smartpi_ff3_selected_candidate: 'Candidat FF3 retenu',
+  smartpi_ff3_horizon_cycles: 'Horizon FF3',
+  smartpi_ff3_twin_usable: 'Twin exploitable pour FF3',
+  smartpi_deadband_power_source: 'Source puissance deadband',
   smartpi_calibration_state: 'État calibration',
   smartpi_calibration_retry_count: 'Retries calibration',
   smartpi_last_calibration_time: 'Dernière calibration',
@@ -2685,11 +2780,17 @@ const PRETTY_KEY_LABELS = {
   smartpi_filter_mode: 'Mode filtre',
   smartpi_filter_tau_f: 'Tau filtre',
   smartpi_setpoint_boost_active: 'Boost consigne actif',
+  smartpi_setpoint_servo_active: 'Servo consigne actif',
+  smartpi_setpoint_servo_phase: 'Phase servo consigne',
+  smartpi_setpoint_servo_step_amplitude: 'Amplitude servo',
+  smartpi_setpoint_servo_landing_zone: 'Zone landing servo',
   smartpi_cycle_min: 'Cycle PWM',
   smartpi_cycle_state: 'État cycle',
   smartpi_min_on_s: 'Min ON',
   smartpi_min_off_s: 'Min OFF',
   smartpi_rate_limit: 'Rate limit',
+  smartpi_calculated_on_percent: 'Puissance calculée',
+  smartpi_committed_on_percent: 'Puissance commitée',
 };
 
 function prettyKey(key) {
@@ -2765,13 +2866,40 @@ function smartpiCusum(attrs) {
     ?? null;
 }
 
+function smartpiAttrValue(attrs, spec) {
+  if (!attrs || spec == null) return null;
+  if (typeof spec === 'function') return spec(attrs);
+  if (Array.isArray(spec)) {
+    for (const item of spec) {
+      const val = smartpiAttrValue(attrs, item);
+      if (val != null) return val;
+    }
+    return null;
+  }
+  if (typeof spec === 'object' && spec.attr != null) {
+    return smartpiAttrValue(attrs, spec.attr);
+  }
+  return attrs[spec] ?? null;
+}
+
 function smartpiFfChain(attrs) {
   const eff = smartpiEffFf(attrs);
+  const structural = attrs.smartpi_u_ff1 ?? attrs.smartpi_ff_u_ff_ab ?? attrs.smartpi_ff_raw ?? eff;
+  const bias = attrs.smartpi_u_ff2 ?? attrs.smartpi_ff_u_ff_trim ?? null;
+  const final = attrs.smartpi_u_ff_final ?? attrs.smartpi_u_db_nominal ?? null;
+  const ff3 = attrs.smartpi_u_ff3 ?? null;
+  const nominal = attrs.smartpi_u_db_nominal ?? final;
   return {
-    raw: attrs.smartpi_ff_raw ?? eff,
-    ab: attrs.smartpi_ff_u_ff_ab ?? attrs.smartpi_ff_raw ?? eff,
-    trim: attrs.smartpi_ff_u_ff_trim ?? null,
-    base: attrs.smartpi_ff_u_ff_base ?? eff,
+    raw: attrs.smartpi_ff_raw ?? structural ?? eff,
+    ab: attrs.smartpi_ff_u_ff_ab ?? structural,
+    trim: attrs.smartpi_ff_u_ff_trim ?? bias,
+    base: attrs.smartpi_ff_u_ff_base ?? structural,
+    structural,
+    bias,
+    final,
+    ff3,
+    nominal,
+    hold: attrs.smartpi_u_hold ?? null,
     eff,
     holdEmp: attrs.smartpi_ff_hold_emp ?? null,
     holdMeas: attrs.smartpi_ff_hold_meas ?? null,
@@ -2787,9 +2915,27 @@ function smartpiFfChain(attrs) {
     holdConfidence: attrs.smartpi_ff_hold_confidence ?? null,
     trimFreezeReason: attrs.smartpi_ff_trim_freeze_reason ?? null,
     holdFreezeReason: attrs.smartpi_ff_hold_freeze_reason ?? null,
+    deltaHold: attrs.smartpi_ff_delta_hold ?? null,
+    ff2Authority: attrs.smartpi_ff2_authority ?? null,
+    ff2Frozen: attrs.smartpi_ff2_frozen ?? null,
+    ff2FreezeReason: attrs.smartpi_ff2_freeze_reason ?? null,
     bumplessRequested: attrs.smartpi_ff_bumpless_requested_delta ?? null,
     bumplessApplied: attrs.smartpi_ff_bumpless_applied_delta ?? null,
     bumplessClamped: attrs.smartpi_ff_bumpless_clamped ?? null,
+    ff3Enabled: attrs.smartpi_ff3_enabled ?? false,
+    ff3ReasonDisabled: attrs.smartpi_ff3_reason_disabled ?? null,
+    ff3CandidateScores: attrs.smartpi_ff3_candidate_scores ?? null,
+    ff3SelectedCandidate: attrs.smartpi_ff3_selected_candidate ?? null,
+    ff3HorizonCycles: attrs.smartpi_ff3_horizon_cycles ?? null,
+    ff3TwinUsable: attrs.smartpi_ff3_twin_usable ?? null,
+    twinStatus: attrs.smartpi_twin_status ?? null,
+    deadbandPowerSource: attrs.smartpi_deadband_power_source ?? null,
+    calculatedPower: attrs.smartpi_calculated_on_percent ?? null,
+    committedPower: attrs.smartpi_committed_on_percent ?? attrs.on_percent ?? null,
+    servoActive: attrs.smartpi_setpoint_servo_active ?? null,
+    servoPhase: attrs.smartpi_setpoint_servo_phase ?? null,
+    servoStepAmplitude: attrs.smartpi_setpoint_servo_step_amplitude ?? null,
+    servoLandingZone: attrs.smartpi_setpoint_servo_landing_zone ?? null,
   };
 }
 
@@ -3059,9 +3205,11 @@ function initCharts() {
   const fmtPct = (u, v) => v == null ? '—' : v.toFixed(1) + ' %';
   const powerSeries = [
     { ...makeSeries('u_applied (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.15)', paths: uPlot.paths.stepped({ align: -1 }), value: fmtPct },
+    { ...makeSeries('u_commit (%)', '#fb7185', 1.2, [5, 3]), value: fmtPct },
+    { ...makeSeries('u_calc (%)', '#facc15', 1.2, [4, 3]), value: fmtPct },
     { ...makeSeries('u_ff_eff (%)', '#06b6d4', 1), value: fmtPct },
   ];
-  charts.power = new uPlot(makeOpts(powerEl, powerSeries, '%', [0, 105]), [[], [], []], powerEl);
+  charts.power = new uPlot(makeOpts(powerEl, powerSeries, '%', [0, 105]), [[], [], [], [], []], powerEl);
 
   // Twin diagnostics chart
   const fmtTwinC = (u, v) => v == null ? '—' : v.toFixed(3) + ' °C';
@@ -3128,6 +3276,8 @@ function updateCharts(history) {
   const nbAbove = needTemp ? new Array(n) : null;
   const nbBelow = needTemp ? new Array(n) : null;
   const uApplied = needPow ? new Array(n) : null;
+  const uCommitted = needPow ? new Array(n) : null;
+  const uCalculated = needPow ? new Array(n) : null;
   const uFfPow = needPow ? new Array(n) : null;
   const innovation = needTwin ? new Array(n) : null;
   const dHat = needTwin ? new Array(n) : null;
@@ -3138,8 +3288,10 @@ function updateCharts(history) {
   const cuP = needCu ? new Array(n) : null;
   const cuI = needCu ? new Array(n) : null;
   const ffRaw = needFf ? new Array(n) : null;
-  const ffAb = needFf ? new Array(n) : null;
-  const ffBase = needFf ? new Array(n) : null;
+  const ff1 = needFf ? new Array(n) : null;
+  const ff2 = needFf ? new Array(n) : null;
+  const ffFinal = needFf ? new Array(n) : null;
+  const ff3 = needFf ? new Array(n) : null;
   const ffEff = needFf ? new Array(n) : null;
 
   for (let i = 0; i < n; i++) {
@@ -3156,6 +3308,8 @@ function updateCharts(history) {
     }
     if (needPow) {
       uApplied[i] = smartpiPowerPct(p.u_applied ?? p.on_percent);
+      uCommitted[i] = smartpiPowerPct(p.committed_on_percent ?? p.on_percent);
+      uCalculated[i] = smartpiPowerPct(p.calculated_on_percent);
       uFfPow[i] = smartpiPowerPct(p.u_ff);
     }
     if (needTwin) {
@@ -3172,17 +3326,19 @@ function updateCharts(history) {
     }
     if (needFf) {
       ffRaw[i] = smartpiPowerPct(p.ff_raw);
-      ffAb[i] = smartpiPowerPct(p.u_ff_ab);
-      ffBase[i] = smartpiPowerPct(p.u_ff_base);
+      ff1[i] = smartpiPowerPct(p.u_ff1 ?? p.u_ff_ab);
+      ff2[i] = smartpiPowerPct(p.u_ff2 ?? p.u_ff_trim);
+      ffFinal[i] = smartpiPowerPct(p.u_ff_final ?? p.u_db_nominal);
+      ff3[i] = smartpiPowerPct(p.u_ff3);
       ffEff[i] = smartpiPowerPct(p.u_ff);
     }
   }
 
   if (needTemp) charts.temp.setData([ts, tIn, tTarget, tExt, twinTHat, nbAbove, nbBelow]);
-  if (needPow)  charts.power.setData([ts, uApplied, uFfPow]);
+  if (needPow)  charts.power.setData([ts, uApplied, uCommitted, uCalculated, uFfPow]);
   if (needTwin) charts.twin.setData([ts, innovation, dHat]);
   if (needCu)   charts.cuU.setData([ts, cuApp, cuPi, cuFf, cuCmd, cuP, cuI]);
-  if (needFf)   charts.ff.setData([ts, ffRaw, ffAb, ffBase, ffEff]);
+  if (needFf)   charts.ff.setData([ts, ffRaw, ff1, ff2, ffFinal, ff3, ffEff]);
 }
 
 document.getElementById('chart-range').addEventListener('change', () => { updateCharts(historyData); fetchHistory(); });
@@ -3190,44 +3346,61 @@ document.getElementById('chart-range').addEventListener('change', () => { update
 // ─── Block Diagram (inline SVG from original) ───────────────
 const BLOCK_TIPS = {
   sp_brut: { title: 'SP_brut — Consigne brute', text: "Consigne température fixée par l'utilisateur ou le scheduler HA.", eq: null },
-  sp_filter: { title: 'Setpoint Filter — Filtre asymétrique', text: "Filtre passe-bas 1er ordre sur voie P. Saturation Guard : BYPASS ou FILTRE.", eq: 'F(s) = 1/(1 + Tf·s)' },
+  sp_filter: { title: 'Setpoint Filter — Dual-Track', text: 'Voie P uniquement. BOOST tant que la cible est loin, puis phase LANDING quadratique pour freiner l’approche. La descente reste instantanée pour éviter de surchauffer.', eq: 'BOOST: SP_for_P = target · LANDING: SP_for_P = y + f(remaining²)' },
   summer_p: { title: 'Σ — Sommateur P', text: 'e_p = SP_for_P − y', eq: null },
   summer_i: { title: 'Σ — Sommateur I', text: 'e_i = SP_brut − y (règle Åström)', eq: null },
   kp: { title: 'Kp — Gain Proportionnel', text: 'Gain adaptatif IMC, réduit en near-band.', eq: 'Kp = τ/(a·(L+λ))' },
   ki: { title: 'Ki·∫ — Intégrateur', text: 'Intégrateur conditionnel : HOLD, FREEZE, SKIP, NORMAL.', eq: 'Ki = 1/(a·(L+λ))' },
-  summer_pi: { title: 'Σ PI + FFv2', text: 'Commande finale issue de la somme u_pi + u_ff_eff, puis gouvernance et limitations.', eq: 'u_cmd = u_pi + u_ff_eff' },
-  governance: { title: 'Gouvernance — Safety-First', text: 'Régimes NOMINAL/PERTURBED/TRANSITION/INIT. Actions NORMAL/SOFT_FREEZE/HARD_FREEZE.', eq: null },
+  summer_pi: { title: 'Σ PI + FF', text: 'Somme runtime de la voie PI et du feedforward effectif après FF2 + FF3. Les contraintes aval peuvent encore modifier la commande.', eq: 'u_cmd = u_pi + u_ff_eff' },
+  governance: { title: 'Gouvernance — Safety-First', text: 'Orchestre les régimes SmartPI actuels: warmup, excited_stable, near_band, dead_band, hold, perturbed, degraded, saturated. Décide quand apprendre, geler ou dégrader les gains.', eq: null },
   rate_limit: { title: 'Rate Limiter + Clamp', text: '|Δu| ≤ rate·Δt, u ∈ [0, max_on_pct]', eq: null },
-  timing: { title: 'Timing Constraints', text: 'min_on / min_off pour protéger les relais.', eq: null },
-  pwm: { title: 'PWM — Duty Cycle', text: 't_on = u · T_cycle', eq: null },
-  process: { title: 'Bâtiment — FOPDT 1R1C', text: 'Modèle thermique premier ordre + retard pur.', eq: 'dT/dt = a·u(t−L) − b·(T−Text) + d(t)' },
+  timing: { title: 'Timing Constraints', text: 'Convertit la commande calculée en puissance commitée compatible avec min_on / min_off et le cycle PWM réel.', eq: 'u_commit = f(u_calc, min_on, min_off)' },
+  pwm: { title: 'PWM — Duty Cycle', text: 'Le CycleManager applique la puissance commitée sur le cycle courant. La trace utile côté dashboard est la puissance réellement appliquée.', eq: 't_on = u_commit · T_cycle' },
+  process: { title: 'Bâtiment — FOPDT 1R1C', text: 'Modèle thermique avec dead time, pertes vers l’extérieur et perturbations non modélisées. La température filtrée T_int_clean alimente aussi l’apprentissage.', eq: 'dT/dt = a·u(t−L) − b·(T−Text) + d(t)' },
   sensor: { title: 'T_in — Capteur', text: 'Mesure intérieure, résolution 0.1°C.', eq: null },
   text: { title: 'T_ext — Extérieur', text: 'Température extérieure, feedforward + modèle.', eq: null },
-  feedforward: { title: 'Feedforward FFv2', text: 'Chaîne FFv2: ff_raw → u_ff_ab → u_ff_base (trim) → u_ff_eff (taper). Hold estimator, coherence et AB confidence supervisent la compensation.', eq: 'u_ff_eff = taper(clamp(u_ff_ab + u_ff_trim))' },
+  feedforward: { title: 'Feedforward FF2 + FF3', text: 'Chaîne actuelle: ff_raw → u_ff1 → u_ff2 → u_ff_final → u_ff3 → u_ff_eff. FF2 corrige lentement le biais structurel, FF3 ajoute une correction prédictive courte basée sur le twin quand il est exploitable.', eq: 'u_ff_eff = clamp(u_ff_final + u_ff3, 0, 1)' },
   antiwindup: { title: 'Anti-Windup Tracking', text: 'Méthode Åström : correction intégrale quand saturation.', eq: 'ΔI = β·(u_applied − u_ref)/Ki' },
   ab_estimator: { title: 'ABEstimator', text: 'Apprentissage a, b par Median + MAD sur 31 mesures.', eq: 'τ = 1/b' },
   deadtime: { title: 'DeadTime Estimator', text: 'Takeoff detection + méthode SK backup.', eq: null },
   gain_scheduler: { title: 'GainScheduler — IMC', text: 'Calcul adaptatif Kp, Ki.', eq: 'Kp = τ/(a·(L+λ))' },
-  twin: { title: 'ThermalTwin 1R1C', text: 'Observateur Luenberger, diagnostics only.', eq: 'T̂(k+1) = T̂(k) + dt·[a·u_eff − b·(T̂−Text)] + γ·(T−T̂)' },
+  twin: { title: 'ThermalTwin 1R1C', text: 'Observateur diagnostique avec statut, T_steady, innovation, biais et auto-reset. Il alimente la supervision et conditionne l’usage de FF3.', eq: 'T̂(k+1) = T̂(k) + dt·[a·u_eff − b·(T̂−Text)] + γ·(T−T̂)' },
   autocalib: { title: 'AutoCalibTrigger', text: 'Supervision horaire, détection de stagnation.', eq: null },
   calibration: { title: 'Calibration FSM', text: 'Excitation step 100% → 0% pour rafraîchir a, b, deadtime.', eq: null },
-  deadband: { title: 'Deadband Manager', text: 'Bande morte + near-band, auto-sized.', eq: null },
-  guards: { title: 'Guards — Protection', text: 'Thermal Guard, Guard Cut, Guard Kick.', eq: null },
-  learn_win: { title: 'LearningWindow', text: 'Accumulation multi-cycles pour ABEstimator.', eq: null },
+  deadband: { title: 'Deadband Manager', text: 'Gère la bande morte asymétrique, la near-band et la source de puissance en maintien (`deadband_power_source`).', eq: null },
+  guards: { title: 'Guards — Protection', text: 'Thermal Guard, Guard Cut, Guard Kick et logique de reprise sûre.', eq: null },
+  learn_win: { title: 'LearningWindow', text: 'Accumulation multi-cycles, filtrage T_int adaptatif et canaux de drift A/B avant validation des épisodes.', eq: null },
   phase: { title: 'Phase Machine', text: 'HYSTERESIS → STABLE → CALIBRATION.', eq: null },
 };
 
 // Map block IDs to SmartPI attributes for live values
 const BLOCK_ATTRS = {
-  kp: 'smartpi_kp', ki: 'smartpi_ki',
-  sensor: 'current_temperature',
-  governance: 'smartpi_regime',
-  phase: 'smartpi_phase',
-  feedforward: 'smartpi_ff_u_ff',
-  ab_estimator: 'smartpi_a',
-  twin: 'smartpi_twin_rmse',
-  autocalib: 'smartpi_autocalib_state',
-  deadtime: 'smartpi_deadtime_heat_s',
+  sp_brut: { attr: ['smartpi_sp_brut', 'temperature', 'target_temperature'], label: 'SP_brut' },
+  sp_filter: { attr: 'smartpi_sp_for_p', label: 'SP_for_P' },
+  summer_p: { attr: 'smartpi_error_p', label: 'e_p' },
+  summer_i: { attr: 'smartpi_error_i', label: 'e_i' },
+  kp: { attr: 'smartpi_kp', label: 'Kp' },
+  ki: { attr: 'smartpi_ki', label: 'Ki' },
+  sensor: { attr: 'current_temperature', label: 'T_in' },
+  governance: { attr: 'smartpi_regime', label: 'régime' },
+  phase: { attr: 'smartpi_phase', label: 'phase' },
+  summer_pi: { attr: 'smartpi_u_cmd', label: 'u_cmd' },
+  rate_limit: { attr: 'smartpi_u_limited', label: 'u_limited' },
+  timing: { attr: ['smartpi_committed_on_percent', 'smartpi_calculated_on_percent', 'on_percent'], label: 'u_commit' },
+  pwm: { attr: ['on_percent', 'smartpi_committed_on_percent'], label: 'u_applied' },
+  process: { attr: 'current_temperature', label: 'T_in' },
+  text: { attr: ['smartpi_t_ext', 'current_external_temperature'], label: 'T_ext' },
+  feedforward: { attr: 'smartpi_ff_u_ff', label: 'u_ff_eff' },
+  antiwindup: { attr: 'smartpi_aw_du', label: 'aw_du' },
+  ab_estimator: { attr: 'smartpi_a', label: 'a' },
+  deadtime: { attr: 'smartpi_deadtime_heat_s', label: 'L_heat' },
+  gain_scheduler: { attr: 'smartpi_kp_source', label: 'source' },
+  twin: { attr: ['smartpi_twin_status', 'smartpi_twin_rmse'], label: 'twin' },
+  autocalib: { attr: 'smartpi_autocalib_state', label: 'autocalib' },
+  calibration: { attr: 'smartpi_calibration_state', label: 'calibration' },
+  deadband: { attr: ['smartpi_deadband_power_source', 'smartpi_in_deadband'], label: 'deadband' },
+  guards: { attr: (attrs) => smartpiGuardState(attrs), label: 'guards' },
+  learn_win: { attr: 'smartpi_learn_progress_percent', label: 'learning', format: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : String(v) },
 };
 
 async function loadBlockDiagram() {
@@ -3287,11 +3460,15 @@ function setupDiagramInteractions() {
       if (tip.eq) html += `<div class="stt-eq">${tip.eq}</div>`;
 
       // Add live value if available
-      const attrKey = BLOCK_ATTRS[key];
-      if (attrKey && currentState) {
-        const val = currentState.raw_attributes[attrKey];
-        if (val != null) {
-          html += `<div class="stt-live">⚡ LIVE: ${attrKey} = ${fmtVal(val).text}</div>`;
+      const attrSpec = BLOCK_ATTRS[key];
+      if (attrSpec && currentState) {
+        const liveVal = smartpiAttrValue(currentState.raw_attributes || {}, attrSpec);
+        const liveLabel = attrSpec?.label || (typeof attrSpec === 'string' ? attrSpec : 'live');
+        const liveText = (typeof attrSpec === 'object' && !Array.isArray(attrSpec) && typeof attrSpec.format === 'function')
+          ? attrSpec.format(liveVal, currentState.raw_attributes || {})
+          : (liveVal != null ? fmtVal(liveVal).text : null);
+        if (liveVal != null && liveText != null) {
+          html += `<div class="stt-live">⚡ LIVE: ${escapeHtml(String(liveLabel))} = ${liveText}</div>`;
         }
       }
 
@@ -3330,15 +3507,22 @@ function updateDiagramOverlays(attrs) {
 
   const ns = 'http://www.w3.org/2000/svg';
 
-  for (const [blockKey, attrKey] of Object.entries(BLOCK_ATTRS)) {
+  for (const [blockKey, attrSpec] of Object.entries(BLOCK_ATTRS)) {
     const block = svg.querySelector(`.block[data-tip="${blockKey}"]`);
     if (!block) continue;
 
     const rect = block.querySelector('rect');
     if (!rect) continue;
 
-    const val = attrs[attrKey];
-    const textContent = val != null ? fmtVal(val).text : null;
+    const val = smartpiAttrValue(attrs, attrSpec);
+    let textContent = null;
+    if (val != null) {
+      if (typeof attrSpec === 'object' && !Array.isArray(attrSpec) && typeof attrSpec.format === 'function') {
+        textContent = attrSpec.format(val, attrs);
+      } else {
+        textContent = fmtVal(val).text;
+      }
+    }
 
     const elId = `blv-${blockKey}`;
     let textEl = svg.getElementById(elId);
@@ -3391,14 +3575,35 @@ function dcPctNum(val) {
 function updateDebugChain(data) {
   const a = data.raw_attributes || {};
   const ff = smartpiFfChain(a);
+  const regimeNorm = smartpiNormalizedRegime(a.smartpi_regime);
+  const phaseNorm = String(a.smartpi_phase || '').trim().toLowerCase();
+  const powerApplied = ff.committedPower ?? a.on_percent ?? a.smartpi_u_applied;
+  const powerAppliedPct = dcPctNum(powerApplied) ?? 0;
+  const uAppliedCmd = a.smartpi_u_applied;
+  const uPi = a.smartpi_u_pi;
+  const uP = a.smartpi_u_p;
+  const uI = a.smartpi_u_i;
+  const awDu = a.smartpi_aw_du;
+  const kp = a.smartpi_kp;
+  const ki = a.smartpi_ki;
+  const ep = a.smartpi_error_p;
+  const ei = a.smartpi_error_i;
+  const eFilt = a.smartpi_error_filtered;
+  const iState = a.smartpi_integral_state || '';
+  const uPCalc = uP != null ? uP : (kp != null && ep != null ? kp * ep : null);
+  const uICalc = uI != null ? uI : null;
+  const piTheo = (uPCalc != null && uICalc != null) ? uPCalc + uICalc : null;
+  const uCmd = a.smartpi_u_cmd;
+  const uLimited = a.smartpi_u_limited;
+  const ffEnabled = a.smartpi_ff_enabled || ff.ff3Enabled || Math.abs(ff.eff || 0) > 1e-6;
 
   // ── Status badges ──
   dcBadge('dc-regime', 'Régime', a.smartpi_regime,
-    a.smartpi_regime === 'nominal' || a.smartpi_regime === 'NOMINAL' ? 'ok' : 'warn');
+    regimeNorm === 'nominal' ? 'ok' : 'warn');
   dcBadge('dc-phase', 'Phase', a.smartpi_phase,
-    a.smartpi_phase === 'Stable' || a.smartpi_phase === 'STABLE' ? 'ok' : 'warn');
+    ['stable', 'running', 'excited_stable'].includes(phaseNorm) ? 'ok' : 'warn');
   dcBadge('dc-integral', 'Intégral', a.smartpi_integral_state,
-    a.smartpi_integral_state === 'NORMAL' ? 'ok' : 'warn');
+    iState === 'NORMAL' || iState === 'RUN' ? 'ok' : 'warn');
   dcBadge('dc-guard-cut', 'Protection coupure',
     a.smartpi_guard_cut_active ? 'ACTIVE' : 'off',
     a.smartpi_guard_cut_active ? 'error' : 'ok');
@@ -3411,14 +3616,20 @@ function updateDebugChain(data) {
   dcBadge('dc-near-band', 'Near-band',
     a.smartpi_in_near_band ? 'IN' : 'out',
     a.smartpi_in_near_band ? 'warn' : 'ok');
+  dcBadge('dc-servo', 'Servo',
+    ff.servoActive ? (ff.servoPhase || 'actif') : 'off',
+    ff.servoActive ? 'warn' : 'ok');
+  dcBadge('dc-ff3', 'FF3',
+    ff.ff3Enabled
+      ? ('on' + (ff.ff3HorizonCycles != null ? ` · H=${ff.ff3HorizonCycles}` : ''))
+      : (ff.ff3ReasonDisabled || 'off'),
+    ff.ff3Enabled ? 'warn' : (ff.ff3TwinUsable === false ? 'error' : 'ok'));
 
   // ── Power bar ──
-  const uApplied = a.smartpi_u_applied;
-  const pct = uApplied != null ? dcPctNum(uApplied) : 0;
   const fillEl = document.getElementById('cu-power-fill');
   const labelEl = document.getElementById('cu-power-label');
-  if (fillEl) fillEl.style.width = Math.max(0, Math.min(100, pct)).toFixed(1) + '%';
-  if (labelEl) labelEl.textContent = uApplied != null ? pct.toFixed(1) + '%' : '-- %';
+  if (fillEl) fillEl.style.width = Math.max(0, Math.min(100, powerAppliedPct)).toFixed(1) + '%';
+  if (labelEl) labelEl.textContent = powerApplied != null ? powerAppliedPct.toFixed(1) + '%' : '-- %';
 
   // Dot bar (20 dots)
   const dotsEl = document.getElementById('cu-power-dots');
@@ -3428,22 +3639,25 @@ function updateDebugChain(data) {
     }
   }
   if (dotsEl) {
-    const activeDots = Math.round(pct / 5);
+    const activeDots = Math.round(powerAppliedPct / 5);
     dotsEl.querySelectorAll('span').forEach((dot, i) => {
       dot.className = i < activeDots ? 'cu-dot-active' : '';
     });
   }
 
   // ── FF / PI indicators ──
-  const ffEnabled = a.smartpi_ff_enabled;
   const ffInd = document.getElementById('cu-ff-indicator');
   if (ffInd) {
-    const ffState = [ff.gate, ff.abConfidence, ff.coherenceState].filter(Boolean).join(' · ');
+    const ffState = [
+      ff.gate,
+      ff.abConfidence,
+      ff.coherenceState,
+      ff.ff3Enabled ? 'ff3:on' : (ff.ff3ReasonDisabled ? `ff3:${ff.ff3ReasonDisabled}` : null),
+    ].filter(Boolean).join(' · ');
     ffInd.innerHTML = '<span class="cu-dot"></span> feedforward \u00b7 ' + (ffEnabled ? 'actif' : 'arr\u00eat') + (ffState ? ' · ' + escapeHtml(ffState) : '');
     ffInd.className = 'cu-indicator ' + (ffEnabled ? 'cu-on' : 'cu-off');
   }
 
-  const iState = a.smartpi_integral_state || '';
   const piActive = iState !== 'HARD_FREEZE' && iState !== '';
   const piInd = document.getElementById('cu-pi-indicator');
   if (piInd) {
@@ -3452,25 +3666,17 @@ function updateDebugChain(data) {
   }
 
   // ── Composantes table ──
-  const uPi = a.smartpi_u_pi;
-  const uFf = ff.eff;
-  const uP = a.smartpi_u_p;
-  const uI = a.smartpi_u_i;
-  const awDu = a.smartpi_aw_du;
-  const kp = a.smartpi_kp;
-  const ki = a.smartpi_ki;
-  const ep = a.smartpi_error_p;
-  const ei = a.smartpi_error_i;
-
-  const uPCalc = uP != null ? uP : (kp != null && ep != null ? kp * ep : null);
-  const uICalc = uI != null ? uI : null;
-  const piTheo = (uPCalc != null && uICalc != null) ? uPCalc + uICalc : null;
-  const uCmd = a.smartpi_u_cmd;
-  const uLimited = a.smartpi_u_limited;
-
   const composantes = [
-    { label: 'Appliqu\u00e9e', val: uApplied, eq: '', hl: true },
-    { label: 'Feedforward (u_ff_eff)', val: uFf, eq: 'u_ff_ab + trim \u2192 taper' },
+    { label: 'Puissance appliqu\u00e9e', val: powerApplied, eq: 'PWM commit\u00e9', hl: true },
+    { label: 'u_applied (commande)', val: uAppliedCmd, eq: 'sortie continue' },
+    { label: 'u_commit', val: ff.committedPower, eq: 'timing / min_on min_off' },
+    { label: 'u_calc', val: ff.calculatedPower, eq: 'avant commit PWM' },
+    { label: 'u_ff1 structural', val: ff.structural, eq: 'a,b / fallback AB' },
+    { label: 'u_ff2 trim', val: ff.bias, eq: 'bias lent / hold' },
+    { label: 'u_ff_final', val: ff.final, eq: 'FF2 clamp\u00e9' },
+    { label: 'u_ff3', val: ff.ff3, eq: 'correction pr\u00e9dictive twin' },
+    { label: 'u_ff_eff', val: ff.eff, eq: 'FF inject\u00e9' },
+    { label: 'u_hold', val: ff.hold, eq: 'deadband nominal' },
     { label: 'PI (u_pi)', val: uPi, eq: 'u_p + u_i' },
     { label: 'Commande (u_cmd)', val: uCmd, eq: 'u_pi + u_ff_eff' },
     { label: 'Limit\u00e9e (u_limited)', val: uLimited, eq: 'clamp + rate limit' },
@@ -3507,11 +3713,15 @@ function updateDebugChain(data) {
   const flowEl = document.getElementById('cu-flow');
   if (flowEl) {
     const nodes = [
+      { label: 'u_pi', val: uPi },
+      null,
+      { label: 'u_ff_eff', val: ff.eff },
+      null,
       { label: 'u_cmd', val: uCmd },
       null,
       { label: 'u_limited', val: uLimited },
       null,
-      { label: 'u_applied', val: uApplied, output: true },
+      { label: 'u_applied', val: uAppliedCmd, output: true },
     ];
     flowEl.innerHTML = nodes.map(item => {
       if (item === null) return '<div class="cu-flow-arrow"></div>';
@@ -3528,22 +3738,31 @@ function updateDebugChain(data) {
   if (ffBody) {
     const ffKff = a.smartpi_ff_k_ff;
     const ffMaxNote = ff.scale != null ? '' : '\u2014 \u00b7 cap non fiable : ' + (ff.scaleCap != null ? ff.scaleCap : '0.3');
+    const ff3State = ff.ff3Enabled
+      ? 'actif'
+      : escapeHtml(ff.ff3ReasonDisabled || '\u2014');
 
     const ffRows = [
       ['Gate / raison', '<code style="background:var(--bg-card);padding:2px 6px;border-radius:3px">' + escapeHtml(ff.gate || '\u2014') + '</code>'],
       ['ff_raw', ff.raw != null ? dcPct(ff.raw) + '%' : '\u2014'],
-      ['u_ff_ab', ff.ab != null ? dcPct(ff.ab) + '%' : '\u2014'],
-      ['u_ff_trim', ff.trim != null ? dcPct(ff.trim) + '%' : '\u2014'],
-      ['u_ff_base', ff.base != null ? dcPct(ff.base) + '%' : '\u2014'],
+      ['u_ff1 / structural', ff.structural != null ? dcPct(ff.structural) + '%' : '\u2014'],
+      ['u_ff2 / trim', ff.bias != null ? dcPct(ff.bias) + '%' : '\u2014'],
+      ['u_ff_final', ff.final != null ? dcPct(ff.final) + '%' : '\u2014'],
+      ['u_ff3', ff.ff3 != null ? dcPct(ff.ff3) + '%' : '\u2014'],
       ['u_ff_eff', ff.eff != null ? dcPct(ff.eff) + '%' : '\u2014'],
-      ['Taper \u03b1', ff.taperAlpha != null ? ff.taperAlpha.toFixed(3) : '\u2014'],
+      ['u_db_nominal / u_hold', (ff.nominal != null ? dcPct(ff.nominal) + '%' : '\u2014') + ' / ' + (ff.hold != null ? dcPct(ff.hold) + '%' : '\u2014')],
+      ['FF3', ff3State + (ff.ff3HorizonCycles != null ? ' · H=' + ff.ff3HorizonCycles : '') + (ff.ff3TwinUsable === false ? ' · twin KO' : '')],
+      ['FF3 candidat', ff.ff3SelectedCandidate != null ? dcPct(ff.ff3SelectedCandidate) + '%' : '\u2014'],
+      ['Source deadband', escapeHtml(ff.deadbandPowerSource || '\u2014')],
       ['AB confidence', escapeHtml(ff.abConfidence || '\u2014')],
       ['FF coherence', escapeHtml(ff.coherenceState || '\u2014') + (ff.coherenceError != null ? ' \u00b7 e=' + ff.coherenceError.toFixed(3) : '')],
-      ['u_hold_emp / conf', (ff.holdEmp != null ? dcPct(ff.holdEmp) + '%' : '\u2014') + (ff.holdConfidence != null ? ' \u00b7 c=' + ff.holdConfidence.toFixed(2) : '')],
+      ['u_hold_emp / conf', (ff.holdEmp != null ? dcPct(ff.holdEmp) + '%' : '\u2014') + (ff.holdConfidence != null ? ' \u00b7 c=' + ff.holdConfidence.toFixed(2) : '') + (ff.deltaHold != null ? ' \u00b7 \u0394=' + dcPct(ff.deltaHold) + '%' : '')],
+      ['FF2 autorit\u00e9 / gel', (ff.ff2Authority != null ? dcPct(ff.ff2Authority) + '%' : '\u2014') + ' / ' + (ff.ff2Frozen == null ? '\u2014' : (ff.ff2Frozen ? 'true' : 'false'))],
       ['\u00c9chelle (ff_scale)', ff.scale != null ? ff.scale.toFixed(3) : ffMaxNote],
       ['Warmup FF', ff.warmup != null ? ff.warmup + (ff.warmupOk != null ? '/' + ff.warmupOk + ' cycles OK' : '') : '\u2014'],
       ['K_ff (b/a)', ffKff != null ? ffKff.toFixed(4) : '\u2014'],
-      ['Freeze trim / hold', escapeHtml(ff.trimFreezeReason || '\u2014') + ' / ' + escapeHtml(ff.holdFreezeReason || '\u2014')],
+      ['Freeze trim / hold / FF2', escapeHtml(ff.trimFreezeReason || '\u2014') + ' / ' + escapeHtml(ff.holdFreezeReason || '\u2014') + ' / ' + escapeHtml(ff.ff2FreezeReason || '\u2014')],
+      ['Servo consigne', ff.servoActive ? escapeHtml(ff.servoPhase || 'actif') : 'off'],
     ];
     ffBody.innerHTML = ffRows.map(r =>
       '<tr><td>' + r[0] + '</td><td class="cu-val">' + r[1] + '</td></tr>'
@@ -3556,8 +3775,10 @@ function updateDebugChain(data) {
     const piRows = [
       ['Kp', kp != null ? kp.toFixed(4) : '\u2014'],
       ['Ki', ki != null ? ki.toFixed(6) : '\u2014'],
+      ['Erreur totale', a.smartpi_error != null ? a.smartpi_error.toFixed(3) + ' \u00b0C' : '\u2014'],
       ['Erreur P (e_p)', ep != null ? '<span style="color:' + (ep > 0.1 ? 'var(--accent-cyan)' : ep < -0.1 ? 'var(--accent-orange)' : 'var(--accent-green)') + '">' + ep.toFixed(3) + ' \u00b0C</span>' : '\u2014'],
       ['Erreur I (\u222Be)', ei != null ? ei.toFixed(3) + ' \u00b0C' : '\u2014'],
+      ['Erreur filtr\u00e9e', eFilt != null ? eFilt.toFixed(3) + ' \u00b0C' : '\u2014'],
       ['\u00c9tat int\u00e9gral', escapeHtml(iState || '\u2014')],
       ['u_p = Kp\u00b7ep', uPCalc != null ? dcPct(uPCalc) + '%' : '\u2014'],
       ['u_i = Ki\u00b7\u222Bei', uICalc != null ? dcPct(uICalc) + '%' : '\u2014'],
@@ -3588,13 +3809,18 @@ function updateWaterfallChart(a) {
   const uP  = dcPctNum(a.smartpi_u_p) ?? (a.smartpi_kp != null && a.smartpi_error_p != null
     ? dcPctNum(a.smartpi_kp * a.smartpi_error_p) : null);
   const uI  = dcPctNum(a.smartpi_u_i);
-  const uFfAb = dcPctNum(ff.ab);
-  const uFfBase = dcPctNum(ff.base);
+  const uFf1 = dcPctNum(ff.structural);
+  const uFf2 = dcPctNum(ff.bias);
+  const uFfFinal = dcPctNum(ff.final);
+  const uFf3 = dcPctNum(ff.ff3);
   const uFfEff = dcPctNum(ff.eff);
   const awDu = dcPctNum(a.smartpi_aw_du);
   const uPi  = dcPctNum(a.smartpi_u_pi);
   const uCmd = dcPctNum(a.smartpi_u_cmd);
-  const uApp = dcPctNum(a.smartpi_u_applied);
+  const uLimited = dcPctNum(a.smartpi_u_limited);
+  const uCalc = dcPctNum(a.smartpi_calculated_on_percent);
+  const uCommit = dcPctNum(a.smartpi_committed_on_percent ?? a.on_percent);
+  const uApp = dcPctNum(a.on_percent ?? a.smartpi_u_applied);
 
   // Build waterfall segments
   const segs = [];
@@ -3605,13 +3831,13 @@ function updateWaterfallChart(a) {
   if (awDu != null && Math.abs(awDu) > 0.01) { segs.push({ label: 'aw_du', val: awDu, start: running }); running += awDu; }
 
   if (uPi != null) segs.push({ label: 'u_pi', val: uPi, start: 0, total: true });
-  if (uFfAb != null) segs.push({ label: 'u_ff_ab', val: uFfAb, start: 0, total: true });
-  if (uFfBase != null && uFfAb != null && Math.abs(uFfBase - uFfAb) > 0.01) {
-    segs.push({ label: 'trim Δ', val: uFfBase - uFfAb, start: uFfAb });
+  if (uFf1 != null) segs.push({ label: 'u_ff1', val: uFf1, start: 0, total: true });
+  if (uFf2 != null && Math.abs(uFf2) > 0.01 && uFf1 != null) {
+    segs.push({ label: 'FF2 Δ', val: uFf2, start: uFf1 });
   }
-  if (uFfBase != null) segs.push({ label: 'u_ff_base', val: uFfBase, start: 0, total: true });
-  if (uFfEff != null && uFfBase != null && Math.abs(uFfEff - uFfBase) > 0.01) {
-    segs.push({ label: 'taper Δ', val: uFfEff - uFfBase, start: uFfBase });
+  if (uFfFinal != null) segs.push({ label: 'u_ff_final', val: uFfFinal, start: 0, total: true });
+  if (uFf3 != null && Math.abs(uFf3) > 0.01 && uFfFinal != null) {
+    segs.push({ label: 'FF3 Δ', val: uFf3, start: uFfFinal });
   }
   if (uFfEff != null) segs.push({ label: 'u_ff_eff', val: uFfEff, start: 0, total: true });
 
@@ -3621,9 +3847,24 @@ function updateWaterfallChart(a) {
   }
   if (uCmd != null) segs.push({ label: 'u_cmd', val: uCmd, start: 0, total: true });
 
-  if (uApp != null && uCmd != null) {
-    const delta = uApp - uCmd;
-    if (Math.abs(delta) > 0.01) segs.push({ label: 'sat \u0394', val: delta, start: uCmd });
+  if (uLimited != null && uCmd != null) {
+    const delta = uLimited - uCmd;
+    if (Math.abs(delta) > 0.01) segs.push({ label: 'limit \u0394', val: delta, start: uCmd });
+  }
+  if (uLimited != null) segs.push({ label: 'u_limited', val: uLimited, start: 0, total: true });
+  if (uCalc != null && uLimited != null) {
+    const delta = uCalc - uLimited;
+    if (Math.abs(delta) > 0.01) segs.push({ label: 'calc \u0394', val: delta, start: uLimited });
+  }
+  if (uCalc != null) segs.push({ label: 'u_calc', val: uCalc, start: 0, total: true });
+  if (uCommit != null && uCalc != null) {
+    const delta = uCommit - uCalc;
+    if (Math.abs(delta) > 0.01) segs.push({ label: 'timing \u0394', val: delta, start: uCalc });
+  }
+  if (uCommit != null) segs.push({ label: 'u_commit', val: uCommit, start: 0, total: true });
+  if (uApp != null && uCommit != null) {
+    const delta = uApp - uCommit;
+    if (Math.abs(delta) > 0.01) segs.push({ label: 'act \u0394', val: delta, start: uCommit });
   }
   if (uApp != null) segs.push({ label: 'u_applied', val: uApp, start: 0, total: true });
 
@@ -3643,10 +3884,12 @@ function updateWaterfallChart(a) {
 
   const COLORS = {
     'u_p': '#3b82f6', 'u_i': '#8b5cf6',
-    'u_ff_ab': '#06b6d4', 'u_ff_base': '#38bdf8', 'u_ff_eff': '#0891b2',
-    'trim Δ': '#22c55e', 'taper Δ': '#f59e0b',
+    'u_ff1': '#06b6d4', 'u_ff_final': '#38bdf8', 'u_ff_eff': '#0891b2',
+    'FF2 Δ': '#22c55e', 'FF3 Δ': '#a855f7',
     'aw_du': '#eab308', 'u_pi': '#22c55e', 'gov Δ': '#f97316',
-    'u_cmd': '#ec4899', 'sat Δ': '#ef4444', 'u_applied': '#f97316',
+    'u_cmd': '#ec4899', 'limit Δ': '#ef4444', 'u_limited': '#fb7185',
+    'calc Δ': '#facc15', 'u_calc': '#eab308', 'timing Δ': '#fdba74',
+    'u_commit': '#fb7185', 'act Δ': '#94a3b8', 'u_applied': '#f97316',
   };
 
   let svg = '';
@@ -3707,11 +3950,8 @@ function updateWaterfallChart(a) {
 function updateFeedforward(data) {
   const a = data.raw_attributes || {};
   const ff = smartpiFfChain(a);
-
-  // Gather all FF values
-  const ffEnabled = a.smartpi_ff_enabled;
+  const ffEnabled = a.smartpi_ff_enabled || ff.ff3Enabled || Math.abs(ff.eff || 0) > 1e-6;
   const ffGate = ff.gate;
-  const ffRaw = ff.raw;
   const ffScale = ff.scale;
   const ffWarmup = ff.warmup;
   const ffWarmupOk = ff.warmupOk;
@@ -3719,12 +3959,19 @@ function updateFeedforward(data) {
   const aVal = a.smartpi_a;
   const bVal = a.smartpi_b;
   const tauReliable = a.smartpi_tau_reliable;
-  const sp = a.temperature || a.smartpi_sp_brut;
+  const sp = a.smartpi_sp_brut ?? a.temperature ?? a.target_temperature;
+  const spForP = a.smartpi_sp_for_p;
   const tExt = a.smartpi_t_ext;
-  const ep = a.smartpi_error_p;
-  const nbAbove = a.smartpi_near_band_above_deg;
+  const deltaT = (sp != null && tExt != null) ? sp - tExt : null;
+  const kffBase = (aVal && bVal && aVal !== 0) ? bVal / aVal : null;
+  const kffClamped = kffBase != null ? Math.min(3, Math.max(0, kffBase)) : null;
+  const kffEff = (kffClamped != null && ffScale != null) ? kffClamped * ffScale : ffKff;
+  const ff1Expected = (kffEff != null && deltaT != null) ? Math.max(0, Math.min(1, kffEff * deltaT)) : null;
+  const twinStatus = a.smartpi_twin_status || '—';
+  const twinBadge = ff.ff3TwinUsable === true ? 'twin ok' : ff.ff3TwinUsable === false ? 'twin KO' : 'twin ?';
+  const ff3State = ff.ff3Enabled ? 'actif' : (ff.ff3ReasonDisabled || 'off');
+  const servoState = ff.servoActive ? (ff.servoPhase || 'actif') : 'off';
 
-  // ── Status ──
   const dot = document.getElementById('ff-status-dot');
   const label = document.getElementById('ff-status-label');
   if (dot && label) {
@@ -3734,59 +3981,55 @@ function updateFeedforward(data) {
   }
   const gateBadge = document.getElementById('ff-gate-badge');
   if (gateBadge) {
-    gateBadge.textContent = [ffGate, ff.abConfidence, ff.coherenceState].filter(Boolean).join(' · ') || '—';
+    gateBadge.textContent = [ffGate, ff.abConfidence, ff.coherenceState, `FF3:${ff3State}`, twinBadge].filter(Boolean).join(' · ') || '—';
   }
 
-  // FF bar
   const uffPct = ff.eff != null ? dcPctNum(ff.eff) : 0;
   const fillEl = document.getElementById('ff-bar-fill');
   const barLabel = document.getElementById('ff-bar-label');
   if (fillEl) fillEl.style.width = Math.max(0, Math.min(100, uffPct)).toFixed(1) + '%';
-  if (barLabel) barLabel.textContent = ff.eff != null ? 'u_ff_eff = ' + uffPct.toFixed(1) + '%' : 'u_ff_eff = \u2014';
+  if (barLabel) {
+    if (ff.eff != null) {
+      barLabel.textContent = `u_ff_eff = ${uffPct.toFixed(1)}% · final ${ff.final != null ? dcPct(ff.final) + '%' : '—'} · ff3 ${ff.ff3 != null ? dcPct(ff.ff3) + '%' : '—'}`;
+    } else {
+      barLabel.textContent = 'u_ff_eff = \u2014';
+    }
+  }
 
-  // ── K_ff calculation card ──
   const kffContent = document.getElementById('ff-kff-content');
   if (kffContent) {
-    const kffBase = (aVal && bVal && aVal !== 0) ? bVal / aVal : null;
-    const kffClamped = kffBase != null ? Math.min(3, Math.max(0, kffBase)) : null;
-    const kffEff = (kffClamped != null && ffScale != null) ? kffClamped * ffScale : ffKff;
     const clampOk = kffBase != null && kffBase >= 0 && kffBase <= 3;
-
     let html = '';
     html += '<div class="ff-eq">';
     html += '<span class="ff-dim">Param\u00e8tres mod\u00e8le :</span><br>';
     html += 'a = <span class="ff-val">' + (aVal != null ? aVal.toFixed(6) : '\u2014') + '</span> <span class="ff-dim">\u00b0C/%/min</span><br>';
     html += 'b = <span class="ff-val">' + (bVal != null ? bVal.toFixed(6) : '\u2014') + '</span> <span class="ff-dim">1/min</span><br>';
-    html += '<br>';
-    html += '<span class="ff-dim">K_ff base :</span><br>';
+    html += '<br><span class="ff-dim">K_ff base :</span><br>';
     html += 'K_ff = b / a = <span class="ff-val">' + (kffBase != null ? kffBase.toFixed(4) : '\u2014') + '</span>';
-    if (kffBase != null) {
-      html += ' <span class="' + (clampOk ? 'ff-ok' : 'ff-warn') + '">' + (clampOk ? '\u2713 [0, 3]' : '\u26a0 clamp\u00e9') + '</span>';
-    }
-    html += '<br><br>';
-    html += '<span class="ff-dim">Gain effectif :</span><br>';
+    if (kffBase != null) html += ' <span class="' + (clampOk ? 'ff-ok' : 'ff-warn') + '">' + (clampOk ? '\u2713 [0, 3]' : '\u26a0 clamp\u00e9') + '</span>';
+    html += '<br><br><span class="ff-dim">Gain effectif :</span><br>';
     html += 'K_ff_eff = K_ff \u00d7 warmup_scale<br>';
     html += '= <span class="ff-val">' + (kffClamped != null ? kffClamped.toFixed(4) : '\u2014') + '</span>';
     html += ' \u00d7 <span class="ff-val">' + (ffScale != null ? ffScale.toFixed(3) : '\u2014') + '</span>';
     html += ' = <span class="ff-hl">' + (kffEff != null ? kffEff.toFixed(6) : '\u2014') + '</span>';
     html += '<br><br><span class="ff-dim">Sorties runtime :</span><br>';
-    html += 'u_ff_ab = <span class="ff-val">' + (ff.ab != null ? dcPct(ff.ab) + '%' : '\u2014') + '</span><br>';
-    html += 'u_ff_base = <span class="ff-val">' + (ff.base != null ? dcPct(ff.base) + '%' : '\u2014') + '</span><br>';
+    html += '\u0394T = <span class="ff-val">' + (deltaT != null ? deltaT.toFixed(2) + '\u00b0C' : '\u2014') + '</span><br>';
+    html += 'u_ff1 = <span class="ff-val">' + (ff.structural != null ? dcPct(ff.structural) + '%' : '\u2014') + '</span>';
+    if (ff1Expected != null) html += ' <span class="ff-dim">(calc ' + (ff1Expected * 100).toFixed(1) + '%)</span>';
+    html += '<br>u_ff2 = <span class="ff-val">' + (ff.bias != null ? dcPct(ff.bias) + '%' : '\u2014') + '</span><br>';
+    html += 'u_ff_final = <span class="ff-val">' + (ff.final != null ? dcPct(ff.final) + '%' : '\u2014') + '</span><br>';
+    html += 'u_ff3 = <span class="ff-val">' + (ff.ff3 != null ? dcPct(ff.ff3) + '%' : '\u2014') + '</span><br>';
     html += 'u_ff_eff = <span class="ff-hl">' + (ff.eff != null ? dcPct(ff.eff) + '%' : '\u2014') + '</span>';
     html += '</div>';
     kffContent.innerHTML = html;
   }
 
-  // ── Warmup card ──
   const warmupContent = document.getElementById('ff-warmup-content');
   const warmupGauge = document.getElementById('ff-warmup-gauge');
   const warmupPct = document.getElementById('ff-warmup-pct');
-
   if (warmupContent) {
-    // Compute scales client-side
     const reliableCap = tauReliable === true ? 1.0 : (tauReliable === false ? 0.3 : null);
     const scalePct = ffScale != null ? Math.round(ffScale * 100) : 0;
-
     if (warmupGauge) warmupGauge.style.setProperty('--pct', scalePct);
     if (warmupPct) warmupPct.textContent = ffScale != null ? (ffScale * 100).toFixed(0) + '%' : '\u2014';
 
@@ -3797,72 +4040,73 @@ function updateFeedforward(data) {
     if (reliableCap != null) {
       html += '<span style="color:' + (reliableCap >= 1 ? 'var(--accent-green)' : 'var(--accent-yellow)') + '">' + reliableCap.toFixed(1) + '</span>';
       html += ' <span class="ff-param-unit">' + (tauReliable ? '\u03c4 fiable' : '\u03c4 non fiable') + '</span>';
-    } else { html += '\u2014'; }
+    } else {
+      html += '\u2014';
+    }
     html += '</span></div>';
     html += '<div class="ff-param-row"><span class="ff-param-key">warmup_scale</span><span class="ff-param-val" style="color:var(--accent-orange);font-size:15px">' + (ffScale != null ? ffScale.toFixed(3) : '\u2014') + '</span></div>';
     html += '<div class="ff-param-row"><span class="ff-param-key">hold_confidence</span><span class="ff-param-val">' + (ff.holdConfidence != null ? ff.holdConfidence.toFixed(2) : '\u2014') + '</span></div>';
-    html += '<div class="ff-param-row"><span class="ff-param-key">trim / hold freeze</span><span class="ff-param-val">' + escapeHtml(ff.trimFreezeReason || '\u2014') + ' / ' + escapeHtml(ff.holdFreezeReason || '\u2014') + '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">FF2 authority</span><span class="ff-param-val">' + (ff.ff2Authority != null ? dcPct(ff.ff2Authority) + '%' : '\u2014') + '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">trim / hold / FF2 freeze</span><span class="ff-param-val">' + escapeHtml(ff.trimFreezeReason || '\u2014') + ' / ' + escapeHtml(ff.holdFreezeReason || '\u2014') + ' / ' + escapeHtml(ff.ff2FreezeReason || '\u2014') + '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">deadband source</span><span class="ff-param-val">' + escapeHtml(ff.deadbandPowerSource || '\u2014') + '</span></div>';
+    html += '<div class="ff-param-row"><span class="ff-param-key">servo consigne</span><span class="ff-param-val">' + escapeHtml(servoState) + '</span></div>';
     warmupContent.innerHTML = html;
   }
 
-  // ── Pipeline de calcul ──
   const pipeline = document.getElementById('ff-pipeline');
   if (pipeline) {
-    const deltaT = (sp != null && tExt != null) ? sp - tExt : null;
-    const kffEff = ffKff != null ? ffKff : ((aVal && bVal && aVal !== 0 && ffScale != null) ? (bVal / aVal) * ffScale : null);
-    const ffCalcAb = (kffEff != null && deltaT != null) ? Math.max(0, Math.min(1, kffEff * deltaT)) : null;
-    const trimDelta = ff.trim != null ? dcPctNum(ff.trim) : null;
-    const taperPct = ff.taperAlpha != null ? ff.taperAlpha * 100 : null;
-
+    const trimDelta = ff.bias != null ? dcPctNum(ff.bias) : null;
     let steps = '';
 
-    // Step 1: Inputs
     steps += '<div class="ff-step"><div class="ff-step-icon ff-step-calc">\u2460</div>';
     steps += '<div class="ff-step-content">';
     steps += '<span class="ff-dim">Entr\u00e9es</span><br>';
-    steps += 'SP = <span class="ff-val">' + (sp != null ? sp.toFixed(1) : '\u2014') + '\u00b0C</span>';
+    steps += 'SP_brut = <span class="ff-val">' + (sp != null ? sp.toFixed(1) : '\u2014') + '\u00b0C</span>';
+    steps += ' &nbsp; SP_for_P = <span class="ff-val">' + (spForP != null ? spForP.toFixed(1) : '\u2014') + '\u00b0C</span>';
     steps += ' &nbsp; T_ext = <span class="ff-val">' + (tExt != null ? tExt.toFixed(1) : '\u2014') + '\u00b0C</span>';
     steps += ' &nbsp; \u0394T = <span class="ff-hl">' + (deltaT != null ? deltaT.toFixed(1) : '\u2014') + '\u00b0C</span>';
-    steps += '</div></div>';
-    steps += '<div class="ff-step-arrow">\u2193</div>';
+    steps += '<br><span class="ff-dim">servo:</span> ' + escapeHtml(servoState) + ' &nbsp; <span class="ff-dim">twin:</span> ' + escapeHtml(twinStatus);
+    steps += '</div></div><div class="ff-step-arrow">\u2193</div>';
 
-    // Step 2: K_ff × ΔT / fallback AB
     steps += '<div class="ff-step"><div class="ff-step-icon ff-step-calc">\u2461</div>';
     steps += '<div class="ff-step-content">';
-    steps += 'u_ff_ab = K_ff_eff \u00d7 \u0394T / fallback AB<br>';
+    steps += 'FF1 structurel = K_ff_eff \u00d7 \u0394T / fallback AB<br>';
     steps += '= <span class="ff-val">' + (kffEff != null ? kffEff.toFixed(6) : '\u2014') + '</span>';
     steps += ' \u00d7 <span class="ff-val">' + (deltaT != null ? deltaT.toFixed(1) : '\u2014') + '</span>';
-    steps += ' = <span class="ff-hl">' + (ff.ab != null ? dcPct(ff.ab) + '%' : (ffCalcAb != null ? (ffCalcAb * 100).toFixed(2) + '%' : '\u2014')) + '</span>';
+    steps += ' = <span class="ff-hl">' + (ff.structural != null ? dcPct(ff.structural) + '%' : (ff1Expected != null ? (ff1Expected * 100).toFixed(2) + '%' : '\u2014')) + '</span>';
     if (ff.abConfidence) steps += ' <span class="ff-dim">(' + escapeHtml(ff.abConfidence) + ')</span>';
-    steps += '</div></div>';
-    steps += '<div class="ff-step-arrow">\u2193</div>';
+    steps += '</div></div><div class="ff-step-arrow">\u2193</div>';
 
-    // Step 3: Trim
     const trimActive = trimDelta != null && Math.abs(trimDelta) > 0.01;
     steps += '<div class="ff-step"><div class="ff-step-icon ' + (trimActive ? 'ff-step-pass' : 'ff-step-calc') + '">' + (trimActive ? '\u2713' : '\u2022') + '</div>';
     steps += '<div class="ff-step-content">';
-    steps += 'Trim \u2192 u_ff_base = <span class="ff-val">' + (ff.base != null ? dcPct(ff.base) + '%' : '\u2014') + '</span>';
+    steps += 'FF2 trim \u2192 u_ff2 = <span class="ff-val">' + (ff.bias != null ? dcPct(ff.bias) + '%' : '\u2014') + '</span>';
     if (trimDelta != null) steps += ' <span class="ff-dim">(\u0394=' + trimDelta.toFixed(1) + '%)</span>';
-    steps += '</div></div>';
-    steps += '<div class="ff-step-arrow">\u2193</div>';
+    if (ff.deltaHold != null) steps += '<br><span class="ff-dim">\u0394_hold:</span> ' + dcPct(ff.deltaHold) + '%';
+    if (ff.ff2Authority != null) steps += ' &nbsp; <span class="ff-dim">authority:</span> ' + dcPct(ff.ff2Authority) + '%';
+    steps += '</div></div><div class="ff-step-arrow">\u2193</div>';
 
-    // Step 4: Taper / coherence
-    const gateIcon = ff.taperAlpha == null ? '\u2753' : (ff.taperAlpha < 0.999 ? '\u2713' : '\u2022');
-    const gateCls = ff.taperAlpha == null ? 'ff-step-calc' : (ff.taperAlpha < 0.999 ? 'ff-step-pass' : 'ff-step-calc');
-    steps += '<div class="ff-step"><div class="ff-step-icon ' + gateCls + '">' + gateIcon + '</div>';
+    steps += '<div class="ff-step"><div class="ff-step-icon ff-step-pass">\u2463</div>';
     steps += '<div class="ff-step-content">';
-    steps += 'Taper \u2192 u_ff_eff = <span class="ff-val">' + (ff.eff != null ? dcPct(ff.eff) + '%' : '\u2014') + '</span>';
-    if (taperPct != null) steps += ' <span class="ff-dim">(\u03b1=' + ff.taperAlpha.toFixed(3) + ')</span>';
-    steps += '<br><span class="ff-dim">gate:</span> ' + escapeHtml(ffGate || '\u2014');
-    if (ff.coherenceState) steps += ' &nbsp; <span class="ff-dim">coh:</span> ' + escapeHtml(ff.coherenceState);
-    steps += '</div></div>';
-    steps += '<div class="ff-step-arrow">\u2193</div>';
+    steps += 'Clamp FF2 \u2192 u_ff_final = <span class="ff-val">' + (ff.final != null ? dcPct(ff.final) + '%' : '\u2014') + '</span>';
+    steps += '<br><span class="ff-dim">u_db_nominal:</span> ' + (ff.nominal != null ? dcPct(ff.nominal) + '%' : '\u2014');
+    steps += '</div></div><div class="ff-step-arrow">\u2193</div>';
 
-    // Step 5: Final
+    steps += '<div class="ff-step"><div class="ff-step-icon ' + (ff.ff3Enabled ? 'ff-step-pass' : 'ff-step-calc') + '">' + (ff.ff3Enabled ? '\u2713' : '\u2022') + '</div>';
+    steps += '<div class="ff-step-content">';
+    steps += 'FF3 pr\u00e9dictif \u2192 u_ff3 = <span class="ff-val">' + (ff.ff3 != null ? dcPct(ff.ff3) + '%' : '\u2014') + '</span>';
+    steps += '<br><span class="ff-dim">statut:</span> ' + escapeHtml(ff3State);
+    if (ff.ff3HorizonCycles != null) steps += ' &nbsp; <span class="ff-dim">H:</span> ' + ff.ff3HorizonCycles;
+    steps += ' &nbsp; <span class="ff-dim">twin:</span> ' + escapeHtml(twinBadge);
+    steps += '</div></div><div class="ff-step-arrow">\u2193</div>';
+
     steps += '<div class="ff-step"><div class="ff-step-icon" style="border-color:var(--accent-orange);color:var(--accent-orange);font-weight:700">\u2605</div>';
     steps += '<div class="ff-step-content">';
     steps += '<span style="font-size:15px;font-weight:700">u_ff_eff = <span class="ff-hl">' + (ff.eff != null ? dcPct(ff.eff) + '%' : '\u2014') + '</span></span>';
+    steps += '<br><span class="ff-dim">gate:</span> ' + escapeHtml(ffGate || '\u2014');
+    if (ff.coherenceState) steps += ' &nbsp; <span class="ff-dim">coh:</span> ' + escapeHtml(ff.coherenceState);
     if (ff.holdEmp != null) steps += '<br><span class="ff-dim">u_hold_emp:</span> ' + dcPct(ff.holdEmp) + '%';
+    if (ff.committedPower != null) steps += ' &nbsp; <span class="ff-dim">u_commit:</span> ' + dcPct(ff.committedPower) + '%';
     steps += '</div></div>';
 
     pipeline.innerHTML = steps;
@@ -3875,13 +4119,15 @@ function initFfChart() {
   if (!el || el.clientWidth === 0) return;
   const ffSeries = [
     { ...makeSeries('ff_raw (%)', '#64748b', 1, [5, 3]), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
-    { ...makeSeries('u_ff_ab (%)', '#06b6d4', 1.2), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
-    { ...makeSeries('u_ff_base (%)', '#38bdf8', 1.2), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
+    { ...makeSeries('u_ff1 (%)', '#06b6d4', 1.2), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
+    { ...makeSeries('u_ff2 (%)', '#22c55e', 1.2), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
+    { ...makeSeries('u_ff_final (%)', '#38bdf8', 1.4), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
+    { ...makeSeries('u_ff3 (%)', '#a855f7', 1.2), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
     { ...makeSeries('u_ff_eff (%)', '#f97316', 2), fill: 'rgba(249,115,22,0.12)', paths: uPlot.paths.stepped({ align: -1 }), value: (u, v) => v == null ? '—' : v.toFixed(1) + ' %' },
   ];
   charts.ff = new uPlot(
     makeOpts(el, ffSeries, '%', [0, 105], 240),
-    [[], [], [], [], []],
+    [[], [], [], [], [], [], []],
     el
   );
   const ro = new ResizeObserver(() => {
@@ -3902,10 +4148,18 @@ function computeHealthScore(a) {
   if (a.smartpi_deadtime_cool_reliable === false) { score -= 15; issues.push('deadtime cool non fiable'); }
   if (a.smartpi_tau_reliable === false)            { score -= 15; issues.push('tau non fiable'); }
   if (a.smartpi_autocalib_model_degraded === true) { score -= 25; issues.push('modèle dégradé'); }
+  if (a.smartpi_twin_status && a.smartpi_twin_status !== 'ok') { score -= 10; issues.push('twin ' + a.smartpi_twin_status); }
+  if (a.smartpi_twin_bias_warning === true) { score -= 10; issues.push('biais twin détecté'); }
   if (a.smartpi_ff_ab_confidence_state === 'ab_bad') { score -= 15; issues.push('AB confidence mauvaise'); }
   if (a.smartpi_ff_ab_confidence_state === 'ab_degraded') { score -= 8; issues.push('AB confidence dégradée'); }
   if (a.smartpi_ff_coherence_state === 'bad') { score -= 12; issues.push('FF coherence mauvaise'); }
   if (a.smartpi_ff_coherence_state === 'warn') { score -= 6; issues.push('FF coherence à surveiller'); }
+  if (a.smartpi_a_drift_state && !['stable', 'ok', 'nominal'].includes(String(a.smartpi_a_drift_state).toLowerCase())) {
+    score -= 6; issues.push('drift a ' + a.smartpi_a_drift_state);
+  }
+  if (a.smartpi_b_drift_state && !['stable', 'ok', 'nominal'].includes(String(a.smartpi_b_drift_state).toLowerCase())) {
+    score -= 6; issues.push('drift b ' + a.smartpi_b_drift_state);
+  }
   const rmse = a.smartpi_twin_rmse;
   if (rmse != null) {
     if (rmse > 1.0) { score -= 20; issues.push('RMSE > 1.0°C'); }
@@ -3979,6 +4233,11 @@ function updateModelHealth(data) {
   const innovation = a.smartpi_twin_innovation;
   const cusum = smartpiCusum(a);
   const tSteady = a.smartpi_twin_t_steady;
+  const tSteadyMax = a.smartpi_twin_t_steady_max;
+  const twinStatus = a.smartpi_twin_status;
+  const twinBias = a.smartpi_twin_bias_warning;
+  const twinResetCount = a.smartpi_twin_reset_count;
+  const etaU = a.smartpi_twin_eta_u;
   const ffCoherence = a.smartpi_ff_coherence_state;
   const abConfidence = a.smartpi_ff_ab_confidence_state;
   const rmseClass = rmse == null ? '' : (rmse <= 0.3 ? 'mh-ok' : rmse <= 0.7 ? 'mh-warn' : 'mh-error');
@@ -3986,10 +4245,14 @@ function updateModelHealth(data) {
   const innovColor = innovation == null ? 'var(--text-dim)' :
     (Math.abs(innovation) <= 0.2 ? 'var(--accent-green)' : Math.abs(innovation) <= 0.5 ? 'var(--accent-orange)' : 'var(--accent-red)');
   document.getElementById('mh-twin-container').innerHTML = `
+    <div class="mh-param-row"><span class="mh-param-key">Statut twin</span><span class="mh-badge ${twinStatus === 'ok' ? 'mh-ok' : twinStatus ? 'mh-warn' : ''}">${escapeHtml(twinStatus || '—')}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">RMSE</span><span class="mh-badge ${rmseClass}">${rmse != null ? rmse.toFixed(3) + ' °C' : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">Innovation</span><span class="mh-param-val" style="color:${innovColor}">${innovation != null ? innovation.toFixed(3) + ' °C' : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">CUSUM</span><span class="mh-badge ${cusumClass}">${cusum != null ? cusum.toFixed(2) : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">T_steady</span><span class="mh-param-val">${tSteady != null ? tSteady.toFixed(2) + ' °C' : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">T_steady max</span><span class="mh-param-val">${tSteadyMax != null ? tSteadyMax.toFixed(2) + ' °C' : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">ETA u</span><span class="mh-param-val">${etaU != null ? etaU.toFixed(3) : '—'}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">Biais / reset twin</span><span class="mh-param-val">${twinBias === true ? 'warning' : twinBias === false ? 'ok' : '—'} · ${twinResetCount != null ? twinResetCount : '—'}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">AB confidence</span><span class="mh-badge ${abConfidence === 'ab_ok' ? 'mh-ok' : abConfidence === 'ab_bad' ? 'mh-error' : 'mh-warn'}">${escapeHtml(abConfidence || '—')}</span></div>
     <div class="mh-param-row"><span class="mh-param-key">FF coherence</span><span class="mh-badge ${ffCoherence === 'ok' ? 'mh-ok' : ffCoherence === 'bad' ? 'mh-error' : 'mh-warn'}">${escapeHtml(ffCoherence || '—')}</span></div>`;
 
@@ -4014,7 +4277,9 @@ function updateModelHealth(data) {
     <div class="mh-param-row">
       <span class="mh-param-key">learn_last_reason</span>
       <span class="mh-param-val" style="max-width:56%;text-align:right;word-break:break-word">${escapeHtml(learnReason)}</span>
-    </div>`;
+    </div>
+    <div class="mh-param-row"><span class="mh-param-key">drift a / b</span><span class="mh-param-val">${escapeHtml(String(a.smartpi_a_drift_state || '—'))} / ${escapeHtml(String(a.smartpi_b_drift_state || '—'))}</span></div>
+    <div class="mh-param-row"><span class="mh-param-key">T_int clean / σ</span><span class="mh-param-val">${a.smartpi_t_int_clean != null ? a.smartpi_t_int_clean.toFixed(2) + ' °C' : '—'} / ${a.smartpi_sigma_t_int != null ? a.smartpi_sigma_t_int.toFixed(3) : '—'}</span></div>`;
 
   const lkpi = document.getElementById('mh-learning-kpi-container');
   if (lkpi) {
@@ -5663,6 +5928,14 @@ function updateTuningAssistant(data) {
   const guardKick = a.smartpi_guard_kick_active;
   const ffCoherence = a.smartpi_ff_coherence_state;
   const abConfidence = a.smartpi_ff_ab_confidence_state;
+  const twinStatus = a.smartpi_twin_status;
+  const ff3Enabled = a.smartpi_ff3_enabled;
+  const ff3Reason = a.smartpi_ff3_reason_disabled;
+  const ff3TwinUsable = a.smartpi_ff3_twin_usable;
+  const servoPhase = a.smartpi_setpoint_servo_phase;
+  const servoActive = a.smartpi_setpoint_servo_active;
+  const aDrift = a.smartpi_a_drift_state;
+  const bDrift = a.smartpi_b_drift_state;
 
   const rmseBadge = tuningBadge(rmse == null ? 'warn' : (rmse <= 0.3 ? 'ok' : rmse <= 0.7 ? 'warn' : 'error'), rmse == null ? 'n/a' : (rmse <= 0.3 ? 'bon' : rmse <= 0.7 ? 'moyen' : 'dégradé'));
   const innovAbs = innovation == null ? null : Math.abs(innovation);
@@ -5680,12 +5953,15 @@ function updateTuningAssistant(data) {
 
   if (obsEl) {
     obsEl.innerHTML = [
+      renderTaRow('Statut twin', twinStatus || '—'),
       renderTaRowRaw('RMSE twin', escapeHtml(rmse == null ? '—' : fmtNum(rmse, 3) + ' °C') + rmseBadge + rmseSpark),
       renderTaRowRaw('Innovation', escapeHtml(innovation == null ? '—' : fmtNum(innovation, 3) + ' °C') + innovBadge + innovSpark),
       renderTaRowRaw('CUSUM', escapeHtml(cusum == null ? '—' : fmtNum(cusum, 2)) + cusumBadge + cusumSpark),
       renderTaRow('Régime / Phase', (regime || '—') + ' / ' + (phase || '—')),
       renderTaRow('Guards actifs', 'guard_cut=' + boolText(guardCut) + ' · guard_kick=' + boolText(guardKick) + ' · thermal=' + boolText(thermalGuard)),
-      renderTaRow('FFv2', (abConfidence || '—') + ' / ' + (ffCoherence || '—')),
+      renderTaRow('FF2 / FF3', (abConfidence || '—') + ' / ' + (ffCoherence || '—') + ' · ' + (ff3Enabled ? 'FF3 on' : (ff3Reason || 'FF3 off'))),
+      renderTaRow('Servo consigne', servoActive ? (servoPhase || 'actif') : 'off'),
+      renderTaRow('Drift A/B', (aDrift || '—') + ' / ' + (bDrift || '—')),
     ].join('');
   }
 
@@ -5835,6 +6111,21 @@ function updateTuningAssistant(data) {
     }
     if (ffCoherence === 'bad') {
       recs.push({ level: 'warn', msg: 'FF coherence = bad : u_hold_emp et u_ff_ab divergent durablement, le modèle thermique dérive probablement.' });
+    }
+    if (twinStatus && twinStatus !== 'ok') {
+      recs.push({ level: 'warn', msg: 'Thermal Twin en statut "' + twinStatus + '" : FF3 et les diagnostics prédictifs sont moins exploitables.' });
+    }
+    if (a.smartpi_twin_bias_warning === true) {
+      recs.push({ level: 'warn', msg: 'Le twin signale un biais d’innovation : vérifier les perturbations ou un dérive progressive du modèle.' });
+    }
+    if (ff3TwinUsable === false) {
+      recs.push({ level: 'warn', msg: 'FF3 indisponible côté twin (' + (ff3Reason || 'raison inconnue') + ') : ne pas interpréter l’approche consigne comme un problème PI seul.' });
+    }
+    if ((aDrift && !['stable', 'ok', 'nominal'].includes(String(aDrift).toLowerCase())) || (bDrift && !['stable', 'ok', 'nominal'].includes(String(bDrift).toLowerCase()))) {
+      recs.push({ level: 'warn', msg: 'Des canaux de drift A/B ne sont pas stables : la priorité est de consolider l’apprentissage avant tout retuning.' });
+    }
+    if (servoActive === true) {
+      recs.push({ level: 'warn', msg: 'Le servo de consigne est actif (' + (servoPhase || 'phase inconnue') + ') : la réponse vue sur les derniers points mélange tuning PI et façonnage de consigne.' });
     }
 
     // Warnings
@@ -6471,7 +6762,7 @@ function evaluateAlerts(attrs, history) {
       message: `CUSUM élevé: ${cusum.toFixed(2)}`, current: cusum.toFixed(2), threshold: t.cusum });
   }
 
-  // 8b. FFv2 diagnostics
+  // 8b. Feedforward FF2/FF3 diagnostics
   if (attrs.smartpi_ff_ab_confidence_state === 'ab_bad') {
     alerts.push({ id: 'ab_bad', severity: 'error', message: 'AB confidence = ab_bad', current: 'ab_bad', threshold: 'ab_ok' });
   } else if (attrs.smartpi_ff_ab_confidence_state === 'ab_degraded') {
@@ -6480,8 +6771,23 @@ function evaluateAlerts(attrs, history) {
   if (attrs.smartpi_ff_coherence_state === 'bad') {
     alerts.push({ id: 'ff_coherence', severity: 'warning', message: 'FF coherence = bad', current: 'bad', threshold: 'ok' });
   }
+  if (attrs.smartpi_ff3_enabled === false && attrs.smartpi_ff3_reason_disabled && !['none', 'deadband', 'not_near_band'].includes(String(attrs.smartpi_ff3_reason_disabled))) {
+    alerts.push({ id: 'ff3_disabled', severity: 'warning', message: `FF3 inactif: ${attrs.smartpi_ff3_reason_disabled}`, current: attrs.smartpi_ff3_reason_disabled, threshold: 'none' });
+  }
   if (attrs.smartpi_guard_kick_active === true) {
     alerts.push({ id: 'guard_kick', severity: 'warning', message: 'Guard kick actif', current: 'true', threshold: 'false' });
+  }
+  if (attrs.smartpi_twin_status && attrs.smartpi_twin_status !== 'ok') {
+    alerts.push({ id: 'twin_status', severity: 'warning', message: `Twin status: ${attrs.smartpi_twin_status}`, current: attrs.smartpi_twin_status, threshold: 'ok' });
+  }
+  if (attrs.smartpi_twin_bias_warning === true) {
+    alerts.push({ id: 'twin_bias', severity: 'warning', message: 'Twin bias warning actif', current: 'true', threshold: 'false' });
+  }
+  if (attrs.smartpi_a_drift_state && !['stable', 'ok', 'nominal'].includes(String(attrs.smartpi_a_drift_state).toLowerCase())) {
+    alerts.push({ id: 'a_drift', severity: 'warning', message: `Drift canal a: ${attrs.smartpi_a_drift_state}`, current: attrs.smartpi_a_drift_state, threshold: 'stable' });
+  }
+  if (attrs.smartpi_b_drift_state && !['stable', 'ok', 'nominal'].includes(String(attrs.smartpi_b_drift_state).toLowerCase())) {
+    alerts.push({ id: 'b_drift', severity: 'warning', message: `Drift canal b: ${attrs.smartpi_b_drift_state}`, current: attrs.smartpi_b_drift_state, threshold: 'stable' });
   }
 
   // 9. Erreur température
@@ -6802,12 +7108,13 @@ const SC_BLOCKS = [
   { id: 'sc-b-text',  label: 'T_ext',      x: 20,  y: 80, w: 110, h: 65, get: a => a.smartpi_t_ext ?? a.current_external_temperature, unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
   { id: 'sc-b-bat',   label: 'Bâtiment',   x: 190, y: 60, w: 120, h: 95, attr: 'current_temperature', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
   { id: 'sc-b-cap',   label: 'Capteur',    x: 370, y: 80, w: 100, h: 65, attr: 'current_temperature', unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
-  { id: 'sc-b-sp',    label: 'Consigne',   x: 515, y: 10, w: 100, h: 50, get: a => a.smartpi_sp_brut ?? a.target_temperature ?? a.temperature, unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
+  { id: 'sc-b-sp',    label: 'SP_P',       x: 515, y: 10, w: 100, h: 50, get: a => a.smartpi_sp_for_p ?? a.smartpi_sp_brut ?? a.target_temperature ?? a.temperature, unit: '°C', fmt: v => v?.toFixed(1) ?? '—' },
   { id: 'sc-b-err',   label: 'Erreur Σ',   x: 525, y: 80, w: 80,  h: 65, attr: 'smartpi_error_p', unit: '°C', fmt: v => v?.toFixed(2) ?? '—' },
   { id: 'sc-b-pi',    label: 'Régul. PI',  x: 660, y: 60, w: 110, h: 95, attr: 'smartpi_u_pi', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
   { id: 'sc-b-gov',   label: 'Gouverneur', x: 825, y: 80, w: 105, h: 65, attr: 'smartpi_u_cmd', unit: '%', fmt: v => v != null ? (v * 100).toFixed(1) : '—' },
-  { id: 'sc-b-act',   label: 'Chauffage',  x: 985, y: 80, w: 100, h: 65, attr: 'on_percent', unit: '%', fmt: v => v?.toFixed(0) ?? '—' },
+  { id: 'sc-b-act',   label: 'Chauffage',  x: 985, y: 80, w: 100, h: 65, get: a => a.smartpi_committed_on_percent ?? a.on_percent, unit: '%', fmt: v => v != null ? smartpiPowerPct(v).toFixed(0) : '—' },
   { id: 'sc-b-ff',    label: 'FF eff.', x: 525, y: 210, w: 120, h: 50, get: a => smartpiEffFf(a), unit: '%', fmt: v => v != null ? smartpiPowerPct(v).toFixed(1) : '—' },
+  { id: 'sc-b-ff3',   label: 'FF3 Δ',   x: 665, y: 210, w: 100, h: 50, attr: 'smartpi_u_ff3', unit: '%', fmt: v => v != null ? smartpiPowerPct(v).toFixed(1) : '—' },
 ];
 
 const SC_FLOWS = [
@@ -6906,9 +7213,19 @@ function renderScadaSynoptic() {
   svg.appendChild(spToFf);
 
   // FF output branch: FF block -> merge into error/regulator
+  const ffToFf3 = document.createElementNS(ns, 'line');
+  ffToFf3.setAttribute('x1', '645'); ffToFf3.setAttribute('y1', '235');
+  ffToFf3.setAttribute('x2', '665'); ffToFf3.setAttribute('y2', '235');
+  ffToFf3.setAttribute('stroke', 'var(--signal-ff)');
+  ffToFf3.setAttribute('stroke-width', '1.5');
+  ffToFf3.setAttribute('stroke-dasharray', '6 4');
+  ffToFf3.style.animation = `sc-flow-dash var(--sc-flow-speed) linear infinite`;
+  ffToFf3.setAttribute('marker-end', 'url(#sc-arrow-0)');
+  svg.appendChild(ffToFf3);
+
   const ffLine = document.createElementNS(ns, 'line');
-  ffLine.setAttribute('x1', '585'); ffLine.setAttribute('y1', '210');
-  ffLine.setAttribute('x2', '585'); ffLine.setAttribute('y2', '145');
+  ffLine.setAttribute('x1', '715'); ffLine.setAttribute('y1', '210');
+  ffLine.setAttribute('x2', '715'); ffLine.setAttribute('y2', '145');
   ffLine.setAttribute('stroke', 'var(--signal-ff)');
   ffLine.setAttribute('stroke-width', '1.5');
   ffLine.setAttribute('stroke-dasharray', '6 4');
@@ -6990,6 +7307,10 @@ function scBlockColor(blockId, value) {
   }
   if (blockId === 'sc-b-ff') {
     return value !== 0 ? '#06b6d4' : '#333';
+  }
+  if (blockId === 'sc-b-ff3') {
+    if (value == null || Math.abs(smartpiPowerPct(value)) < 0.1) return '#333';
+    return '#a855f7';
   }
   if (blockId === 'sc-b-sp') {
     return '#06b6d4';
@@ -7282,7 +7603,12 @@ function updateScadaStatus(attrs) {
   }, 'sc-red');
   const ffValEl = document.getElementById('sc-val-ff');
   if (ffValEl) {
-    ffValEl.textContent = [attrs.smartpi_ff_gate, attrs.smartpi_ff_ab_confidence_state, attrs.smartpi_ff_coherence_state].filter(Boolean).join(' · ') || '--';
+    ffValEl.textContent = [
+      attrs.smartpi_ff_gate,
+      attrs.smartpi_ff_ab_confidence_state,
+      attrs.smartpi_ff_coherence_state,
+      attrs.smartpi_ff3_enabled ? 'ff3:on' : (attrs.smartpi_ff3_reason_disabled ? `ff3:${attrs.smartpi_ff3_reason_disabled}` : null),
+    ].filter(Boolean).join(' · ') || '--';
   }
 
   const calibState = attrs.smartpi_autocalib_state;
@@ -7301,7 +7627,11 @@ function updateScadaStatus(attrs) {
   const rmse = attrs.smartpi_twin_rmse;
   let modelCls = 'sc-green';
   let modelVal = '--';
-  if (rmse != null) {
+  const twinStatus = attrs.smartpi_twin_status;
+  if (twinStatus && twinStatus !== 'ok') {
+    modelVal = `Twin ${twinStatus}`;
+    modelCls = 'sc-orange';
+  } else if (rmse != null) {
     modelVal = `RMSE ${rmse.toFixed(2)}°C`;
     modelCls = rmse > 1.0 ? 'sc-red' : rmse > 0.5 ? 'sc-orange' : 'sc-green';
   }
@@ -7413,7 +7743,7 @@ async function fetchState() {
     const resp = await fetch(`/api/state?${entityParam()}`, { headers });
     if (resp.status === 304) return; // state unchanged, skip DOM updates
     lastStateETag = resp.headers.get('ETag') || null;
-    const data = await resp.json();
+    const data = await parseApiJson(resp, 'state');
     if (!data.ok) return;
 
     currentState = data;
@@ -7438,6 +7768,7 @@ async function fetchState() {
     }
   } catch (e) {
     updateConnectionStatus(false);
+    if (e && e.status === 404) return;
     console.error('Fetch state error:', e);
   }
 }
@@ -7447,6 +7778,10 @@ const EV_TYPES = {
   regime:     { label: 'Régime',     field: 'regime' },
   phase:      { label: 'Phase',      field: 'phase' },
   ff_gate:    { label: 'FF Gate',    field: 'ff_gate' },
+  ff3:        { label: 'FF3',        field: 'ff3_reason_disabled' },
+  servo:      { label: 'Servo',      field: 'setpoint_servo_phase' },
+  drift:      { label: 'Drift',      field: 'a_drift_state' },
+  twin:       { label: 'Twin',       field: 'twin_status' },
   deadband:   { label: 'Deadband',   field: 'in_deadband' },
   autocalib:  { label: 'AutoCalib',  field: 'autocalib_state' },
   guard:      { label: 'Protection', field: 'guard_cut' },
@@ -7466,9 +7801,9 @@ function detectEvents(history) {
 
     // Simple field transitions
     for (const [type, def] of Object.entries(EV_TYPES)) {
-      const pv = prev[def.field];
-      const cv = curr[def.field];
       if (type === 'learn_reason') {
+        const pv = prev[def.field];
+        const cv = curr[def.field];
         const pvs = pv == null ? '' : String(pv);
         const cvs = cv == null ? '' : String(cv);
         if (pvs !== cvs && (pvs || cvs)) {
@@ -7476,6 +7811,36 @@ function detectEvents(history) {
         }
         continue;
       }
+
+      if (type === 'ff3') {
+        const pvs = prev.ff3_enabled ? `on${prev.ff3_horizon_cycles != null ? ` · H=${prev.ff3_horizon_cycles}` : ''}` : `off:${prev.ff3_reason_disabled || '—'}`;
+        const cvs = curr.ff3_enabled ? `on${curr.ff3_horizon_cycles != null ? ` · H=${curr.ff3_horizon_cycles}` : ''}` : `off:${curr.ff3_reason_disabled || '—'}`;
+        if (pvs !== cvs) {
+          events.push({ ts, type, prev: pvs, value: cvs });
+        }
+        continue;
+      }
+
+      if (type === 'servo') {
+        const pvs = prev.setpoint_servo_active ? (prev.setpoint_servo_phase || 'active') : 'off';
+        const cvs = curr.setpoint_servo_active ? (curr.setpoint_servo_phase || 'active') : 'off';
+        if (pvs !== cvs) {
+          events.push({ ts, type, prev: pvs, value: cvs });
+        }
+        continue;
+      }
+
+      if (type === 'drift') {
+        const pvs = `${prev.a_drift_state || '—'} / ${prev.b_drift_state || '—'}`;
+        const cvs = `${curr.a_drift_state || '—'} / ${curr.b_drift_state || '—'}`;
+        if (pvs !== cvs) {
+          events.push({ ts, type, prev: pvs, value: cvs });
+        }
+        continue;
+      }
+
+      const pv = prev[def.field];
+      const cv = curr[def.field];
       if (pv != null && cv != null && pv !== cv) {
         events.push({ ts, type, prev: String(pv), value: String(cv) });
       }
@@ -7610,7 +7975,7 @@ async function fetchHistory() {
 
     // First try in-memory history
     let resp = await fetch(`/api/history?${entityParam()}`);
-    let data = await resp.json();
+    let data = await parseApiJson(resp, 'history');
     if (data.ok && data.count > 5) {
       historyData = _prepareHistory(data.data);
       updateAllHistoryViews();
@@ -7621,13 +7986,14 @@ async function fetchHistory() {
     const selectedHours = parseInt(document.getElementById('chart-range').value) || 12;
     const hours = Math.max(selectedHours, MH_REQUIRED_HISTORY_HOURS);
     resp = await fetch(`/api/ha-history?${entityParam()}&hours=${hours}`);
-    data = await resp.json();
+    data = await parseApiJson(resp, 'ha-history');
     if (data.ok) {
       historyData = _prepareHistory(data.data);
       updateAllHistoryViews();
     }
     lastHistoryFetchAt = Date.now();
   } catch (e) {
+    if (e && e.status === 404) return;
     console.error('Fetch history error:', e);
   }
 }
@@ -7637,7 +8003,7 @@ async function loadEntitySelector() {
   const select = document.getElementById('entity-select');
   try {
     const resp = await fetch('/api/entities');
-    const data = await resp.json();
+    const data = await parseApiJson(resp, 'entities');
     if (!data.ok || !data.entities.length) return;
 
     select.innerHTML = '';
