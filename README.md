@@ -11,7 +11,6 @@ smartpi-dash/
 ├── transforms.py             # Transformations de données (flatten, extract, snapshot)
 ├── ha_client.py              # Client REST Home Assistant + découverte d'entités
 ├── ws_listener.py            # Listener WebSocket HA + thread
-├── import.py                 # Utilitaire : migration config Claude Code → ChatGPT project
 ├── setup_diagram.py          # Extraction SVG du schéma de bloc
 ├── mcp.json                  # Configuration MCP (CodeGraphContext)
 ├── .env.example              # Template de configuration

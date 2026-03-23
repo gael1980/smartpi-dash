@@ -1,0 +1,8 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+[agents.legal-advisor]
+description = "Legal and compliance specialist for privacy policies, terms of service, GDPR notices, legal pages, and related product documentation."
+
+# Notes:
+# - Les anciens reglages `.claude/*` n'ont pas ete convertis automatiquement vers des permissions Codex partagees.
+# - Utiliser les commandes documentees dans `AGENTS.md` pour lancer et verifier le projet.
